@@ -230,7 +230,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="historyScreen" class="hidden">
   <div class="card">
     <h2>Histórico de vistorias</h2>
-    <p class="muted">Os registros ficam salvos neste dispositivo mesmo após fechar o aplicativo.</p>
+    <p class="muted">Os registros ficam salvos neste dispositivo e sincronizados com a nuvem. Ao excluir uma vistoria, ela também será removida do Supabase.</p>
     <label class="section"><span>Buscar cliente, telefone ou cidade</span><input id="historySearch" placeholder="Digite para pesquisar"></label>
     <div class="section no-print grid grid2">
       <button id="exportBackup">Exportar backup</button>
@@ -568,6 +568,21 @@ async function syncAll(){
   await updateDashboard(); await renderHistory(); return true;
 }
 
+
+async function deleteCloudRecord(record){
+  if(!record?.cloudId || !cloudReady()) return true;
+  const c=cloudConfig();
+  const res=await fetch(
+    `${c.url}/rest/v1/vistorias?client_uuid=eq.${encodeURIComponent(record.cloudId)}`,
+    {
+      method:'DELETE',
+      headers:cloudHeaders({'Prefer':'return=minimal'})
+    }
+  );
+  if(!res.ok) throw new Error(`Falha ao excluir da nuvem (${res.status})`);
+  return true;
+}
+
 /* ---------- Dashboard / histórico ---------- */
 async function updateDashboard(){
   const all=await dbAll();
@@ -590,12 +605,27 @@ async function renderHistory(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button data-open="${r.id}" style="min-height:42px;padding:8px 12px">Abrir</button>
         <button data-edit="${r.id}" style="min-height:42px;padding:8px 12px">Duplicar/editar</button>
-        <button data-del="${r.id}" style="min-height:42px;padding:8px 12px">Excluir local</button>
+        <button data-del="${r.id}" style="min-height:42px;padding:8px 12px">Excluir vistoria</button>
       </div>
     </div>`).join('');
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r)renderReport(r)});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));if(r){loadRecordToForm(r);step=1;stepView();show('formScreen')}});
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(confirm('Excluir esta cópia local? O registro já sincronizado pode voltar da nuvem na próxima sincronização.')){await dbDelete(Number(b.dataset.del));await renderHistory();await updateDashboard()}});
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
+    const all=await dbAll();
+    const record=all.find(x=>x.id===Number(b.dataset.del));
+    if(!record) return;
+    try{
+      if(record.cloudId && cloudReady()) await deleteCloudRecord(record);
+      await dbDelete(record.id);
+      await renderHistory();
+      await updateDashboard();
+      if(cloudReady()) updateSyncBadge('Nuvem sincronizada',true);
+      alert('Vistoria excluída com sucesso.');
+    }catch(e){
+      alert('Não foi possível excluir da nuvem. A vistoria foi mantida para evitar inconsistência.\n\n'+e.message);
+    }
+  });
 }
 
 /* ---------- Config / backup ---------- */
