@@ -230,7 +230,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="historyScreen" class="hidden">
   <div class="card">
     <h2>Histórico de vistorias</h2>
-    <p class="muted">Os registros ficam salvos neste dispositivo e sincronizados com a nuvem. Ao excluir uma vistoria, ela também será removida do Supabase.</p>
+    <p class="muted">Os registros ficam sincronizados com a nuvem. Exclusões feitas em qualquer aparelho também serão removidas dos demais após sincronizar.</p>
     <label class="section"><span>Buscar cliente, telefone ou cidade</span><input id="historySearch" placeholder="Digite para pesquisar"></label>
     <div class="section no-print grid grid2">
       <button id="exportBackup">Exportar backup</button>
@@ -549,12 +549,29 @@ async function pullCloud(){
   const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc`,{headers:cloudHeaders({'Prefer':''})});
   if(!res.ok) throw new Error(`Leitura falhou (${res.status})`);
   const rows=await res.json(), locals=await dbAll();
+
+  // 1) Atualiza ou adiciona o que existe na nuvem.
   for(const row of rows){
     const incoming=fromCloud(row);
     const existing=locals.find(x=>x.cloudId===incoming.cloudId);
     if(existing){
-      if((incoming.updatedAt||'')>(existing.updatedAt||'')){incoming.id=existing.id; await dbPut(incoming)}
-    }else await dbAdd(incoming);
+      if((incoming.updatedAt||'')>(existing.updatedAt||'')){
+        incoming.id=existing.id;
+        await dbPut(incoming);
+      }
+    }else{
+      await dbAdd(incoming);
+    }
+  }
+
+  // 2) Propaga exclusões feitas em outro aparelho.
+  // Se um registro local já estava sincronizado e possui cloudId,
+  // mas esse cloudId não existe mais no Supabase, remove a cópia local.
+  const cloudIds = new Set(rows.map(r=>r.client_uuid).filter(Boolean));
+  for(const local of locals){
+    if(local.cloudId && local.syncStatus==='synced' && !cloudIds.has(local.cloudId)){
+      await dbDelete(local.id);
+    }
   }
 }
 async function syncAll(){
