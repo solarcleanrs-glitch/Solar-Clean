@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<title>Solar Clean Vistorias</title>
+<style>
+:root{--bg:#f6f7f8;--card:#fff;--text:#172026;--muted:#667085;--line:#d7dde2;--brand:#082b55;--brand2:#061f3d;--yellow:#f3d21f;--ok:#e9f8ef;--warn:#fff7df;--bad:#fdecec}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800}
+header h1{font-size:18px;margin:0} header p{font-size:12px;color:var(--muted);margin:2px 0 0}
+main{max-width:900px;margin:auto;padding:16px 16px 110px}.hidden{display:none!important}
+.grid{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+button,.btn{min-height:50px;border-radius:14px;border:1px solid var(--line);background:#fff;padding:12px 16px;font-size:16px}
+button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}button.primary:active{background:var(--brand2)}
+.choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px}
+.choice label{border:1px solid var(--line);background:#fff;border-radius:14px;padding:14px;display:flex;gap:8px;align-items:center;min-height:52px}
+input[type=radio],input[type=checkbox]{width:20px;height:20px}
+input,textarea,select{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;padding:13px;font-size:16px}
+label span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:14px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;z-index:6}.nav button{flex:1}
+.metric{padding:14px;border-radius:16px;background:#fff;border:1px solid var(--line)}.metric b{font-size:24px;display:block}
+.topactions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.history-item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:12px 0}.history-item:last-child{border-bottom:0}
+.report{background:#fff;padding:22px;border-radius:18px}.rhead{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--brand);padding-bottom:14px}.rlogo{width:58px;height:58px;border-radius:16px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800}.report table{width:100%;border-collapse:collapse}.report td{padding:9px 6px;border-bottom:1px solid #e6e8eb;vertical-align:top}.report td:first-child{width:42%;font-weight:600}.sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px}.sig div{border-top:1px solid #111;padding-top:6px;text-align:center;font-size:13px}
+@media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}.topactions{grid-template-columns:1fr}.sig{grid-template-columns:1fr}}
+@media print{body{background:#fff}header,.nav,.no-print,#home,#formScreen,#historyScreen,#settingsScreen,#loginScreen,#adminScreen{display:none!important}main{padding:0;max-width:none}.report{border-radius:0;padding:0}}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.photo-card{border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff}
+.photo-card img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}
+.small{font-size:12px;color:var(--muted)}
+.admin-row{display:grid;grid-template-columns:1.2fr 1fr 1fr .8fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+@media(max-width:720px){.admin-row{grid-template-columns:1fr}.grid2,.grid3{grid-template-columns:1fr}.topactions{grid-template-columns:1fr}.sig{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" id="brandLogo"><img src="assets/logo.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:14px"></div>
+  <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
+  <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
+</header>
+
+<main>
+<section id="home">
+  <div class="card">
+    <h2>Olá!</h2>
+    <p class="muted">Selecione o que deseja fazer.</p>
+    <div class="topactions">
+      <button class="primary" id="newBtn">Nova vistoria</button>
+      <button id="historyBtn">Histórico</button>
+      <button id="adminBtn">Painel administrativo</button>
+      <button id="loginBtn">Entrar / Técnico</button>
+      <button id="settingsBtn">Dados da empresa</button>
+      <button id="installBtn">Instalar aplicativo</button>
+    </div>
+    <p class="muted section" id="loggedUser">Modo local — técnico não identificado</p>
+  </div>
+  <div class="card section">
+    <h2>Resumo salvo no aparelho</h2>
+    <div class="grid grid3">
+      <div class="metric"><span class="muted">Vistorias</span><b id="countV">0</b></div>
+      <div class="metric"><span class="muted">Clientes</span><b id="countC">0</b></div>
+      <div class="metric"><span class="muted">Pendentes de nuvem</span><b id="countPending">0</b></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="loginScreen" class="hidden">
+  <div class="card">
+    <h2>Identificação do técnico</h2>
+    <p class="muted">Você pode usar o app localmente apenas informando o nome, ou conectar ao Supabase Auth para login por e-mail.</p>
+    <div class="grid grid2">
+      <label><span>Nome do técnico</span><input id="techName" placeholder="Nome completo"></label>
+      <label><span>E-mail</span><input id="techEmail" type="email" placeholder="tecnico@solarclean.com.br"></label>
+      <label><span>Senha (para nuvem)</span><input id="techPassword" type="password" placeholder="Senha"></label>
+    </div>
+    <div class="grid grid2 section">
+      <button class="primary" id="useLocalTech">Usar neste aparelho</button>
+      <button id="cloudLogin">Entrar na nuvem</button>
+    </div>
+    <button class="section" id="logoutBtn">Sair / limpar identificação</button>
+    <p id="loginStatus" class="muted section"></p>
+    <button class="section" id="homeFromLogin">Voltar ao início</button>
+  </div>
+</section>
+
+<section id="adminScreen" class="hidden">
+  <div class="card">
+    <h2>Painel administrativo</h2>
+    <p class="muted">Resumo das vistorias salvas neste aparelho e, quando sincronizado, das vistorias vindas da nuvem.</p>
+    <div class="grid grid3">
+      <div class="metric"><span class="muted">Total</span><b id="adminTotal">0</b></div>
+      <div class="metric"><span class="muted">Técnicos</span><b id="adminTechs">0</b></div>
+      <div class="metric"><span class="muted">Pendentes</span><b id="adminPending">0</b></div>
+    </div>
+    <div class="grid grid3 section">
+      <label><span>Buscar cliente</span><input id="adminSearch" placeholder="Cliente"></label>
+      <label><span>Técnico</span><select id="adminTechFilter"><option value="">Todos</option></select></label>
+      <label><span>Cidade</span><input id="adminCity" placeholder="Cidade"></label>
+    </div>
+    <div id="adminList" class="section"></div>
+    <button class="section" id="homeFromAdmin">Voltar ao início</button>
+  </div>
+</section>
+
+<section id="formScreen" class="hidden">
+  <div class="card">
+    <h2>Nova vistoria</h2>
+    <p class="muted" id="stepLabel">Etapa 1 de 6</p>
+
+    <div class="step" data-step="1">
+      <div class="grid grid2">
+        <label><span>Cliente</span><input id="cliente" placeholder="Nome ou razão social"></label>
+        <label><span>WhatsApp</span><input id="telefone" placeholder="(00) 00000-0000"></label>
+        <label><span>Cidade</span><input id="cidade"></label>
+        <label><span>Endereço</span><input id="endereco"></label>
+      </div>
+    </div>
+
+    <div class="step hidden" data-step="2">
+      <div class="grid grid2">
+        <label><span>Quantidade de placas</span><input id="placas" type="number" min="0"></label>
+        <label><span>Potência por placa (W)</span><input id="potPlaca" type="number" min="0"></label>
+        <label><span>Marca das placas</span><input id="marcaPlaca"></label>
+        <label><span>Marca do inversor</span><input id="marcaInv"></label>
+        <label><span>Modelo do inversor</span><input id="modeloInv"></label>
+        <label><span>Ano de instalação</span><input id="anoInst" type="number"></label>
+      </div>
+      <div class="section"><span class="muted">Tipo de instalação</span><div class="choice">
+        <label><input type="radio" name="telhado" value="Cerâmico">Cerâmico</label>
+        <label><input type="radio" name="telhado" value="Fibrocimento">Fibrocimento</label>
+        <label><input type="radio" name="telhado" value="Metálico">Metálico</label>
+        <label><input type="radio" name="telhado" value="Laje">Laje</label>
+        <label><input type="radio" name="telhado" value="Solo">Solo</label>
+      </div></div>
+    </div>
+
+    <div class="step hidden" data-step="3">
+      <span class="muted">Nível de sujeira</span>
+      <div class="choice">
+        <label><input type="radio" name="sujeira" value="Leve">Leve</label>
+        <label><input type="radio" name="sujeira" value="Moderada">Moderada</label>
+        <label><input type="radio" name="sujeira" value="Alta">Alta</label>
+        <label><input type="radio" name="sujeira" value="Muito alta">Muito alta</label>
+      </div>
+      <div class="section"><span class="muted">Sujidades encontradas</span><div class="choice">
+        <label><input type="checkbox" name="sujidade" value="Poeira">Poeira</label>
+        <label><input type="checkbox" name="sujidade" value="Fezes de aves">Fezes de aves</label>
+        <label><input type="checkbox" name="sujidade" value="Folhas">Folhas</label>
+        <label><input type="checkbox" name="sujidade" value="Lodo/Fungos">Lodo/Fungos</label>
+      </div></div>
+      <div class="section"><span class="muted">Estrutura</span><div class="choice">
+        <label><input type="radio" name="estrutura" value="Boa">Boa</label>
+        <label><input type="radio" name="estrutura" value="Regular">Regular</label>
+        <label><input type="radio" name="estrutura" value="Ruim">Ruim</label>
+      </div></div>
+    </div>
+
+    <div class="step hidden" data-step="4">
+      <span class="muted">Condição das DPS</span>
+      <div class="choice">
+        <label><input type="radio" name="dps" value="Boas">Boas</label>
+        <label><input type="radio" name="dps" value="Meia vida">Meia vida</label>
+        <label><input type="radio" name="dps" value="Utilizadas">Utilizadas</label>
+      </div>
+      <div id="dpsExtra" class="grid grid2 section hidden">
+        <label><span>Quantidade utilizadas</span><input id="qtdDps" type="number" min="0"></label>
+        <label><span>Modelo / especificação</span><input id="modeloDps" placeholder="Ex.: 275 V Classe II"></label>
+      </div>
+      <div class="section"><span class="muted">Inversor</span><div class="choice">
+        <label><input type="radio" name="invStatus" value="Normal">Normal</label>
+        <label><input type="radio" name="invStatus" value="Alerta">Alerta</label>
+        <label><input type="radio" name="invStatus" value="Erro">Erro</label>
+        <label><input type="radio" name="invStatus" value="Desligado">Desligado</label>
+      </div></div>
+      <label class="section"><span>Código / descrição do erro</span><input id="erroInv"></label>
+    </div>
+
+    <div class="step hidden" data-step="5">
+      <div class="grid grid2">
+        <label><span>Potência antes da limpeza (kW)</span><input id="antes" type="number" step="0.01"></label>
+        <label><span>Potência após a limpeza (kW)</span><input id="depois" type="number" step="0.01"></label>
+      </div>
+      <div class="grid grid3 section">
+        <div class="metric"><span class="muted">Antes</span><b id="mAntes">—</b></div>
+        <div class="metric"><span class="muted">Depois</span><b id="mDepois">—</b></div>
+        <div class="metric"><span class="muted">Variação</span><b id="mPct">—</b></div>
+      </div>
+      <div class="section"><span class="muted">Serviço</span><div class="choice">
+        <label><input type="radio" name="limpeza" value="Completa">Completa</label>
+        <label><input type="radio" name="limpeza" value="Parcial">Parcial</label>
+        <label><input type="radio" name="limpeza" value="Não realizada">Não realizada</label>
+      </div></div>
+    </div>
+
+    <div class="step hidden" data-step="6">
+      <span class="muted">Próxima limpeza recomendada</span>
+      <div class="choice">
+        <label><input type="radio" name="retorno" value="6 meses">6 meses</label>
+        <label><input type="radio" name="retorno" value="12 meses">12 meses</label>
+      </div>
+      <label class="section"><span>Observações e recomendações</span><textarea id="obs" rows="6"></textarea></label>
+
+      <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
+        <h2>Fotos da vistoria</h2>
+        <p class="muted">Selecione fotos do tablet. Nesta versão elas ficam anexadas localmente ao registro; quando a nuvem estiver configurada, serão preparadas para envio ao Storage.</p>
+        <div class="grid grid3">
+          <label><span>Antes da limpeza</span><input id="photoBefore" type="file" accept="image/*" multiple></label>
+          <label><span>Depois da limpeza</span><input id="photoAfter" type="file" accept="image/*" multiple></label>
+          <label><span>Problemas encontrados</span><input id="photoIssues" type="file" accept="image/*" multiple></label>
+        </div>
+        <div id="photoPreview" class="photo-grid section"></div>
+      </div>
+
+      <button class="primary section" id="generateBtn">Salvar e gerar relatório</button>
+    </div>
+  </div>
+  <div class="nav">
+    <button id="backStep">Voltar</button>
+    <button class="primary" id="nextStep">Avançar</button>
+  </div>
+</section>
+
+<section id="historyScreen" class="hidden">
+  <div class="card">
+    <h2>Histórico de vistorias</h2>
+    <p class="muted">Os registros ficam salvos neste dispositivo mesmo após fechar o aplicativo.</p>
+    <label class="section"><span>Buscar cliente, telefone ou cidade</span><input id="historySearch" placeholder="Digite para pesquisar"></label>
+    <div class="section no-print grid grid2">
+      <button id="exportBackup">Exportar backup</button>
+      <button id="clearSearch">Limpar busca</button>
+    </div>
+    <div id="historyList" class="section"><p class="muted">Carregando histórico...</p></div>
+    <button class="section" id="homeFromHistory">Voltar ao início</button>
+  </div>
+</section>
+
+<section id="settingsScreen" class="hidden">
+  <div class="card">
+    <h2>Dados da Solar Clean</h2>
+    <div class="grid grid2">
+      <label><span>Empresa</span><input id="empresa" value="Solar Clean"></label>
+      <label><span>Telefone</span><input id="empresaTel" value="(51) 99154-8631"></label>
+      <label><span>CNPJ</span><input id="empresaCnpj" value="50.763.628/0001-17"></label>
+      <label><span>Instagram</span><input id="empresaInsta" value="@solar_clean_"></label>
+      <label><span>E-mail</span><input id="empresaEmail" placeholder="seuemail@empresa.com"></label>
+      <label><span>Site</span><input id="empresaSite" placeholder="www.seusite.com.br"></label>
+    </div>
+    <p class="muted section">Logo oficial integrada ao aplicativo e aos relatórios.</p>
+
+    <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
+      <h2>Sincronização na nuvem</h2>
+      <p class="muted">Opcional. Sem configuração, o aplicativo continua funcionando normalmente e salvando tudo no tablet.</p>
+      <div class="grid">
+        <label><span>Supabase Project URL</span><input id="supabaseUrl" placeholder="https://seu-projeto.supabase.co"></label>
+        <label><span>Supabase Anon Key</span><textarea id="supabaseKey" rows="3" placeholder="Cole a chave anon/public"></textarea></label>
+      </div>
+      <div class="grid grid2 section">
+        <button id="testCloud">Testar conexão</button>
+        <button id="syncNow">Sincronizar agora</button>
+      </div>
+      <p id="cloudStatus" class="muted"></p>
+    </div>
+
+    <button class="primary section" id="saveCompany">Salvar configurações</button>
+    <button class="section" id="homeFromSettings">Voltar ao início</button>
+  </div>
+</section>
+
+<section id="reportScreen" class="hidden">
+  <div class="report" id="report">
+    <div class="rhead">
+      <div class="rlogo"><img src="assets/logo.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:16px"></div>
+      <div><h2 id="rEmpresa" style="margin:0">Solar Clean</h2><div class="muted" id="rCompanyLine"></div></div>
+    </div>
+    <h2 class="section">Relatório de Visita Técnica</h2>
+    <p class="muted" id="rDate"></p>
+
+    <table><tbody>
+      <tr><td>Cliente</td><td id="rCliente"></td></tr>
+      <tr><td>Telefone</td><td id="rTelefone"></td></tr>
+      <tr><td>Cidade</td><td id="rCidade"></td></tr>
+      <tr><td>Endereço</td><td id="rEndereco"></td></tr>
+      <tr><td>Técnico responsável</td><td id="rTecnico"></td></tr>
+    </tbody></table>
+
+    <h2 class="section">Sistema fotovoltaico</h2>
+    <table><tbody>
+      <tr><td>Quantidade de placas</td><td id="rPlacas"></td></tr>
+      <tr><td>Potência por placa</td><td id="rPotPlaca"></td></tr>
+      <tr><td>Potência instalada estimada</td><td id="rPotTotal"></td></tr>
+      <tr><td>Marca das placas</td><td id="rMarcaPlaca"></td></tr>
+      <tr><td>Inversor</td><td id="rInv"></td></tr>
+      <tr><td>Tipo de instalação</td><td id="rTelhado"></td></tr>
+    </tbody></table>
+
+    <h2 class="section">Inspeção</h2>
+    <table><tbody>
+      <tr><td>Nível de sujeira</td><td id="rSujeira"></td></tr>
+      <tr><td>Sujidades</td><td id="rSujidades"></td></tr>
+      <tr><td>Estrutura</td><td id="rEstrutura"></td></tr>
+      <tr><td>DPS</td><td id="rDps"></td></tr>
+      <tr><td>Status do inversor</td><td id="rInvStatus"></td></tr>
+    </tbody></table>
+
+    <h2 class="section">Resultado da limpeza</h2>
+    <table><tbody>
+      <tr><td>Potência antes</td><td id="rAntes"></td></tr>
+      <tr><td>Potência depois</td><td id="rDepois"></td></tr>
+      <tr><td>Diferença</td><td id="rDif"></td></tr>
+      <tr><td>Variação</td><td id="rPct"></td></tr>
+      <tr><td>Serviço realizado</td><td id="rLimpeza"></td></tr>
+      <tr><td>Próxima limpeza</td><td id="rRetorno"></td></tr>
+    </tbody></table>
+
+    <h2 class="section">Observações</h2>
+    <p id="rObs"></p>
+    <div id="rPhotosWrap" class="section hidden">
+      <h2>Registro fotográfico</h2>
+      <div id="rPhotos" class="photo-grid"></div>
+    </div>
+    <div class="sig"><div>Responsável técnico</div><div>Cliente / responsável</div></div>
+
+    <div class="no-print section grid grid2">
+      <button id="backReport">Voltar</button>
+      <button class="primary" id="printBtn">Imprimir / Salvar PDF</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const screens=['home','formScreen','historyScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
+let step=1, deferredPrompt=null, currentReportRecord=null;
+
+/* ---------- IndexedDB ---------- */
+const DB_NAME='solarCleanDB', DB_VERSION=2, STORE='vistorias';
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      let s;
+      if(!db.objectStoreNames.contains(STORE)){
+        s=db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+      }else{s=req.transaction.objectStore(STORE)}
+      if(!s.indexNames.contains('createdAt')) s.createIndex('createdAt','createdAt');
+      if(!s.indexNames.contains('cliente')) s.createIndex('cliente','cliente');
+      if(!s.indexNames.contains('cloudId')) s.createIndex('cloudId','cloudId',{unique:false});
+    };
+    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+  });
+}
+async function dbPut(record){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readwrite');
+    const req=tx.objectStore(STORE).put(record);
+    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+  });
+}
+async function dbAdd(record){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readwrite');
+    const req=tx.objectStore(STORE).add(record);
+    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+  });
+}
+async function dbAll(){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readonly');
+    const req=tx.objectStore(STORE).getAll();
+    req.onsuccess=()=>resolve(req.result.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function dbDelete(id){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,'readwrite');
+    const req=tx.objectStore(STORE).delete(id);
+    req.onsuccess=()=>resolve(); req.onerror=()=>reject(req.error);
+  });
+}
+
+/* ---------- UI helpers ---------- */
+function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id))}
+function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
+function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
+function stepView(){
+  document.querySelectorAll('.step').forEach(x=>x.classList.toggle('hidden',Number(x.dataset.step)!==step));
+  $('#stepLabel').textContent=`Etapa ${step} de 6`;
+  $('#backStep').style.visibility=step===1?'hidden':'visible';
+  $('#nextStep').classList.toggle('hidden',step===6);
+}
+function calc(){
+  const a=Number($('#antes').value||0),d=Number($('#depois').value||0);
+  $('#mAntes').textContent=a?`${a.toFixed(2)} kW`:'—';
+  $('#mDepois').textContent=d?`${d.toFixed(2)} kW`:'—';
+  $('#mPct').textContent=a?`${(((d-a)/a)*100).toFixed(1)}%`:'—';
+}
+function companyLine(){return [$('#empresaTel').value,$('#empresaCnpj').value,$('#empresaInsta').value,$('#empresaEmail').value,$('#empresaSite').value].filter(Boolean).join(' • ')}
+function setRadio(name,value){document.querySelectorAll(`input[name="${name}"]`).forEach(x=>x.checked=x.value===value)}
+function setChecks(name,values=[]){document.querySelectorAll(`input[name="${name}"]`).forEach(x=>x.checked=values.includes(x.value))}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function currentTech(){
+  try{return JSON.parse(localStorage.getItem('solarCleanTech')||'null')}catch(e){return null}
+}
+function setTech(t){
+  if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
+  updateLoggedUser();
+}
+function updateLoggedUser(){
+  const t=currentTech();
+  $('#loggedUser').textContent=t?`Técnico identificado: ${t.name||t.email||'Usuário'}`:'Modo local — técnico não identificado';
+}
+
+
+function collectForm(){
+  const a=Number($('#antes').value||0),d=Number($('#depois').value||0);
+  return {
+    createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
+    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'',
+    placas:Number($('#placas').value||0), potPlaca:Number($('#potPlaca').value||0), marcaPlaca:$('#marcaPlaca').value||'',
+    marcaInv:$('#marcaInv').value||'', modeloInv:$('#modeloInv').value||'', anoInst:$('#anoInst').value||'', telhado:radio('telhado'),
+    sujeira:radio('sujeira'), sujidades:checks('sujidade'), estrutura:radio('estrutura'),
+    dps:radio('dps'), qtdDps:$('#qtdDps').value||'', modeloDps:$('#modeloDps').value||'',
+    invStatus:radio('invStatus'), erroInv:$('#erroInv').value||'',
+    antes:a, depois:d, limpeza:radio('limpeza'), retorno:radio('retorno'), obs:$('#obs').value||'',
+    pct:a?(((d-a)/a)*100):null, tecnico:(currentTech()?.name||currentTech()?.email||'Não identificado'), tecnicoEmail:(currentTech()?.email||''), photos:window.__pendingPhotos||[], cloudId:null, syncStatus:'pending', updatedAt:new Date().toISOString()
+  };
+}
+function resetForm(){
+  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs'].forEach(id=>$('#'+id).value='');
+  document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false);
+  $('#dpsExtra').classList.add('hidden'); calc();
+}
+function loadRecordToForm(r){
+  $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';
+  $('#placas').value=r.placas||''; $('#potPlaca').value=r.potPlaca||''; $('#marcaPlaca').value=r.marcaPlaca||''; $('#marcaInv').value=r.marcaInv||''; $('#modeloInv').value=r.modeloInv||''; $('#anoInst').value=r.anoInst||'';
+  setRadio('telhado',r.telhado); setRadio('sujeira',r.sujeira); setChecks('sujidade',r.sujidades||[]); setRadio('estrutura',r.estrutura);
+  setRadio('dps',r.dps); $('#qtdDps').value=r.qtdDps||''; $('#modeloDps').value=r.modeloDps||''; $('#dpsExtra').classList.toggle('hidden',r.dps!=='Utilizadas');
+  setRadio('invStatus',r.invStatus); $('#erroInv').value=r.erroInv||''; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; calc();
+}
+function renderReport(r){
+  const p=Number(r.placas||0),w=Number(r.potPlaca||0),a=Number(r.antes||0),d=Number(r.depois||0);
+  const total=p&&w?((p*w)/1000).toFixed(2):'—',dif=(a||d)?(d-a).toFixed(2):'—',pct=a?(((d-a)/a)*100).toFixed(1):'—';
+  const dpsText=r.dps==='Utilizadas'?`${r.dps} — ${r.qtdDps||'—'} un. — ${r.modeloDps||'modelo não informado'}`:(r.dps||'Não informado');
+  $('#rEmpresa').textContent=$('#empresa').value||'Solar Clean'; $('#rCompanyLine').textContent=companyLine(); $('#rDate').textContent=r.dateLabel||new Date(r.createdAt).toLocaleDateString('pt-BR');
+  $('#rCliente').textContent=r.cliente||'Não informado'; $('#rTelefone').textContent=r.telefone||'Não informado'; $('#rCidade').textContent=r.cidade||'Não informado'; $('#rEndereco').textContent=r.endereco||'Não informado'; $('#rTecnico').textContent=r.tecnico||'Não identificado';
+  $('#rPlacas').textContent=p||'Não informado'; $('#rPotPlaca').textContent=w?`${w} W`:'Não informado'; $('#rPotTotal').textContent=total==='—'?'Não calculado':`${total} kWp`; $('#rMarcaPlaca').textContent=r.marcaPlaca||'Não informado'; $('#rInv').textContent=[r.marcaInv,r.modeloInv].filter(Boolean).join(' — ')||'Não informado'; $('#rTelhado').textContent=r.telhado||'Não informado';
+  $('#rSujeira').textContent=r.sujeira||'Não informado'; $('#rSujidades').textContent=(r.sujidades&&r.sujidades.length?r.sujidades.join(', '):'Nenhuma'); $('#rEstrutura').textContent=r.estrutura||'Não informado'; $('#rDps').textContent=dpsText; $('#rInvStatus').textContent=(r.invStatus||'Não informado')+(r.erroInv?` — ${r.erroInv}`:'');
+  $('#rAntes').textContent=a?`${a.toFixed(2)} kW`:'Não informado'; $('#rDepois').textContent=d?`${d.toFixed(2)} kW`:'Não informado'; $('#rDif').textContent=dif==='—'?'Não calculado':`${dif} kW`; $('#rPct').textContent=pct==='—'?'Não calculado':`${pct}%`; $('#rLimpeza').textContent=r.limpeza||'Não informado'; $('#rRetorno').textContent=r.retorno||'Não informado'; $('#rObs').textContent=r.obs||'Nenhuma observação adicional.'; renderReportPhotos(r.photos||[]);
+  currentReportRecord=r; show('reportScreen');
+}
+
+
+/* ---------- Fotos locais ---------- */
+window.__pendingPhotos=[];
+async function fileToData(file,category){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve({name:file.name,type:file.type,category,data:reader.result});
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+async function updatePhotos(){
+  const groups=[['photoBefore','Antes'],['photoAfter','Depois'],['photoIssues','Problema']];
+  const photos=[];
+  for(const [id,category] of groups){
+    const files=[...$('#'+id).files];
+    for(const f of files) photos.push(await fileToData(f,category));
+  }
+  window.__pendingPhotos=photos;
+  $('#photoPreview').innerHTML=photos.map(p=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><div class="small">${escapeHtml(p.category)}</div></div>`).join('');
+}
+function renderReportPhotos(photos){
+  $('#rPhotosWrap').classList.toggle('hidden',!photos.length);
+  $('#rPhotos').innerHTML=photos.map(p=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><div class="small">${escapeHtml(p.category)}</div></div>`).join('');
+}
+
+/* ---------- Supabase REST sync ---------- */
+function cloudConfig(){
+  return {
+    url:($('#supabaseUrl').value||'').trim().replace(/\/$/,''),
+    key:($('#supabaseKey').value||'').trim()
+  };
+}
+function cloudReady(){const c=cloudConfig();return c.url.startsWith('https://')&&c.key.length>20}
+function updateSyncBadge(text,ok=false){
+  $('#syncBadge').textContent=text;
+  $('#syncBadge').style.background=ok?'#e9f8ef':'#fff';
+}
+function cloudHeaders(extra={}){
+  const c=cloudConfig();
+  return {'apikey':c.key,'Authorization':`Bearer ${c.key}`,'Content-Type':'application/json','Prefer':'return=representation',...extra};
+}
+function toCloud(r){
+  return {
+    client_uuid:String(r.cloudId||crypto.randomUUID()),
+    created_at:r.createdAt,
+    updated_at:r.updatedAt||r.createdAt,
+    cliente:r.cliente, telefone:r.telefone, cidade:r.cidade, endereco:r.endereco,
+    placas:r.placas, pot_placa:r.potPlaca, marca_placa:r.marcaPlaca, marca_inv:r.marcaInv, modelo_inv:r.modeloInv,
+    ano_inst:String(r.anoInst||''), telhado:r.telhado, sujeira:r.sujeira, sujidades:r.sujidades||[], estrutura:r.estrutura,
+    dps:r.dps, qtd_dps:String(r.qtdDps||''), modelo_dps:r.modeloDps, inv_status:r.invStatus, erro_inv:r.erroInv,
+    antes:r.antes, depois:r.depois, limpeza:r.limpeza, retorno:r.retorno, obs:r.obs, pct:r.pct, tecnico:r.tecnico||'', tecnico_email:r.tecnicoEmail||''
+  };
+}
+function fromCloud(c){
+  return {
+    cloudId:c.client_uuid, createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
+    cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,
+    marcaPlaca:c.marca_placa||'', marcaInv:c.marca_inv||'', modeloInv:c.modelo_inv||'', anoInst:c.ano_inst||'', telhado:c.telhado||'Não informado',
+    sujeira:c.sujeira||'Não informado', sujidades:c.sujidades||[], estrutura:c.estrutura||'Não informado', dps:c.dps||'Não informado',
+    qtdDps:c.qtd_dps||'', modeloDps:c.modelo_dps||'', invStatus:c.inv_status||'Não informado', erroInv:c.erro_inv||'',
+    antes:Number(c.antes||0), depois:Number(c.depois||0), limpeza:c.limpeza||'Não informado', retorno:c.retorno||'Não informado',
+    obs:c.obs||'', pct:c.pct, tecnico:c.tecnico||'', tecnicoEmail:c.tecnico_email||'', photos:[], syncStatus:'synced'
+  };
+}
+async function testCloud(){
+  if(!cloudReady()){throw new Error('Preencha a URL e a Anon Key do Supabase.')}
+  const c=cloudConfig();
+  const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+  if(!res.ok) throw new Error(`Falha ${res.status}: verifique a tabela e as permissões.`);
+  return true;
+}
+async function pushRecord(local){
+  const c=cloudConfig(), payload=toCloud(local);
+  const res=await fetch(`${c.url}/rest/v1/vistorias?on_conflict=client_uuid`,{
+    method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(payload)
+  });
+  if(!res.ok) throw new Error(`Envio falhou (${res.status})`);
+  const rows=await res.json();
+  local.cloudId=payload.client_uuid; local.syncStatus='synced'; local.updatedAt=new Date().toISOString();
+  await dbPut(local); return rows[0];
+}
+async function pullCloud(){
+  const c=cloudConfig();
+  const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc`,{headers:cloudHeaders({'Prefer':''})});
+  if(!res.ok) throw new Error(`Leitura falhou (${res.status})`);
+  const rows=await res.json(), locals=await dbAll();
+  for(const row of rows){
+    const incoming=fromCloud(row);
+    const existing=locals.find(x=>x.cloudId===incoming.cloudId);
+    if(existing){
+      if((incoming.updatedAt||'')>(existing.updatedAt||'')){incoming.id=existing.id; await dbPut(incoming)}
+    }else await dbAdd(incoming);
+  }
+}
+async function syncAll(){
+  if(!cloudReady()){updateSyncBadge('Somente local');return false}
+  updateSyncBadge('Sincronizando…');
+  const all=await dbAll();
+  for(const r of all.filter(x=>x.syncStatus!=='synced'||!x.cloudId)){await pushRecord(r)}
+  await pullCloud();
+  updateSyncBadge('Nuvem sincronizada',true);
+  $('#cloudStatus').textContent='Sincronização concluída.';
+  await updateDashboard(); await renderHistory(); return true;
+}
+
+/* ---------- Dashboard / histórico ---------- */
+async function updateDashboard(){
+  const all=await dbAll();
+  $('#countV').textContent=all.length;
+  $('#countC').textContent=new Set(all.map(x=>(x.cliente||'').trim().toLowerCase()).filter(Boolean)).size;
+  $('#countPending').textContent=all.filter(x=>x.syncStatus!=='synced').length;
+  if(!cloudReady()) updateSyncBadge('Somente local');
+}
+async function renderHistory(){
+  const all=await dbAll(), q=($('#historySearch').value||'').trim().toLowerCase();
+  const filtered=!q?all:all.filter(r=>[r.cliente,r.telefone,r.cidade].some(v=>(v||'').toLowerCase().includes(q)));
+  if(!filtered.length){$('#historyList').innerHTML='<p class="muted">Nenhuma vistoria encontrada.</p>';return}
+  $('#historyList').innerHTML=filtered.map(r=>`
+    <div class="history-item" style="align-items:center">
+      <div>
+        <b>${escapeHtml(r.cliente||'Cliente sem nome')}</b>
+        <div class="muted">${escapeHtml(r.dateLabel||'')} • ${escapeHtml(r.cidade||'Cidade não informada')}</div>
+        <div class="muted">${escapeHtml(r.telefone||'')} • ${r.syncStatus==='synced'?'☁ Sincronizado':'● Pendente'}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button data-open="${r.id}" style="min-height:42px;padding:8px 12px">Abrir</button>
+        <button data-edit="${r.id}" style="min-height:42px;padding:8px 12px">Duplicar/editar</button>
+        <button data-del="${r.id}" style="min-height:42px;padding:8px 12px">Excluir local</button>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r)renderReport(r)});
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));if(r){loadRecordToForm(r);step=1;stepView();show('formScreen')}});
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(confirm('Excluir esta cópia local? O registro já sincronizado pode voltar da nuvem na próxima sincronização.')){await dbDelete(Number(b.dataset.del));await renderHistory();await updateDashboard()}});
+}
+
+/* ---------- Config / backup ---------- */
+function saveCompany(){
+  const c={
+    empresa:$('#empresa').value,empresaTel:$('#empresaTel').value,empresaCnpj:$('#empresaCnpj').value,empresaInsta:$('#empresaInsta').value,
+    empresaEmail:$('#empresaEmail').value,empresaSite:$('#empresaSite').value,supabaseUrl:$('#supabaseUrl').value,supabaseKey:$('#supabaseKey').value
+  };
+  localStorage.setItem('solarCleanCompany',JSON.stringify(c)); $('#cloudStatus').textContent='Configurações salvas neste aparelho.'; updateDashboard();
+}
+function loadCompany(){
+  try{const c=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}');Object.entries(c).forEach(([k,v])=>{if($('#'+k))$('#'+k).value=v||''})}catch(e){}
+}
+async function exportBackup(){
+  const all=await dbAll();
+  const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company:JSON.parse(localStorage.getItem('solarCleanCompany')||'{}'),vistorias:all};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function generateAndSave(){
+  const r=collectForm(), id=await dbAdd(r); r.id=id;
+  await updateDashboard(); await renderHistory(); renderReport(r);
+  if(cloudReady()){syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'))}
+}
+
+
+/* ---------- Supabase Auth (opcional) ---------- */
+async function cloudAuthLogin(){
+  const c=cloudConfig(),email=$('#techEmail').value.trim(),password=$('#techPassword').value;
+  if(!cloudReady())throw new Error('Configure primeiro a URL e a Anon Key do Supabase em Dados da empresa.');
+  if(!email||!password)throw new Error('Informe e-mail e senha.');
+  const res=await fetch(`${c.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  if(!res.ok)throw new Error('Login inválido ou usuário não cadastrado.');
+  const data=await res.json();
+  localStorage.setItem('solarCleanAccessToken',data.access_token||'');
+  setTech({name:$('#techName').value.trim()||email,email,cloud:true});
+  return true;
+}
+
+/* ---------- Painel administrativo ---------- */
+async function renderAdmin(){
+  const all=await dbAll(),q=($('#adminSearch').value||'').toLowerCase(),city=($('#adminCity').value||'').toLowerCase(),tech=$('#adminTechFilter').value;
+  const techs=[...new Set(all.map(x=>x.tecnico).filter(Boolean))].sort();
+  const current=$('#adminTechFilter').value;
+  $('#adminTechFilter').innerHTML='<option value="">Todos</option>'+techs.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  $('#adminTechFilter').value=current;
+  const filtered=all.filter(r=>(!q||(r.cliente||'').toLowerCase().includes(q))&&(!city||(r.cidade||'').toLowerCase().includes(city))&&(!tech||r.tecnico===tech));
+  $('#adminTotal').textContent=all.length; $('#adminTechs').textContent=techs.length; $('#adminPending').textContent=all.filter(x=>x.syncStatus!=='synced').length;
+  $('#adminList').innerHTML=filtered.length?filtered.map(r=>`<div class="admin-row"><div><b>${escapeHtml(r.cliente||'Cliente')}</b><div class="small">${escapeHtml(r.cidade||'')}</div></div><div>${escapeHtml(r.tecnico||'Não identificado')}</div><div>${escapeHtml(r.dateLabel||'')}</div><div><button data-admin-open="${r.id}" style="min-height:40px">Abrir</button></div></div>`).join(''):'<p class="muted">Nenhuma vistoria encontrada.</p>';
+  document.querySelectorAll('[data-admin-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.adminOpen));if(r)renderReport(r)});
+}
+
+/* ---------- Eventos ---------- */
+$('#newBtn').onclick=()=>{resetForm();window.__pendingPhotos=[];$('#photoPreview').innerHTML='';step=1;stepView();show('formScreen')};
+$('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')}; $('#adminBtn').onclick=async()=>{await renderAdmin();show('adminScreen')}; $('#loginBtn').onclick=()=>{const t=currentTech();$('#techName').value=t?.name||'';$('#techEmail').value=t?.email||'';show('loginScreen')};
+$('#settingsBtn').onclick=()=>show('settingsScreen');
+$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
+$('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
+document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
+$('#antes').oninput=calc; $('#depois').oninput=calc; $('#photoBefore').onchange=updatePhotos; $('#photoAfter').onchange=updatePhotos; $('#photoIssues').onchange=updatePhotos; $('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>window.print();
+$('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{const name=$('#techName').value.trim();if(!name){$('#loginStatus').textContent='Informe o nome do técnico.';return}setTech({name,email:$('#techEmail').value.trim(),cloud:false});$('#loginStatus').textContent='Técnico salvo neste aparelho.';show('home')}; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{setTech(null);localStorage.removeItem('solarCleanAccessToken');$('#loginStatus').textContent='Identificação removida.'};
+$('#testCloud').onclick=async()=>{try{saveCompany();$('#cloudStatus').textContent='Testando...';await testCloud();$('#cloudStatus').textContent='Conexão OK. Banco pronto para sincronizar.';updateSyncBadge('Nuvem conectada',true)}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Somente local')}};
+$('#syncNow').onclick=async()=>{try{saveCompany();await syncAll()}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Falha na nuvem')}};
+$('#historySearch').oninput=renderHistory; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
+window.addEventListener('online',()=>{if(cloudReady())syncAll().catch(()=>{})});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').disabled=false});
+$('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else{alert('Para instalar: abra este site no Chrome/Edge e use “Adicionar à tela inicial” ou “Instalar aplicativo”.')}};
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+loadCompany(); updateLoggedUser(); stepView(); updateDashboard(); if(navigator.onLine&&cloudReady()) syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'));
+</script>
+</body>
+</html>
