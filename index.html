@@ -338,7 +338,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <script>
 const $=s=>document.querySelector(s);
 const screens=['home','formScreen','historyScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
-let step=1, deferredPrompt=null, currentReportRecord=null;
+let step=1, deferredPrompt=null, currentReportRecord=null, editingRecord=null;
 
 /* ---------- IndexedDB ---------- */
 const DB_NAME='solarCleanDB', DB_VERSION=2, STORE='vistorias';
@@ -621,12 +621,20 @@ async function renderHistory(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button data-open="${r.id}" style="min-height:42px;padding:8px 12px">Abrir</button>
-        <button data-edit="${r.id}" style="min-height:42px;padding:8px 12px">Duplicar/editar</button>
+        <button data-edit="${r.id}" style="min-height:42px;padding:8px 12px">Editar</button>
+        <button data-duplicate="${r.id}" style="min-height:42px;padding:8px 12px">Duplicar</button>
         <button data-del="${r.id}" style="min-height:42px;padding:8px 12px">Excluir vistoria</button>
       </div>
     </div>`).join('');
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r)renderReport(r)});
-  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));if(r){loadRecordToForm(r);step=1;stepView();show('formScreen')}});
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
+    const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
+    if(r){editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=r.photos||[];step=1;stepView();show('formScreen')}
+  });
+  document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
+    const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
+    if(r){editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=r.photos||[];step=1;stepView();show('formScreen')}
+  });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
     const all=await dbAll();
@@ -663,9 +671,42 @@ async function exportBackup(){
   a.href=url;a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function generateAndSave(){
-  const r=collectForm(), id=await dbAdd(r); r.id=id;
-  await updateDashboard(); await renderHistory(); renderReport(r);
-  if(cloudReady()){syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'))}
+  let r=collectForm();
+
+  if(editingRecord){
+    r.id=editingRecord.id;
+    r.cloudId=editingRecord.cloudId||null;
+    r.createdAt=editingRecord.createdAt;
+    r.dateLabel=editingRecord.dateLabel||new Date(editingRecord.createdAt).toLocaleDateString('pt-BR');
+    r.updatedAt=new Date().toISOString();
+    r.syncStatus='pending';
+    await dbPut(r);
+
+    if(cloudReady() && r.cloudId){
+      try{
+        const c=cloudConfig();
+        const res=await fetch(`${c.url}/rest/v1/vistorias?client_uuid=eq.${encodeURIComponent(r.cloudId)}`,{
+          method:'PATCH',
+          headers:cloudHeaders({'Prefer':'return=representation'}),
+          body:JSON.stringify(toCloud(r))
+        });
+        if(!res.ok) throw new Error(`Atualização falhou (${res.status})`);
+        r.syncStatus='synced';
+        await dbPut(r);
+      }catch(e){ updateSyncBadge('Pendente de sincronizar'); }
+    }
+    editingRecord=null;
+  }else{
+    r.cloudId=null;
+    r.syncStatus='pending';
+    const id=await dbAdd(r);
+    r.id=id;
+  }
+
+  await updateDashboard();
+  await renderHistory();
+  renderReport(r);
+  if(cloudReady() && r.syncStatus!=='synced') syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'));
 }
 
 
@@ -696,7 +737,7 @@ async function renderAdmin(){
 }
 
 /* ---------- Eventos ---------- */
-$('#newBtn').onclick=()=>{resetForm();window.__pendingPhotos=[];$('#photoPreview').innerHTML='';step=1;stepView();show('formScreen')};
+$('#newBtn').onclick=()=>{editingRecord=null;resetForm();window.__pendingPhotos=[];$('#photoPreview').innerHTML='';step=1;stepView();show('formScreen')};
 $('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')}; $('#adminBtn').onclick=async()=>{await renderAdmin();show('adminScreen')}; $('#loginBtn').onclick=()=>{const t=currentTech();$('#techName').value=t?.name||'';$('#techEmail').value=t?.email||'';show('loginScreen')};
 $('#settingsBtn').onclick=()=>show('settingsScreen');
 $('#homeFromHistory').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
