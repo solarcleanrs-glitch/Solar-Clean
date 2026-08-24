@@ -126,7 +126,10 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div class="card">
     <h2>Agenda Operacional</h2>
     <p class="muted">Agendamentos vinculados aos clientes. A agenda SC fica visível somente para o perfil Regis.</p>
-
+<div class="section">
+  <button id="googleConnectBtn" type="button">Conectar Google Agenda</button>
+  <span id="googleConnectStatus" class="muted" style="margin-left:10px;">Não conectado</span>
+</div>
     <div class="agenda-toolbar section">
       <label><span>Data</span><input id="agendaDateFilter" type="date"></label>
       <label><span>Unidade</span>
@@ -1368,13 +1371,31 @@ function connectGoogleCalendar(){
         return;
       }
 
-      googleAccessToken = response.access_token;
-      alert('Google Agenda conectado com sucesso.');
+  googleAccessToken = response.access_token;
+
+const status = document.getElementById('googleConnectStatus');
+if(status) status.textContent = 'Google conectado ✓';
+
+alert('Google Agenda conectado com sucesso.');
     }
   });
 
   client.requestAccessToken();
 }
+  document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('googleConnectBtn');
+
+  if(btn){
+    btn.addEventListener('click', () => {
+      if(typeof google === 'undefined' || !google.accounts){
+        alert('Google ainda não carregou. Aguarde alguns segundos e tente novamente.');
+        return;
+      }
+
+      connectGoogleCalendar();
+    });
+  }
+});
 function agendaGoogleUrl(ev){
   const date = ev.date || '';
   const time = String(ev.time || '08:00').slice(0,5);
