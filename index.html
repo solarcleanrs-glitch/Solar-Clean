@@ -205,6 +205,11 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <label><input type="radio" name="invStatus" value="Erro">Erro</label>
         <label><input type="radio" name="invStatus" value="Desligado">Desligado</label>
       </div></div>
+      <div class="section"><span class="muted">Inversor conectado à internet?</span><div class="choice">
+        <label><input type="radio" name="invInternet" value="Sim">Sim</label>
+        <label><input type="radio" name="invInternet" value="Não">Não</label>
+        <label><input type="radio" name="invInternet" value="Não verificado">Não verificado</label>
+      </div></div>
       <label class="section"><span>Código / descrição do erro</span><input id="erroInv"></label>
     </div>
 
@@ -355,6 +360,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <tr><td>Estrutura</td><td id="rEstrutura"></td></tr>
       <tr><td>DPS</td><td id="rDps"></td></tr>
       <tr><td>Status do inversor</td><td id="rInvStatus"></td></tr>
+      <tr><td>Inversor conectado à internet</td><td id="rInvInternet"></td></tr>
     </tbody></table>
 
     <h2 class="section">Resultado da limpeza</h2>
@@ -503,7 +509,7 @@ function collectForm(){
     marcaInv:$('#marcaInv').value||'', modeloInv:$('#modeloInv').value||'', anoInst:$('#anoInst').value||'', telhado:radio('telhado'),
     sujeira:radio('sujeira'), sujidades:checks('sujidade'), estrutura:radio('estrutura'),
     dps:radio('dps'), qtdDps:$('#qtdDps').value||'', modeloDps:$('#modeloDps').value||'',
-    invStatus:radio('invStatus'), erroInv:$('#erroInv').value||'',
+    invStatus:radio('invStatus'), invInternet:radio('invInternet'), erroInv:$('#erroInv').value||'',
     showGeneration, antes:a, depois:d, limpeza:radio('limpeza'), retorno:radio('retorno'), obs:$('#obs').value||'',
     pct:(showGeneration&&a)?(((d-a)/a)*100):null, tecnico:(currentTech()?.name||currentTech()?.email||'Não identificado'), tecnicoEmail:(currentTech()?.email||''), techSignature:(currentTech()?.signature||''), photos:window.__pendingPhotos||[], clientSignature:window.__signatureData||'', signatureAt:window.__signatureData?(window.__signatureAt||new Date().toISOString()):'', cloudId:null, syncStatus:'pending', updatedAt:new Date().toISOString()
   };
@@ -520,7 +526,7 @@ function loadRecordToForm(r){
   $('#placas').value=r.placas||''; $('#potPlaca').value=r.potPlaca||''; $('#marcaPlaca').value=r.marcaPlaca||''; $('#marcaInv').value=r.marcaInv||''; $('#modeloInv').value=r.modeloInv||''; $('#anoInst').value=r.anoInst||'';
   setRadio('telhado',r.telhado); setRadio('sujeira',r.sujeira); setChecks('sujidade',r.sujidades||[]); setRadio('estrutura',r.estrutura);
   setRadio('dps',r.dps); $('#qtdDps').value=r.qtdDps||''; $('#modeloDps').value=r.modeloDps||''; $('#dpsExtra').classList.toggle('hidden',r.dps!=='Utilizadas');
-  setRadio('invStatus',r.invStatus); $('#erroInv').value=r.erroInv||''; $('#showGeneration').checked=r.showGeneration!==false; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; updateGenerationVisibility();
+  setRadio('invStatus',r.invStatus); setRadio('invInternet',r.invInternet||'Não verificado'); $('#erroInv').value=r.erroInv||''; $('#showGeneration').checked=r.showGeneration!==false; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; updateGenerationVisibility();
   window.__signatureData=r.clientSignature||''; window.__signatureAt=r.signatureAt||'';
   loadSignaturePad(window.__signatureData);
 }
@@ -532,7 +538,7 @@ function renderReport(r){
   $('#rEmpresa').textContent=$('#empresa').value||'Solar Clean'; $('#rCompanyLine').textContent=companyLine(); $('#rDate').textContent=r.dateLabel||new Date(r.createdAt).toLocaleDateString('pt-BR');
   $('#rCliente').textContent=r.cliente||'Não informado'; $('#rTelefone').textContent=r.telefone||'Não informado'; $('#rCidade').textContent=r.cidade||'Não informado'; $('#rEndereco').textContent=r.endereco||'Não informado'; $('#rTecnico').textContent=r.tecnico||'Não identificado';
   $('#rPlacas').textContent=p||'Não informado'; $('#rPotPlaca').textContent=w?`${w} W`:'Não informado'; $('#rPotTotal').textContent=total==='—'?'Não calculado':`${total} kWp`; $('#rMarcaPlaca').textContent=r.marcaPlaca||'Não informado'; $('#rInv').textContent=[r.marcaInv,r.modeloInv].filter(Boolean).join(' — ')||'Não informado'; $('#rTelhado').textContent=r.telhado||'Não informado';
-  $('#rSujeira').textContent=r.sujeira||'Não informado'; $('#rSujidades').textContent=(r.sujidades&&r.sujidades.length?r.sujidades.join(', '):'Nenhuma'); $('#rEstrutura').textContent=r.estrutura||'Não informado'; $('#rDps').textContent=dpsText; $('#rInvStatus').textContent=(r.invStatus||'Não informado')+(r.erroInv?` — ${r.erroInv}`:'');
+  $('#rSujeira').textContent=r.sujeira||'Não informado'; $('#rSujidades').textContent=(r.sujidades&&r.sujidades.length?r.sujidades.join(', '):'Nenhuma'); $('#rEstrutura').textContent=r.estrutura||'Não informado'; $('#rDps').textContent=dpsText; $('#rInvStatus').textContent=(r.invStatus||'Não informado')+(r.erroInv?` — ${r.erroInv}`:''); $('#rInvInternet').textContent=r.invInternet||'Não verificado';
   document.querySelectorAll('.generationReportRow').forEach(row=>row.classList.toggle('hidden',!showGeneration));
   $('#rAntes').textContent=a?`${a.toFixed(2)} kW`:'Não informado'; $('#rDepois').textContent=d?`${d.toFixed(2)} kW`:'Não informado'; $('#rDif').textContent=dif==='—'?'Não calculado':`${dif} kW`; $('#rPct').textContent=pct==='—'?'Não calculado':`${pct}%`; $('#rLimpeza').textContent=r.limpeza||'Não informado'; $('#rRetorno').textContent=r.retorno||'Não informado'; $('#rObs').textContent=r.obs||'Nenhuma observação adicional.'; renderReportPhotos(r.photos||[]);
   const techSigImg=$('#rTechSignature');
@@ -869,7 +875,7 @@ function toCloud(r){
     cliente:r.cliente, telefone:r.telefone, cidade:r.cidade, endereco:r.endereco,
     placas:r.placas, pot_placa:r.potPlaca, marca_placa:r.marcaPlaca, marca_inv:r.marcaInv, modelo_inv:r.modeloInv,
     ano_inst:String(r.anoInst||''), telhado:r.telhado, sujeira:r.sujeira, sujidades:r.sujidades||[], estrutura:r.estrutura,
-    dps:r.dps, qtd_dps:String(r.qtdDps||''), modelo_dps:r.modeloDps, inv_status:r.invStatus, erro_inv:r.erroInv,
+    dps:r.dps, qtd_dps:String(r.qtdDps||''), modelo_dps:r.modeloDps, inv_status:r.invStatus, inv_internet:r.invInternet||'Não verificado', erro_inv:r.erroInv,
     show_generation:r.showGeneration!==false, antes:r.antes, depois:r.depois, limpeza:r.limpeza, retorno:r.retorno, obs:r.obs, pct:r.pct,
     tecnico:r.tecnico||'', tecnico_email:r.tecnicoEmail||'',
     media_manifest:mediaManifest,
@@ -887,7 +893,7 @@ function fromCloud(c){
     cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,
     marcaPlaca:c.marca_placa||'', marcaInv:c.marca_inv||'', modeloInv:c.modelo_inv||'', anoInst:c.ano_inst||'', telhado:c.telhado||'Não informado',
     sujeira:c.sujeira||'Não informado', sujidades:c.sujidades||[], estrutura:c.estrutura||'Não informado', dps:c.dps||'Não informado',
-    qtdDps:c.qtd_dps||'', modeloDps:c.modelo_dps||'', invStatus:c.inv_status||'Não informado', erroInv:c.erro_inv||'',
+    qtdDps:c.qtd_dps||'', modeloDps:c.modelo_dps||'', invStatus:c.inv_status||'Não informado', invInternet:c.inv_internet||'Não verificado', erroInv:c.erro_inv||'',
     showGeneration:c.show_generation!==false, antes:Number(c.antes||0), depois:Number(c.depois||0), limpeza:c.limpeza||'Não informado', retorno:c.retorno||'Não informado',
     obs:c.obs||'', pct:c.pct, tecnico:c.tecnico||'', tecnicoEmail:c.tecnico_email||'',
     photos, clientSignature:c.client_signature||'', signatureAt:c.signature_at||'', techSignature:c.tech_signature||'',
@@ -897,7 +903,7 @@ function fromCloud(c){
 async function testCloud(){
   if(!cloudReady()) throw new Error('Preencha a URL e a Anon Key do Supabase.');
   const c=cloudConfig();
-  const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,media_manifest,client_signature,tech_signature,show_generation&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+  const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,media_manifest,client_signature,tech_signature,show_generation,inv_internet&limit=1`,{headers:cloudHeaders({'Prefer':''})});
   if(!res.ok){
     const msg=await res.text().catch(()=>'');
     throw new Error(`Falha na tabela (${res.status})${msg?': '+msg.slice(0,140):''}`);
