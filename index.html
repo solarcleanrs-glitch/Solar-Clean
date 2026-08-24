@@ -1354,20 +1354,39 @@ function canSeeAgendaUnit(unit){
   return unit!=='SC' || isRegisTech();
 }
 function agendaGoogleUrl(ev){
-  const start=new Date(`${ev.date}T${ev.time||'08:00'}:00`);
-  const end=new Date(start.getTime()+Number(ev.duration||90)*60000);
-  const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
-  const title=`Solar Clean - ${ev.cliente||'Cliente'}`;
-  const details=[
-    `Cliente: ${ev.cliente||''}`,
-    `Telefone: ${ev.telefone||''}`,
-    `Placas: ${ev.placas||''}`,
-    `Técnico: ${ev.tech||''}`,
-    `Unidade: ${ev.unit||''}`,
-    ev.note?`Obs: ${ev.note}`:''
+  const date = ev.date || '';
+  const time = ev.time || '08:00';
+  const duration = Number(ev.duration || 90);
+
+  const start = new Date(`${date}T${time}:00`);
+  const end = new Date(start.getTime() + duration * 60000);
+
+  const fmt = d => d.toISOString()
+    .replace(/[-:]/g,'')
+    .replace(/\.\d{3}Z$/,'Z');
+
+  const title = `Solar Clean - ${ev.cliente || 'Cliente'}`;
+
+  const details = [
+    `Cliente: ${ev.cliente || ''}`,
+    `Telefone: ${ev.telefone || ''}`,
+    `Placas: ${ev.placas || ''}`,
+    `Técnico: ${ev.tech || ''}`,
+    `Unidade: ${ev.unit || ''}`,
+    ev.note ? `Obs: ${ev.note}` : ''
   ].filter(Boolean).join('\n');
-  const location=ev.endereco||ev.cidade||'';
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
+
+  const location = ev.endereco || ev.cidade || '';
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: details,
+    location: location
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 function agendaLocal(){
   try{return JSON.parse(localStorage.getItem('solarCleanAgenda')||'[]')}catch(e){return []}
