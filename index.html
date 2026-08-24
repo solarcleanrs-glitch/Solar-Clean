@@ -83,6 +83,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 .finance-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .finance-value{font-weight:700}
 </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <header>
@@ -1352,6 +1353,27 @@ function canSeeAgendaFinance(){
 }
 function canSeeAgendaUnit(unit){
   return unit!=='SC' || isRegisTech();
+}
+  const GOOGLE_CLIENT_ID = '330586487271-ea92nnm24b8fk57tfod2289a6c1mm3i3.apps.googleusercontent.com';
+const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+  let googleAccessToken = '';
+
+function connectGoogleCalendar(){
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_CALENDAR_SCOPE,
+    callback: (response) => {
+      if(response.error){
+        alert('Erro ao conectar Google Agenda: ' + response.error);
+        return;
+      }
+
+      googleAccessToken = response.access_token;
+      alert('Google Agenda conectado com sucesso.');
+    }
+  });
+
+  client.requestAccessToken();
 }
 function agendaGoogleUrl(ev){
   const date = ev.date || '';
