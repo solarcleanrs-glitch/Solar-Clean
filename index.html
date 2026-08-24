@@ -1355,7 +1355,7 @@ function canSeeAgendaUnit(unit){
 }
 function agendaGoogleUrl(ev){
   const date = ev.date || '';
-  const time = ev.time || '08:00';
+  const time = String(ev.time || '08:00').slice(0,5);
   const duration = Number(ev.duration || 90);
 
   const start = new Date(`${date}T${time}:00`);
