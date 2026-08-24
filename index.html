@@ -1517,7 +1517,7 @@ async function renderAgenda(){
     try{await saveAgendaEvent(ev);await renderAgenda()}catch(e){alert(e.message)}
   });
   document.querySelectorAll('[data-agenda-finance]').forEach(b=>b.onclick=()=>{
-    if(!canSeeAgendaFinance()) return;
+    
     const ev=filtered[Number(b.dataset.agendaFinance)];
     if(!ev)return;
     window.__agendaFinanceEventId=ev.id;
