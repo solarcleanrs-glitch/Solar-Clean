@@ -68,6 +68,20 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 .crm-editor{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;margin-top:16px}
 .crm-editor-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 
+
+.agenda-toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.agenda-list{display:grid;gap:12px}
+.agenda-card{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}
+.agenda-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.agenda-badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#eef1f4}
+.agenda-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.agenda-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin-top:10px;font-size:13px}
+@media(max-width:720px){.agenda-toolbar,.agenda-meta{grid-template-columns:1fr}}
+
+
+.finance-editor{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;margin-top:16px}
+.finance-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.finance-value{font-weight:700}
 </style>
 </head>
 <body>
@@ -86,6 +100,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button class="primary" id="newBtn">Nova vistoria</button>
       <button id="historyBtn">Histórico</button>
       <button id="crmBtn">CRM / Recorrência</button>
+      <button id="agendaBtn">Agenda Operacional</button>
       <button id="adminBtn">Painel administrativo</button>
       <button id="loginBtn">Entrar / Técnico</button>
       <button id="settingsBtn">Dados da empresa</button>
@@ -104,6 +119,100 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 </section>
 
 
+
+
+<section id="agendaScreen" class="hidden">
+  <div class="card">
+    <h2>Agenda Operacional</h2>
+    <p class="muted">Agendamentos vinculados aos clientes. A agenda SC fica visível somente para o perfil Regis.</p>
+
+    <div class="agenda-toolbar section">
+      <label><span>Data</span><input id="agendaDateFilter" type="date"></label>
+      <label><span>Unidade</span>
+        <select id="agendaUnitFilter">
+          <option value="">Todas autorizadas</option>
+          <option value="RS">RS</option>
+          <option value="SC">SC</option>
+        </select>
+      </label>
+      <label><span>Status</span>
+        <select id="agendaStatusFilter">
+          <option value="">Todos</option>
+          <option value="Agendado">Agendado</option>
+          <option value="Em deslocamento">Em deslocamento</option>
+          <option value="Em atendimento">Em atendimento</option>
+          <option value="Concluído">Concluído</option>
+          <option value="Cancelado">Cancelado</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
+      <h3>Novo agendamento</h3>
+      <div class="grid grid2">
+        <label><span>Cliente</span>
+          <select id="agendaClient">
+            <option value="">Selecione um cliente</option>
+            <option value="__novo__">+ Adicionar novo cliente</option>
+          </select>
+        </label>
+        <label><span>Unidade</span>
+          <select id="agendaUnit">
+            <option value="RS">RS</option>
+            <option value="SC">SC</option>
+          </select>
+        </label>
+        <label><span>Data</span><input id="agendaDate" type="date"></label>
+        <label><span>Horário</span><input id="agendaTime" type="time"></label>
+        <label><span>Duração prevista (min)</span><input id="agendaDuration" type="number" min="15" step="15" value="90"></label>
+        <label><span>Técnico / equipe</span><input id="agendaTech" placeholder="Nome do técnico"></label>
+        <label><span>Status</span>
+          <select id="agendaStatus">
+            <option value="Agendado">Agendado</option>
+            <option value="Em deslocamento">Em deslocamento</option>
+            <option value="Em atendimento">Em atendimento</option>
+            <option value="Concluído">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="agendaNewClientFields" class="section hidden" style="border-top:1px solid var(--line);padding-top:14px">
+        <h3>Novo cliente</h3>
+        <div class="grid grid2">
+          <label><span>Nome / razão social</span><input id="agendaNewName" placeholder="Nome do cliente"></label>
+          <label><span>WhatsApp</span><input id="agendaNewPhone" placeholder="(00) 00000-0000"></label>
+          <label><span>Cidade</span><input id="agendaNewCity"></label>
+          <label><span>Endereço</span><input id="agendaNewAddress"></label>
+          <label><span>Quantidade de placas</span><input id="agendaNewPanels" type="number" min="0"></label>
+        </div>
+        <p class="small">O cliente será salvo para aparecer nos próximos agendamentos e no CRM, mesmo antes da primeira vistoria.</p>
+      </div>
+
+      <label class="section"><span>Observação operacional</span><textarea id="agendaNote" rows="3"></textarea></label>
+      <button class="primary section" id="agendaSave">Salvar agendamento</button>
+      <p id="agendaStatusMsg" class="muted"></p>
+    </div>
+
+    <div id="agendaFinanceEditor" class="finance-editor hidden">
+      <h3 id="agendaFinanceTitle">Valores do atendimento</h3>
+      <p class="muted">Visível somente para Regis e Fabiano.</p>
+      <div class="grid grid2">
+        <label><span>Valor do serviço (R$)</span><input id="agendaServiceValue" type="number" min="0" step="0.01"></label>
+        <label><span>Gasto extra pós-visita (R$)</span><input id="agendaExtraExpense" type="number" min="0" step="0.01"></label>
+      </div>
+      <label class="section"><span>Descrição do gasto extra</span><textarea id="agendaExtraExpenseNote" rows="3" placeholder="Ex.: material adicional, estacionamento, compra emergencial..."></textarea></label>
+      <div class="finance-actions">
+        <button class="primary" id="agendaFinanceSave">Salvar valores</button>
+        <button id="agendaFinanceClose">Fechar</button>
+      </div>
+      <p id="agendaFinanceStatus" class="muted section"></p>
+    </div>
+
+    <div id="agendaList" class="agenda-list section"></div>
+    <button class="section" id="homeFromAgenda">Voltar ao início</button>
+  </div>
+</section>
 
 <section id="crmScreen" class="hidden">
   <div class="card">
@@ -495,7 +604,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 
 <script>
 const $=s=>document.querySelector(s);
-const screens=['home','formScreen','historyScreen','crmScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
+const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
 let step=1, deferredPrompt=null, currentReportRecord=null, editingRecord=null;
 
 /* ---------- IndexedDB ---------- */
@@ -1159,6 +1268,269 @@ async function renderHistory(){
 }
 
 
+
+
+/* ---------- Cadastro simples de clientes ---------- */
+function clientLocalList(){
+  try{return JSON.parse(localStorage.getItem('solarCleanClients')||'[]')}catch(e){return []}
+}
+function saveClientLocalList(rows){
+  localStorage.setItem('solarCleanClients',JSON.stringify(rows||[]));
+}
+function standaloneClientKey(c){
+  const phone=String(c.telefone||'').replace(/\D/g,'');
+  if(phone)return `tel:${phone}`;
+  return `nome:${String(c.cliente||'').trim().toLowerCase()}|${String(c.cidade||'').trim().toLowerCase()}`;
+}
+async function pullStandaloneClients(){
+  let rows=clientLocalList();
+  if(cloudReady()&&navigator.onLine){
+    try{
+      const c=cloudConfig();
+      const res=await fetch(`${c.url}/rest/v1/clientes?select=*&order=cliente.asc`,{headers:cloudHeaders({'Prefer':''})});
+      if(res.ok){
+        rows=(await res.json()).map(x=>({
+          id:x.id,cliente:x.cliente||'',telefone:x.telefone||'',cidade:x.cidade||'',endereco:x.endereco||'',placas:Number(x.placas||0),
+          createdAt:x.created_at||new Date().toISOString(),updatedAt:x.updated_at||''
+        }));
+        saveClientLocalList(rows);
+      }
+    }catch(e){console.warn('Cadastro de clientes indisponível:',e)}
+  }
+  return rows;
+}
+async function saveStandaloneClient(client){
+  const rows=clientLocalList();
+  client.id=client.id||crypto.randomUUID();
+  client.createdAt=client.createdAt||new Date().toISOString();
+  client.updatedAt=new Date().toISOString();
+  const key=standaloneClientKey(client);
+  const idx=rows.findIndex(x=>standaloneClientKey(x)===key);
+  if(idx>=0){
+    client.id=rows[idx].id||client.id;
+    client.createdAt=rows[idx].createdAt||client.createdAt;
+    rows[idx]=client;
+  }else rows.push(client);
+  saveClientLocalList(rows);
+
+  if(cloudReady()&&navigator.onLine){
+    const c=cloudConfig();
+    const payload={
+      id:client.id,cliente:client.cliente||'',telefone:client.telefone||'',cidade:client.cidade||'',endereco:client.endereco||'',
+      placas:Number(client.placas||0),created_at:client.createdAt,updated_at:client.updatedAt
+    };
+    const res=await fetch(`${c.url}/rest/v1/clientes?on_conflict=id`,{
+      method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(payload)
+    });
+    if(!res.ok){
+      const msg=await res.text().catch(()=>'');
+      throw new Error(`Falha ao salvar novo cliente na nuvem (${res.status})${msg?': '+msg.slice(0,140):''}`);
+    }
+  }
+  return client;
+}
+
+/* ---------- Agenda operacional ---------- */
+let agendaCache=[];
+
+function normText(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function isRegisTech(){
+  const t=currentTech();
+  const n=normText(t?.name);
+  const e=normText(t?.email);
+  return n==='regis' || n.startsWith('regis ') || e.includes('regis');
+}
+function canSeeAgendaFinance(){
+  const t=currentTech();
+  const n=normText(t?.name);
+  const e=normText(t?.email);
+  const isRegis=n==='regis'||n.startsWith('regis ')||e.includes('regis');
+  const isFabiano=n==='fabiano'||n.startsWith('fabiano ')||e.includes('fabiano');
+  return isRegis||isFabiano;
+}
+function canSeeAgendaUnit(unit){
+  return unit!=='SC' || isRegisTech();
+}
+function agendaGoogleUrl(ev){
+  const start=new Date(`${ev.date}T${ev.time||'08:00'}:00`);
+  const end=new Date(start.getTime()+Number(ev.duration||90)*60000);
+  const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+  const title=`Solar Clean - ${ev.cliente||'Cliente'}`;
+  const details=[
+    `Cliente: ${ev.cliente||''}`,
+    `Telefone: ${ev.telefone||''}`,
+    `Placas: ${ev.placas||''}`,
+    `Técnico: ${ev.tech||''}`,
+    `Unidade: ${ev.unit||''}`,
+    ev.note?`Obs: ${ev.note}`:''
+  ].filter(Boolean).join('\n');
+  const location=ev.endereco||ev.cidade||'';
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
+}
+function agendaLocal(){
+  try{return JSON.parse(localStorage.getItem('solarCleanAgenda')||'[]')}catch(e){return []}
+}
+function saveAgendaLocal(rows){
+  localStorage.setItem('solarCleanAgenda',JSON.stringify(rows||[]));
+}
+async function pullAgenda(){
+  let rows=agendaLocal();
+  if(cloudReady()&&navigator.onLine){
+    try{
+      const c=cloudConfig();
+      const res=await fetch(`${c.url}/rest/v1/agenda_eventos?select=*&order=data.asc,hora.asc`,{headers:cloudHeaders({'Prefer':''})});
+      if(res.ok){
+        rows=(await res.json()).map(x=>({
+          id:x.id,clientKey:x.client_key,cliente:x.cliente||'',telefone:x.telefone||'',cidade:x.cidade||'',endereco:x.endereco||'',
+          placas:x.placas||0,unit:x.unidade||'RS',date:x.data,time:x.hora||'',duration:x.duracao_min||90,tech:x.tecnico||'',
+          status:x.status||'Agendado',note:x.observacao||'',
+          serviceValue:Number(x.valor_servico||0),extraExpense:Number(x.gasto_extra||0),extraExpenseNote:x.gasto_extra_obs||'',
+          updatedAt:x.updated_at||''
+        }));
+        saveAgendaLocal(rows);
+      }
+    }catch(e){console.warn('Agenda nuvem indisponível',e)}
+  }
+  agendaCache=rows.filter(x=>canSeeAgendaUnit(x.unit));
+  return agendaCache;
+}
+async function saveAgendaEvent(ev){
+  let rows=agendaLocal();
+  if(!ev.id) ev.id=crypto.randomUUID();
+  ev.updatedAt=new Date().toISOString();
+  const idx=rows.findIndex(x=>x.id===ev.id);
+  if(idx>=0) rows[idx]=ev; else rows.push(ev);
+  saveAgendaLocal(rows);
+
+  if(cloudReady()&&navigator.onLine){
+    const c=cloudConfig();
+    const payload={
+      id:ev.id,client_key:ev.clientKey||'',cliente:ev.cliente||'',telefone:ev.telefone||'',cidade:ev.cidade||'',endereco:ev.endereco||'',
+      placas:Number(ev.placas||0),unidade:ev.unit||'RS',data:ev.date,hora:ev.time||null,duracao_min:Number(ev.duration||90),
+      tecnico:ev.tech||'',status:ev.status||'Agendado',observacao:ev.note||'',
+      valor_servico:Number(ev.serviceValue||0),gasto_extra:Number(ev.extraExpense||0),gasto_extra_obs:ev.extraExpenseNote||'',
+      updated_at:ev.updatedAt
+    };
+    const res=await fetch(`${c.url}/rest/v1/agenda_eventos?on_conflict=id`,{
+      method:'POST',
+      headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
+      body:JSON.stringify(payload)
+    });
+    if(!res.ok){
+      const msg=await res.text().catch(()=>'');
+      throw new Error(`Falha ao salvar agenda na nuvem (${res.status})${msg?': '+msg.slice(0,140):''}`);
+    }
+  }
+  return ev;
+}
+async function populateAgendaClients(){
+  const all=await dbAll();
+  const standalone=await pullStandaloneClients();
+  const map=new Map();
+
+  // Clientes vindos do cadastro simples.
+  for(const c of standalone){
+    const key=standaloneClientKey(c);
+    map.set(key,{...c});
+  }
+
+  // Vistorias prevalecem quando já existem para o mesmo cliente.
+  for(const r of all){
+    const key=crmKey(r);
+    if(!map.has(key)) map.set(key,r);
+    else map.set(key,{...map.get(key),...r});
+  }
+
+  const clients=[...map.entries()].sort((a,b)=>String(a[1].cliente||'').localeCompare(String(b[1].cliente||''),'pt-BR'));
+  $('#agendaClient').innerHTML='<option value="">Selecione um cliente</option><option value="__novo__">+ Adicionar novo cliente</option>'+clients.map(([key,r])=>
+    `<option value="${escapeHtml(key)}">${escapeHtml(r.cliente||'Cliente')} — ${escapeHtml(r.cidade||'')}</option>`
+  ).join('');
+  window.__agendaClientMap=Object.fromEntries(clients);
+}
+async function renderAgenda(){
+  await populateAgendaClients();
+  const rows=await pullAgenda();
+  const df=$('#agendaDateFilter').value||'';
+  const uf=$('#agendaUnitFilter').value||'';
+  const sf=$('#agendaStatusFilter').value||'';
+
+  // SC nunca aparece para perfis não autorizados.
+  const scOpt=[...$('#agendaUnitFilter').options].find(o=>o.value==='SC');
+  if(scOpt) scOpt.disabled=!isRegisTech();
+  const scNew=[...$('#agendaUnit').options].find(o=>o.value==='SC');
+  if(scNew) scNew.disabled=!isRegisTech();
+  if(!isRegisTech() && $('#agendaUnit').value==='SC') $('#agendaUnit').value='RS';
+  if(!isRegisTech() && $('#agendaUnitFilter').value==='SC') $('#agendaUnitFilter').value='';
+
+  const filtered=rows.filter(x=>(!df||x.date===df)&&(!uf||x.unit===uf)&&(!sf||x.status===sf));
+  $('#agendaList').innerHTML=filtered.length?filtered.map((ev,i)=>`
+    <div class="agenda-card">
+      <div class="agenda-head">
+        <div><b>${escapeHtml(ev.time||'--:--')} • ${escapeHtml(ev.cliente||'Cliente')}</b>
+          <div class="small">${escapeHtml(ev.cidade||'')} • ${escapeHtml(ev.placas||0)} placas</div>
+        </div>
+        <span class="agenda-badge">${escapeHtml(ev.unit)} • ${escapeHtml(ev.status)}</span>
+      </div>
+      <div class="agenda-meta">
+        <div><span class="muted">Data</span><br>${escapeHtml(new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR'))}</div>
+        <div><span class="muted">Técnico</span><br>${escapeHtml(ev.tech||'Não definido')}</div>
+        <div><span class="muted">Telefone</span><br>${escapeHtml(ev.telefone||'')}</div>
+        <div><span class="muted">Endereço</span><br>${escapeHtml(ev.endereco||ev.cidade||'')}</div>
+        ${canSeeAgendaFinance()?`<div><span class="muted">Valor do serviço</span><br><span class="finance-value">${ev.serviceValue?`R$ ${Number(ev.serviceValue).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'Não informado'}</span></div>`:''}
+        ${canSeeAgendaFinance()?`<div><span class="muted">Gasto extra</span><br><span class="finance-value">${ev.extraExpense?`R$ ${Number(ev.extraExpense).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'R$ 0,00'}</span></div>`:''}
+      </div>
+      <div class="agenda-actions">
+        <button data-agenda-start="${i}">Iniciar vistoria</button>
+        <button data-agenda-google="${i}">Google Agenda</button>
+        <button data-agenda-status="${i}">Avançar status</button>
+        ${canSeeAgendaFinance()?`<button data-agenda-finance="${i}">Valores</button>`:''}
+      </div>
+    </div>`).join(''):'<p class="muted">Nenhum agendamento encontrado.</p>';
+
+  window.__agendaFiltered=filtered;
+  document.querySelectorAll('[data-agenda-google]').forEach(b=>b.onclick=()=>{
+    const ev=filtered[Number(b.dataset.agendaGoogle)];
+    if(ev)window.open(agendaGoogleUrl(ev),'_blank','noopener');
+  });
+  document.querySelectorAll('[data-agenda-start]').forEach(b=>b.onclick=async()=>{
+    const ev=filtered[Number(b.dataset.agendaStart)];
+    if(!ev)return;
+    const all=await dbAll();
+    const r=all.find(x=>crmKey(x)===ev.clientKey)||null;
+    editingRecord=null; resetForm(); window.__pendingPhotos=[]; renderPhotoPreview();
+    if(r)loadRecordToForm(r);
+    $('#cliente').value=ev.cliente||$('#cliente').value;
+    $('#telefone').value=ev.telefone||$('#telefone').value;
+    $('#cidade').value=ev.cidade||$('#cidade').value;
+    $('#endereco').value=ev.endereco||$('#endereco').value;
+    $('#placas').value=ev.placas||$('#placas').value;
+    step=1;stepView();show('formScreen');
+  });
+  document.querySelectorAll('[data-agenda-status]').forEach(b=>b.onclick=async()=>{
+    const ev=filtered[Number(b.dataset.agendaStatus)];
+    if(!ev)return;
+    const seq=['Agendado','Em deslocamento','Em atendimento','Concluído'];
+    const ix=seq.indexOf(ev.status);
+    if(ix>=0&&ix<seq.length-1)ev.status=seq[ix+1];
+    try{await saveAgendaEvent(ev);await renderAgenda()}catch(e){alert(e.message)}
+  });
+  document.querySelectorAll('[data-agenda-finance]').forEach(b=>b.onclick=()=>{
+    if(!canSeeAgendaFinance()) return;
+    const ev=filtered[Number(b.dataset.agendaFinance)];
+    if(!ev)return;
+    window.__agendaFinanceEventId=ev.id;
+    $('#agendaFinanceTitle').textContent=`Valores — ${ev.cliente||'Cliente'}`;
+    $('#agendaServiceValue').value=ev.serviceValue||'';
+    $('#agendaExtraExpense').value=ev.extraExpense||'';
+    $('#agendaExtraExpenseNote').value=ev.extraExpenseNote||'';
+    $('#agendaFinanceStatus').textContent='';
+    $('#agendaFinanceEditor').classList.remove('hidden');
+    $('#agendaFinanceEditor').scrollIntoView({behavior:'smooth',block:'start'});
+  });
+}
+
 /* ---------- CRM / recorrência ---------- */
 let crmMetaCache={};
 let crmEditingKey='';
@@ -1269,13 +1641,28 @@ function whatsappLink(phone,client){
 }
 async function buildCrmClients(){
   const all=await dbAll();
+  const standalone=await pullStandaloneClients();
   await pullCrmMeta();
   const groups=new Map();
+
   for(const r of all){
     const key=crmKey(r);
     if(!groups.has(key)) groups.set(key,[]);
     groups.get(key).push(r);
   }
+
+  // Clientes ainda sem vistoria também entram no CRM.
+  for(const c of standalone){
+    const key=standaloneClientKey(c);
+    if(!groups.has(key)){
+      groups.set(key,[{
+        cliente:c.cliente||'',telefone:c.telefone||'',cidade:c.cidade||'',endereco:c.endereco||'',placas:c.placas||0,
+        createdAt:c.createdAt||new Date().toISOString(),dateLabel:new Date(c.createdAt||Date.now()).toLocaleDateString('pt-BR'),
+        retorno:'',obs:'',syncStatus:'synced',__standaloneClient:true
+      }]);
+    }
+  }
+
   return [...groups.values()].map(records=>{
     records.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     const last=records[0];
@@ -1283,7 +1670,8 @@ async function buildCrmClients(){
     const nextDate=months?addMonthsSafe(last.createdAt,months):null;
     const status=crmStatus(nextDate);
     const meta=crmMetaCache[crmKey(last)]||{status:'Ativo',lastContact:'',internalNote:'',lossReason:''};
-    return {key:crmKey(last),last,records,nextDate,status,meta};
+    const realVisits=records.filter(r=>!r.__standaloneClient);
+    return {key:crmKey(last),last,records:realVisits,nextDate,status,meta};
   }).sort((a,b)=>{
     if(a.status.rank!==b.status.rank) return a.status.rank-b.status.rank;
     const ad=a.nextDate?.getTime()||Number.MAX_SAFE_INTEGER;
@@ -1347,7 +1735,7 @@ async function renderCrm(){
       </div>
       <div class="crm-actions">
         <button data-crm-edit="${i}">Editar CRM</button>
-        <button data-crm-open="${r.id}">Último relatório</button>
+        ${c.records.length?`<button data-crm-open="${r.id}">Último relatório</button>`:'<button disabled>Sem vistoria ainda</button>'}
         ${whats&&c.meta?.status!=='Não contatar'?`<button data-crm-whatsapp="${i}">Abrir WhatsApp</button>`:''}
       </div>
     </div>`;
@@ -1457,6 +1845,7 @@ async function renderAdmin(){
 $('#newBtn').onclick=()=>{editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();step=1;stepView();show('formScreen')};
 $('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')};
 $('#crmBtn').onclick=async()=>{await renderCrm();show('crmScreen')};
+$('#agendaBtn').onclick=async()=>{await renderAgenda();show('agendaScreen')};
 $('#adminBtn').onclick=async()=>{await renderAdmin();show('adminScreen')};
 $('#loginBtn').onclick=()=>{
   const t=currentTech();
@@ -1467,7 +1856,7 @@ $('#loginBtn').onclick=()=>{
   setTimeout(()=>{techSignatureCtx=null;prepareTechSignatureCanvas()},0);
 };
 $('#settingsBtn').onclick=()=>show('settingsScreen');
-$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
+$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
 document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
 $('#showGeneration').onchange=updateGenerationVisibility; $('#antes').oninput=calc; $('#depois').oninput=calc; Object.keys(photoCategories).forEach(id=>$('#'+id).onchange=()=>addPhotosFromInput(id));
@@ -1497,6 +1886,89 @@ $('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{
   $('#loginStatus').textContent='Técnico e assinatura salvos neste aparelho.';
   show('home');
 }; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{setTech(null);localStorage.removeItem('solarCleanAccessToken');$('#loginStatus').textContent='Identificação removida.'};
+
+
+$('#agendaClient').onchange=()=>{
+  const isNew=$('#agendaClient').value==='__novo__';
+  $('#agendaNewClientFields').classList.toggle('hidden',!isNew);
+};
+$('#agendaDateFilter').onchange=renderAgenda;
+$('#agendaUnitFilter').onchange=renderAgenda;
+$('#agendaStatusFilter').onchange=renderAgenda;
+$('#agendaSave').onclick=async()=>{
+  let key=$('#agendaClient').value;
+  let r=null;
+
+  if(key==='__novo__'){
+    const name=$('#agendaNewName').value.trim();
+    if(!name){$('#agendaStatusMsg').textContent='Informe o nome do novo cliente.';return}
+    r={
+      cliente:name,
+      telefone:$('#agendaNewPhone').value.trim(),
+      cidade:$('#agendaNewCity').value.trim(),
+      endereco:$('#agendaNewAddress').value.trim(),
+      placas:Number($('#agendaNewPanels').value||0)
+    };
+    try{
+      await saveStandaloneClient(r);
+      key=standaloneClientKey(r);
+    }catch(e){
+      $('#agendaStatusMsg').textContent='Cliente salvo neste aparelho, mas pendente de nuvem: '+e.message;
+      key=standaloneClientKey(r);
+    }
+  }else{
+    r=window.__agendaClientMap?.[key];
+  }
+
+  if(!r){$('#agendaStatusMsg').textContent='Selecione ou cadastre um cliente.';return}
+  const unit=$('#agendaUnit').value;
+  if(unit==='SC'&&!isRegisTech()){$('#agendaStatusMsg').textContent='Agenda SC disponível somente para Regis.';return}
+  if(!$('#agendaDate').value||!$('#agendaTime').value){$('#agendaStatusMsg').textContent='Informe data e horário.';return}
+  const ev={
+    clientKey:key,cliente:r.cliente||'',telefone:r.telefone||'',cidade:r.cidade||'',endereco:r.endereco||'',placas:r.placas||0,
+    unit,date:$('#agendaDate').value,time:$('#agendaTime').value,duration:Number($('#agendaDuration').value||90),
+    tech:$('#agendaTech').value.trim()||(currentTech()?.name||''),status:$('#agendaStatus').value,note:$('#agendaNote').value.trim(),
+    serviceValue:0,extraExpense:0,extraExpenseNote:''
+  };
+  $('#agendaStatusMsg').textContent='Salvando...';
+  try{
+    await saveAgendaEvent(ev);
+    $('#agendaStatusMsg').textContent='Agendamento salvo e sincronizado.';
+    $('#agendaNote').value='';
+    $('#agendaNewName').value='';$('#agendaNewPhone').value='';$('#agendaNewCity').value='';$('#agendaNewAddress').value='';$('#agendaNewPanels').value='';
+    $('#agendaNewClientFields').classList.add('hidden');
+    await renderAgenda();
+    await renderCrm();
+  }catch(e){
+    $('#agendaStatusMsg').textContent='Agendamento salvo neste aparelho, mas pendente de nuvem: '+e.message;
+    await renderAgenda();
+  }
+};
+
+
+$('#agendaFinanceClose').onclick=()=>{$('#agendaFinanceEditor').classList.add('hidden');window.__agendaFinanceEventId=''};
+$('#agendaFinanceSave').onclick=async()=>{
+  if(!canSeeAgendaFinance()){
+    $('#agendaFinanceStatus').textContent='Acesso permitido somente para Regis e Fabiano.';
+    return;
+  }
+  const id=window.__agendaFinanceEventId;
+  if(!id)return;
+  const rows=agendaLocal();
+  const ev=rows.find(x=>x.id===id);
+  if(!ev){$('#agendaFinanceStatus').textContent='Agendamento não encontrado.';return}
+  ev.serviceValue=Number($('#agendaServiceValue').value||0);
+  ev.extraExpense=Number($('#agendaExtraExpense').value||0);
+  ev.extraExpenseNote=$('#agendaExtraExpenseNote').value.trim();
+  $('#agendaFinanceStatus').textContent='Salvando...';
+  try{
+    await saveAgendaEvent(ev);
+    $('#agendaFinanceStatus').textContent='Valores salvos e sincronizados.';
+    await renderAgenda();
+  }catch(e){
+    $('#agendaFinanceStatus').textContent='Salvo neste aparelho, mas pendente de nuvem: '+e.message;
+  }
+};
 
 $('#crmContactToday').onclick=()=>{
   const now=new Date();
