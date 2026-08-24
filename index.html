@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
 <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="./icon-192.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="./icon-192.svg">
 <title>Solar Clean Vistorias</title>
 <style>
 :root{--bg:#f6f7f8;--card:#fff;--text:#172026;--muted:#667085;--line:#d7dde2;--brand:#082b55;--brand2:#061f3d;--yellow:#f3d21f;--ok:#e9f8ef;--warn:#fff7df;--bad:#fdecec}
@@ -31,96 +29,31 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 .history-item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:12px 0}.history-item:last-child{border-bottom:0}
 .report{background:#fff;padding:22px;border-radius:18px}.rhead{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--brand);padding-bottom:14px}.rlogo{width:58px;height:58px;border-radius:16px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800}.report table{width:100%;border-collapse:collapse}.report td{padding:9px 6px;border-bottom:1px solid #e6e8eb;vertical-align:top}.report td:first-child{width:42%;font-weight:600}.sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px}.sig div{border-top:1px solid #111;padding-top:6px;text-align:center;font-size:13px}
 @media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}.topactions{grid-template-columns:1fr}.sig{grid-template-columns:1fr}}
-@media print{body{background:#fff}header,.nav,.no-print,#home,#formScreen,#historyScreen,#settingsScreen,#loginScreen,#adminScreen{display:none!important}main{padding:0;max-width:none}.report{border-radius:0;padding:0}}
+@media print{body{background:#fff}header,.nav,.no-print,#home,#formScreen,#historyScreen,#settingsScreen,#loginScreen,#adminScreen{display:none!important}main{padding:0;max-width:none}.report{border-radius:0;padding:0}.photo-report-page{break-before:page;page-break-before:always;padding-top:8px}.photo-report-page .photo-grid{grid-template-columns:repeat(2,1fr)}.photo-report-page .photo-card{break-inside:avoid;page-break-inside:avoid}.photo-report-page .photo-card img{max-height:245px}}
 .photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
-.photo-card{border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff}
+.photo-card{position:relative;border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff}
 .photo-card img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}
+.photo-remove{position:absolute;right:12px;top:12px;width:34px;height:34px;min-height:34px;padding:0;border-radius:999px;background:#fff;font-size:18px;line-height:1}
+.photo-category{font-weight:700;color:var(--text);margin-top:5px}
 .small{font-size:12px;color:var(--muted)}
+.signature-pad-wrap{border:1px solid var(--line);border-radius:14px;background:#fff;padding:10px}
+#signaturePad,#techSignaturePad{display:block;width:100%;height:180px;border:1px dashed #aeb4ba;border-radius:10px;background:#fff;touch-action:none;cursor:crosshair}
+.sig-person{border-top:0!important;padding-top:0!important}
+.sig-person img{display:block;max-width:220px;max-height:85px;margin:0 auto 4px;object-fit:contain}
+.sig-person .sig-line{border-top:1px solid #111;padding-top:6px;text-align:center;font-size:13px}
+.signature-actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.signature-status{font-size:12px;color:var(--muted);margin-top:8px}
+.sig-client{border-top:0!important;padding-top:0!important}
+.sig-client img{display:block;max-width:220px;max-height:85px;margin:0 auto 4px;object-fit:contain}
+.sig-client .sig-line{border-top:1px solid #111;padding-top:6px;text-align:center;font-size:13px}
+
 .admin-row{display:grid;grid-template-columns:1.2fr 1fr 1fr .8fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 @media(max-width:720px){.admin-row{grid-template-columns:1fr}.grid2,.grid3{grid-template-columns:1fr}.topactions{grid-template-columns:1fr}.sig{grid-template-columns:1fr}}
-@media print {
-  @page {
-    size: A4;
-    margin: 7mm;
-  }
-
-  body {
-    background: #fff !important;
-    font-size: 10px !important;
-  }
-
-  .report {
-    padding: 8px !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  .rhead {
-    margin-bottom: 5px !important;
-    padding-bottom: 5px !important;
-  }
-
-  .rhead .rlogo {
-    width: 42px !important;
-    height: 42px !important;
-  }
-
-  .report h2 {
-    margin: 5px 0 !important;
-    font-size: 14px !important;
-  }
-
-  .report h2.section {
-    margin: 6px 0 3px !important;
-    font-size: 12px !important;
-  }
-
-  .report p {
-    margin: 3px 0 !important;
-  }
-
-  .report table {
-    margin: 2px 0 !important;
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-
-  .report td {
-    padding: 3px 4px !important;
-    font-size: 9px !important;
-    line-height: 1.15 !important;
-  }
-
-  .photo-grid {
-   gap: 8px !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-}
-
-  .photo-card {
-    padding: 3px !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  .photo-card img {
-    width: 100% !important;
-  height: 215px !important;
-  object-fit: cover !important;
-}
-
-  .report table,
-  .photo-grid,
-  .rhead {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-}</style>
+</style>
 </head>
 <body>
 <header>
-  <div class="logo" id="brandLogo"><img src="logo-app.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:14px"></div>
+  <div class="logo" id="brandLogo"><img src="assets/logo.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:14px"></div>
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
@@ -160,6 +93,19 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <label><span>E-mail</span><input id="techEmail" type="email" placeholder="tecnico@solarclean.com.br"></label>
       <label><span>Senha (para nuvem)</span><input id="techPassword" type="password" placeholder="Senha"></label>
     </div>
+
+    <div class="section">
+      <h3>Assinatura automática do técnico</h3>
+      <p class="muted">Cadastre uma vez. Ela será usada automaticamente nos relatórios deste técnico.</p>
+      <div class="signature-pad-wrap">
+        <canvas id="techSignaturePad" aria-label="Área para assinatura do técnico"></canvas>
+        <div class="signature-actions">
+          <button type="button" id="clearTechSignature">Limpar assinatura</button>
+        </div>
+        <div id="techSignatureStatus" class="signature-status">Assinatura ainda não cadastrada.</div>
+      </div>
+    </div>
+
     <div class="grid grid2 section">
       <button class="primary" id="useLocalTech">Usar neste aparelho</button>
       <button id="cloudLogin">Entrar na nuvem</button>
@@ -263,14 +209,19 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
     </div>
 
     <div class="step hidden" data-step="5">
-      <div class="grid grid2">
-        <label><span>Potência antes da limpeza (kW)</span><input id="antes" type="number" step="0.01"></label>
-        <label><span>Potência após a limpeza (kW)</span><input id="depois" type="number" step="0.01"></label>
-      </div>
-      <div class="grid grid3 section">
-        <div class="metric"><span class="muted">Antes</span><b id="mAntes">—</b></div>
-        <div class="metric"><span class="muted">Depois</span><b id="mDepois">—</b></div>
-        <div class="metric"><span class="muted">Variação</span><b id="mPct">—</b></div>
+      <div class="section"><span class="muted">Medição de geração</span><div class="choice">
+        <label><input id="showGeneration" type="checkbox" checked> Exibir medição antes/depois</label>
+      </div><p class="small">Desative quando não houver leitura disponível, como em alguns sistemas com microinversores.</p></div>
+      <div id="generationFields">
+        <div class="grid grid2">
+          <label><span>Potência antes da limpeza (kW)</span><input id="antes" type="number" step="0.01"></label>
+          <label><span>Potência após a limpeza (kW)</span><input id="depois" type="number" step="0.01"></label>
+        </div>
+        <div class="grid grid3 section">
+          <div class="metric"><span class="muted">Antes</span><b id="mAntes">—</b></div>
+          <div class="metric"><span class="muted">Depois</span><b id="mDepois">—</b></div>
+          <div class="metric"><span class="muted">Variação</span><b id="mPct">—</b></div>
+        </div>
       </div>
       <div class="section"><span class="muted">Serviço</span><div class="choice">
         <label><input type="radio" name="limpeza" value="Completa">Completa</label>
@@ -289,13 +240,30 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 
       <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
         <h2>Fotos da vistoria</h2>
-        <p class="muted">Selecione fotos do tablet. Nesta versão elas ficam anexadas localmente ao registro; quando a nuvem estiver configurada, serão preparadas para envio ao Storage.</p>
+        <p class="muted">Adicione quantas fotos forem necessárias. Elas ficam guardadas no histórico da vistoria. As imagens são otimizadas automaticamente para ocupar menos espaço no aparelho.</p>
         <div class="grid grid3">
           <label><span>Antes da limpeza</span><input id="photoBefore" type="file" accept="image/*" multiple></label>
           <label><span>Depois da limpeza</span><input id="photoAfter" type="file" accept="image/*" multiple></label>
+          <label><span>Telhado / instalação</span><input id="photoRoof" type="file" accept="image/*" multiple></label>
+          <label><span>DPS</span><input id="photoDps" type="file" accept="image/*" multiple></label>
+          <label><span>Inversor</span><input id="photoInverter" type="file" accept="image/*" multiple></label>
           <label><span>Problemas encontrados</span><input id="photoIssues" type="file" accept="image/*" multiple></label>
+          <label><span>Arquivo interno (não vai ao relatório)</span><input id="photoInternal" type="file" accept="image/*" multiple></label>
         </div>
+        <p class="small section">As fotos de DPS e inversor ficam identificadas separadamente. Fotos de <strong>Arquivo interno</strong> ficam guardadas somente para consulta da equipe e não aparecem no relatório do cliente.</p>
         <div id="photoPreview" class="photo-grid section"></div>
+      </div>
+
+      <div class="section">
+        <h3>Assinatura do cliente / responsável</h3>
+        <p class="muted">Assine com o dedo ou caneta. A assinatura será salva na vistoria e aparecerá no relatório.</p>
+        <div class="signature-pad-wrap">
+          <canvas id="signaturePad" aria-label="Área para assinatura do cliente"></canvas>
+          <div class="signature-actions">
+            <button type="button" id="clearSignature">Limpar assinatura</button>
+          </div>
+          <div id="signatureStatus" class="signature-status">Assinatura ainda não registrada.</div>
+        </div>
       </div>
 
       <button class="primary section" id="generateBtn">Salvar e gerar relatório</button>
@@ -356,7 +324,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="reportScreen" class="hidden">
   <div class="report" id="report">
     <div class="rhead">
-      <div class="rlogo"><img src="logo-app.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:16px"></div>
+      <div class="rlogo"><img src="assets/logo.png" alt="Logo Solar Clean" style="width:100%;height:100%;object-fit:cover;border-radius:16px"></div>
       <div><h2 id="rEmpresa" style="margin:0">Solar Clean</h2><div class="muted" id="rCompanyLine"></div></div>
     </div>
     <h2 class="section">Relatório de Visita Técnica</h2>
@@ -391,21 +359,31 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 
     <h2 class="section">Resultado da limpeza</h2>
     <table><tbody>
-      <tr><td>Potência antes</td><td id="rAntes"></td></tr>
-      <tr><td>Potência depois</td><td id="rDepois"></td></tr>
-      <tr><td>Diferença</td><td id="rDif"></td></tr>
-      <tr><td>Variação</td><td id="rPct"></td></tr>
+      <tr class="generationReportRow"><td>Potência antes</td><td id="rAntes"></td></tr>
+      <tr class="generationReportRow"><td>Potência depois</td><td id="rDepois"></td></tr>
+      <tr class="generationReportRow"><td>Diferença</td><td id="rDif"></td></tr>
+      <tr class="generationReportRow"><td>Variação</td><td id="rPct"></td></tr>
       <tr><td>Serviço realizado</td><td id="rLimpeza"></td></tr>
       <tr><td>Próxima limpeza</td><td id="rRetorno"></td></tr>
     </tbody></table>
 
     <h2 class="section">Observações</h2>
     <p id="rObs"></p>
-    <div id="rPhotosWrap" class="section hidden">
+    <div id="rPhotosWrap" class="section hidden photo-report-page">
       <h2>Registro fotográfico</h2>
+      <p class="muted">Fotos registradas durante a vistoria técnica.</p>
       <div id="rPhotos" class="photo-grid"></div>
     </div>
-    <div class="sig"><div>Responsável técnico</div><div>Cliente / responsável</div></div>
+    <div class="sig">
+      <div class="sig-person">
+        <img id="rTechSignature" class="hidden" alt="Assinatura do responsável técnico">
+        <div class="sig-line">Responsável técnico</div>
+      </div>
+      <div class="sig-person">
+        <img id="rClientSignature" class="hidden" alt="Assinatura do cliente">
+        <div class="sig-line">Cliente / responsável</div>
+      </div>
+    </div>
 
     <div class="no-print section grid grid2">
       <button id="backReport">Voltar</button>
@@ -481,8 +459,18 @@ function stepView(){
   $('#stepLabel').textContent=`Etapa ${step} de 6`;
   $('#backStep').style.visibility=step===1?'hidden':'visible';
   $('#nextStep').classList.toggle('hidden',step===6);
+  if(step===6) setTimeout(prepareSignatureCanvas,0);
+}
+function generationEnabled(){return $('#showGeneration')?.checked!==false}
+function updateGenerationVisibility(){
+  const on=generationEnabled();
+  $('#generationFields').classList.toggle('hidden',!on);
+  calc();
 }
 function calc(){
+  if(!generationEnabled()){
+    $('#mAntes').textContent='—'; $('#mDepois').textContent='—'; $('#mPct').textContent='—'; return;
+  }
   const a=Number($('#antes').value||0),d=Number($('#depois').value||0);
   $('#mAntes').textContent=a?`${a.toFixed(2)} kW`:'—';
   $('#mDepois').textContent=d?`${d.toFixed(2)} kW`:'—';
@@ -506,7 +494,8 @@ function updateLoggedUser(){
 
 
 function collectForm(){
-  const a=Number($('#antes').value||0),d=Number($('#depois').value||0);
+  const showGeneration=generationEnabled();
+  const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
     cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'',
@@ -515,23 +504,28 @@ function collectForm(){
     sujeira:radio('sujeira'), sujidades:checks('sujidade'), estrutura:radio('estrutura'),
     dps:radio('dps'), qtdDps:$('#qtdDps').value||'', modeloDps:$('#modeloDps').value||'',
     invStatus:radio('invStatus'), erroInv:$('#erroInv').value||'',
-    antes:a, depois:d, limpeza:radio('limpeza'), retorno:radio('retorno'), obs:$('#obs').value||'',
-    pct:a?(((d-a)/a)*100):null, tecnico:(currentTech()?.name||currentTech()?.email||'Não identificado'), tecnicoEmail:(currentTech()?.email||''), photos:window.__pendingPhotos||[], cloudId:null, syncStatus:'pending', updatedAt:new Date().toISOString()
+    showGeneration, antes:a, depois:d, limpeza:radio('limpeza'), retorno:radio('retorno'), obs:$('#obs').value||'',
+    pct:(showGeneration&&a)?(((d-a)/a)*100):null, tecnico:(currentTech()?.name||currentTech()?.email||'Não identificado'), tecnicoEmail:(currentTech()?.email||''), techSignature:(currentTech()?.signature||''), photos:window.__pendingPhotos||[], clientSignature:window.__signatureData||'', signatureAt:window.__signatureData?(window.__signatureAt||new Date().toISOString()):'', cloudId:null, syncStatus:'pending', updatedAt:new Date().toISOString()
   };
 }
 function resetForm(){
-  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs'].forEach(id=>$('#'+id).value='');
+  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal'].forEach(id=>$('#'+id).value='');
   document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false);
-  $('#dpsExtra').classList.add('hidden'); calc();
+  $('#showGeneration').checked=true;
+  $('#dpsExtra').classList.add('hidden'); updateGenerationVisibility();
+  window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
 }
 function loadRecordToForm(r){
   $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';
   $('#placas').value=r.placas||''; $('#potPlaca').value=r.potPlaca||''; $('#marcaPlaca').value=r.marcaPlaca||''; $('#marcaInv').value=r.marcaInv||''; $('#modeloInv').value=r.modeloInv||''; $('#anoInst').value=r.anoInst||'';
   setRadio('telhado',r.telhado); setRadio('sujeira',r.sujeira); setChecks('sujidade',r.sujidades||[]); setRadio('estrutura',r.estrutura);
   setRadio('dps',r.dps); $('#qtdDps').value=r.qtdDps||''; $('#modeloDps').value=r.modeloDps||''; $('#dpsExtra').classList.toggle('hidden',r.dps!=='Utilizadas');
-  setRadio('invStatus',r.invStatus); $('#erroInv').value=r.erroInv||''; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; calc();
+  setRadio('invStatus',r.invStatus); $('#erroInv').value=r.erroInv||''; $('#showGeneration').checked=r.showGeneration!==false; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; updateGenerationVisibility();
+  window.__signatureData=r.clientSignature||''; window.__signatureAt=r.signatureAt||'';
+  loadSignaturePad(window.__signatureData);
 }
 function renderReport(r){
+  const showGeneration=r.showGeneration!==false;
   const p=Number(r.placas||0),w=Number(r.potPlaca||0),a=Number(r.antes||0),d=Number(r.depois||0);
   const total=p&&w?((p*w)/1000).toFixed(2):'—',dif=(a||d)?(d-a).toFixed(2):'—',pct=a?(((d-a)/a)*100).toFixed(1):'—';
   const dpsText=r.dps==='Utilizadas'?`${r.dps} — ${r.qtdDps||'—'} un. — ${r.modeloDps||'modelo não informado'}`:(r.dps||'Não informado');
@@ -539,33 +533,253 @@ function renderReport(r){
   $('#rCliente').textContent=r.cliente||'Não informado'; $('#rTelefone').textContent=r.telefone||'Não informado'; $('#rCidade').textContent=r.cidade||'Não informado'; $('#rEndereco').textContent=r.endereco||'Não informado'; $('#rTecnico').textContent=r.tecnico||'Não identificado';
   $('#rPlacas').textContent=p||'Não informado'; $('#rPotPlaca').textContent=w?`${w} W`:'Não informado'; $('#rPotTotal').textContent=total==='—'?'Não calculado':`${total} kWp`; $('#rMarcaPlaca').textContent=r.marcaPlaca||'Não informado'; $('#rInv').textContent=[r.marcaInv,r.modeloInv].filter(Boolean).join(' — ')||'Não informado'; $('#rTelhado').textContent=r.telhado||'Não informado';
   $('#rSujeira').textContent=r.sujeira||'Não informado'; $('#rSujidades').textContent=(r.sujidades&&r.sujidades.length?r.sujidades.join(', '):'Nenhuma'); $('#rEstrutura').textContent=r.estrutura||'Não informado'; $('#rDps').textContent=dpsText; $('#rInvStatus').textContent=(r.invStatus||'Não informado')+(r.erroInv?` — ${r.erroInv}`:'');
-  $('#rAntes').textContent=a?`${a.toFixed(0)} W`:'Não informado'; $('#rDepois').textContent=d?`${d.toFixed(0)} W`:'Não informado'; $('#rDif').textContent=dif==='-'?'Não calculado':`${Number(dif).toFixed(0)} W`; $('#rPct').textContent=pct==='—'?'Não calculado':`${pct}%`; $('#rLimpeza').textContent=r.limpeza||'Não informado'; $('#rRetorno').textContent=r.retorno||'Não informado'; $('#rObs').textContent=r.obs||'Nenhuma observação adicional.'; renderReportPhotos(r.photos||[]);
+  document.querySelectorAll('.generationReportRow').forEach(row=>row.classList.toggle('hidden',!showGeneration));
+  $('#rAntes').textContent=a?`${a.toFixed(2)} kW`:'Não informado'; $('#rDepois').textContent=d?`${d.toFixed(2)} kW`:'Não informado'; $('#rDif').textContent=dif==='—'?'Não calculado':`${dif} kW`; $('#rPct').textContent=pct==='—'?'Não calculado':`${pct}%`; $('#rLimpeza').textContent=r.limpeza||'Não informado'; $('#rRetorno').textContent=r.retorno||'Não informado'; $('#rObs').textContent=r.obs||'Nenhuma observação adicional.'; renderReportPhotos(r.photos||[]);
+  const techSigImg=$('#rTechSignature');
+  const savedTechSig=r.techSignature||'';
+  if(savedTechSig){techSigImg.src=savedTechSig;techSigImg.classList.remove('hidden')}else{techSigImg.removeAttribute('src');techSigImg.classList.add('hidden')}
+  const sigImg=$('#rClientSignature');
+  if(r.clientSignature){sigImg.src=r.clientSignature;sigImg.classList.remove('hidden')}else{sigImg.removeAttribute('src');sigImg.classList.add('hidden')}
   currentReportRecord=r; show('reportScreen');
 }
 
 
+
+
+/* ---------- Assinatura automática do técnico ---------- */
+window.__techSignatureData='';
+let techSignatureDrawing=false, techSignatureCtx=null;
+
+function techSignatureCanvas(){return $('#techSignaturePad')}
+function prepareTechSignatureCanvas(){
+  const canvas=techSignatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width) return;
+  const current=window.__techSignatureData||currentTech()?.signature||'';
+  const ratio=Math.max(1,window.devicePixelRatio||1);
+  canvas.width=Math.round(rect.width*ratio);
+  canvas.height=Math.round(180*ratio);
+  techSignatureCtx=canvas.getContext('2d');
+  techSignatureCtx.setTransform(ratio,0,0,ratio,0,0);
+  techSignatureCtx.lineWidth=2.2;
+  techSignatureCtx.lineCap='round';
+  techSignatureCtx.lineJoin='round';
+  techSignatureCtx.strokeStyle='#111';
+  techSignatureCtx.fillStyle='#fff';
+  techSignatureCtx.fillRect(0,0,rect.width,180);
+  if(current) loadTechSignaturePad(current);
+}
+function techSignaturePoint(evt){
+  const canvas=techSignatureCanvas(),rect=canvas.getBoundingClientRect();
+  return {x:evt.clientX-rect.left,y:evt.clientY-rect.top};
+}
+function startTechSignature(evt){
+  evt.preventDefault();
+  if(!techSignatureCtx) prepareTechSignatureCanvas();
+  if(!techSignatureCtx) return;
+  techSignatureDrawing=true;
+  const pt=techSignaturePoint(evt);
+  techSignatureCtx.beginPath();
+  techSignatureCtx.moveTo(pt.x,pt.y);
+  try{techSignatureCanvas().setPointerCapture(evt.pointerId)}catch(e){}
+}
+function moveTechSignature(evt){
+  if(!techSignatureDrawing) return;
+  evt.preventDefault();
+  const pt=techSignaturePoint(evt);
+  techSignatureCtx.lineTo(pt.x,pt.y);
+  techSignatureCtx.stroke();
+}
+function endTechSignature(evt){
+  if(!techSignatureDrawing) return;
+  evt.preventDefault();
+  techSignatureDrawing=false;
+  window.__techSignatureData=techSignatureCanvas().toDataURL('image/png');
+  $('#techSignatureStatus').textContent='Assinatura cadastrada. Salve o técnico para confirmar.';
+  try{techSignatureCanvas().releasePointerCapture(evt.pointerId)}catch(e){}
+}
+function clearTechSignaturePad(clearState=true){
+  const canvas=techSignatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!techSignatureCtx) prepareTechSignatureCanvas();
+  if(techSignatureCtx){
+    techSignatureCtx.save();
+    techSignatureCtx.setTransform(1,0,0,1,0,0);
+    techSignatureCtx.clearRect(0,0,canvas.width,canvas.height);
+    techSignatureCtx.restore();
+    techSignatureCtx.fillStyle='#fff';
+    techSignatureCtx.fillRect(0,0,rect.width||canvas.width,180);
+  }
+  if(clearState) window.__techSignatureData='';
+  $('#techSignatureStatus').textContent=window.__techSignatureData?'Assinatura cadastrada.':'Assinatura ainda não cadastrada.';
+}
+function loadTechSignaturePad(data){
+  window.__techSignatureData=data||'';
+  const canvas=techSignatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width){
+    $('#techSignatureStatus').textContent=data?'Assinatura cadastrada.':'Assinatura ainda não cadastrada.';
+    return;
+  }
+  if(!techSignatureCtx) prepareTechSignatureCanvas();
+  if(!techSignatureCtx) return;
+  clearTechSignaturePad(false);
+  if(!data){$('#techSignatureStatus').textContent='Assinatura ainda não cadastrada.';return}
+  const img=new Image();
+  img.onload=()=>{
+    const r=canvas.getBoundingClientRect();
+    techSignatureCtx.drawImage(img,0,0,r.width,180);
+    $('#techSignatureStatus').textContent='Assinatura cadastrada.';
+  };
+  img.src=data;
+}
+
+/* ---------- Assinatura digital ---------- */
+window.__signatureData='';
+window.__signatureAt='';
+let signatureDrawing=false, signatureCtx=null;
+
+function signatureCanvas(){
+  return $('#signaturePad');
+}
+function prepareSignatureCanvas(){
+  const canvas=signatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width) return;
+  const previous=window.__signatureData||'';
+  const ratio=Math.max(1,window.devicePixelRatio||1);
+  canvas.width=Math.round(rect.width*ratio);
+  canvas.height=Math.round(180*ratio);
+  signatureCtx=canvas.getContext('2d');
+  signatureCtx.setTransform(ratio,0,0,ratio,0,0);
+  signatureCtx.lineWidth=2.2;
+  signatureCtx.lineCap='round';
+  signatureCtx.lineJoin='round';
+  signatureCtx.strokeStyle='#111';
+  signatureCtx.fillStyle='#fff';
+  signatureCtx.fillRect(0,0,rect.width,180);
+  if(previous) loadSignaturePad(previous,false);
+}
+function signaturePoint(evt){
+  const canvas=signatureCanvas(), rect=canvas.getBoundingClientRect();
+  return {x:evt.clientX-rect.left,y:evt.clientY-rect.top};
+}
+function startSignature(evt){
+  evt.preventDefault();
+  if(!signatureCtx) prepareSignatureCanvas();
+  signatureDrawing=true;
+  const p=signaturePoint(evt);
+  signatureCtx.beginPath();
+  signatureCtx.moveTo(p.x,p.y);
+  try{signatureCanvas().setPointerCapture(evt.pointerId)}catch(e){}
+}
+function moveSignature(evt){
+  if(!signatureDrawing) return;
+  evt.preventDefault();
+  const p=signaturePoint(evt);
+  signatureCtx.lineTo(p.x,p.y);
+  signatureCtx.stroke();
+}
+function endSignature(evt){
+  if(!signatureDrawing) return;
+  evt.preventDefault();
+  signatureDrawing=false;
+  window.__signatureData=signatureCanvas().toDataURL('image/png');
+  window.__signatureAt=new Date().toISOString();
+  $('#signatureStatus').textContent='Assinatura registrada.';
+  try{signatureCanvas().releasePointerCapture(evt.pointerId)}catch(e){}
+}
+function clearSignaturePad(clearState=true){
+  const canvas=signatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!signatureCtx) prepareSignatureCanvas();
+  if(signatureCtx){
+    signatureCtx.save();
+    signatureCtx.setTransform(1,0,0,1,0,0);
+    signatureCtx.clearRect(0,0,canvas.width,canvas.height);
+    signatureCtx.restore();
+    signatureCtx.fillStyle='#fff';
+    signatureCtx.fillRect(0,0,rect.width||canvas.width,180);
+  }
+  if(clearState){window.__signatureData='';window.__signatureAt=''}
+  const status=$('#signatureStatus');
+  if(status) status.textContent=window.__signatureData?'Assinatura registrada.':'Assinatura ainda não registrada.';
+}
+function loadSignaturePad(data,preserveState=true){
+  if(preserveState) window.__signatureData=data||'';
+  const canvas=signatureCanvas();
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width){
+    $('#signatureStatus').textContent=data?'Assinatura registrada.':'Assinatura ainda não registrada.';
+    return;
+  }
+  if(!signatureCtx) prepareSignatureCanvas();
+  if(!signatureCtx) return;
+  clearSignaturePad(false);
+  if(!data){$('#signatureStatus').textContent='Assinatura ainda não registrada.';return}
+  const img=new Image();
+  img.onload=()=>{
+    const currentRect=canvas.getBoundingClientRect();
+    if(signatureCtx) signatureCtx.drawImage(img,0,0,currentRect.width,180);
+    $('#signatureStatus').textContent='Assinatura registrada.';
+  };
+  img.src=data;
+}
+
 /* ---------- Fotos locais ---------- */
 window.__pendingPhotos=[];
+const photoCategories={
+  photoBefore:'Antes', photoAfter:'Depois', photoRoof:'Telhado', photoDps:'DPS', photoInverter:'Inversor', photoIssues:'Problema', photoInternal:'Arquivo interno'
+};
 async function fileToData(file,category){
+  // Reduz o peso das fotos para o uso em campo sem depender de internet.
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
-    reader.onload=()=>resolve({name:file.name,type:file.type,category,data:reader.result});
-    reader.onerror=reject; reader.readAsDataURL(file);
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>resolve({name:file.name,type:file.type,category,data:reader.result});
+      img.onload=()=>{
+        const maxSide=1600,scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale)); canvas.height=Math.max(1,Math.round(img.height*scale));
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        const data=canvas.toDataURL('image/jpeg',0.78);
+        resolve({name:file.name.replace(/\.[^.]+$/,'.jpg'),type:'image/jpeg',category,data});
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
-async function updatePhotos(){
-  const groups=[['photoBefore','Antes'],['photoAfter','Depois'],['photoIssues','Problema']];
-  const photos=[];
-  for(const [id,category] of groups){
-    const files=[...$('#'+id).files];
-    for(const f of files) photos.push(await fileToData(f,category));
-  }
-  window.__pendingPhotos=photos;
-  $('#photoPreview').innerHTML=photos.map(p=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><div class="small">${escapeHtml(p.category)}</div></div>`).join('');
+function renderPhotoPreview(){
+  const photos=window.__pendingPhotos||[];
+  $('#photoPreview').innerHTML=photos.map((p,i)=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><button type="button" class="photo-remove" data-photo-remove="${i}" aria-label="Remover foto">×</button><div class="small photo-category">${escapeHtml(p.category)}</div></div>`).join('');
+  document.querySelectorAll('[data-photo-remove]').forEach(b=>b.onclick=()=>{
+    window.__pendingPhotos.splice(Number(b.dataset.photoRemove),1); renderPhotoPreview();
+  });
+}
+async function addPhotosFromInput(inputId){
+  const input=$('#'+inputId),category=photoCategories[inputId],files=[...input.files];
+  if(!files.length)return;
+  input.disabled=true;
+  try{
+    for(const f of files) window.__pendingPhotos.push(await fileToData(f,category));
+    input.value=''; renderPhotoPreview();
+  }finally{input.disabled=false}
 }
 function renderReportPhotos(photos){
-  $('#rPhotosWrap').classList.toggle('hidden',!photos.length);
-  $('#rPhotos').innerHTML=photos.map(p=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><div class="small">${escapeHtml(p.category)}</div></div>`).join('');
+  // Fotos marcadas como arquivo interno permanecem na vistoria para consulta da equipe,
+  // mas nunca são incluídas no relatório entregue ao cliente.
+  const reportPhotos=(photos||[]).filter(p=>p.category!=='Arquivo interno');
+  $('#rPhotosWrap').classList.toggle('hidden',!reportPhotos.length);
+  $('#rPhotos').innerHTML=reportPhotos.map(p=>`<div class="photo-card"><img src="${p.data}" alt="${escapeHtml(p.category)}"><div class="small photo-category">${escapeHtml(p.category)}</div></div>`).join('');
 }
 
 /* ---------- Supabase REST sync ---------- */
@@ -584,7 +798,70 @@ function cloudHeaders(extra={}){
   const c=cloudConfig();
   return {'apikey':c.key,'Authorization':`Bearer ${c.key}`,'Content-Type':'application/json','Prefer':'return=representation',...extra};
 }
+const MEDIA_BUCKET='vistoria-media';
+function cloudToken(){
+  return localStorage.getItem('solarCleanAccessToken')||cloudConfig().key;
+}
+function storageHeaders(extra={}){
+  const c=cloudConfig();
+  return {'apikey':c.key,'Authorization':`Bearer ${cloudToken()}`,...extra};
+}
+function safeMediaPart(s){
+  return String(s||'foto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'')||'foto';
+}
+function dataUrlToBlob(dataUrl){
+  const parts=String(dataUrl||'').split(',');
+  const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(parts[1]||''), bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+}
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader(); r.onerror=reject; r.onload=()=>resolve(r.result); r.readAsDataURL(blob);
+  });
+}
+async function uploadPhotoToStorage(photo,cloudId,index){
+  if(photo.storagePath) return {...photo,data:photo.data||''};
+  if(!photo.data) return photo;
+  const c=cloudConfig();
+  const ext=(photo.type||'image/jpeg').includes('png')?'png':'jpg';
+  const path=`${cloudId}/${safeMediaPart(photo.category)}/${Date.now()}-${index}-${crypto.randomUUID()}.${ext}`;
+  const blob=dataUrlToBlob(photo.data);
+  const res=await fetch(`${c.url}/storage/v1/object/${MEDIA_BUCKET}/${path}`,{
+    method:'POST',
+    headers:storageHeaders({'Content-Type':blob.type||'image/jpeg','x-upsert':'true'}),
+    body:blob
+  });
+  if(!res.ok){
+    const msg=await res.text().catch(()=>'');
+    throw new Error(`Falha ao enviar foto para a nuvem (${res.status})${msg?': '+msg.slice(0,120):''}`);
+  }
+  return {name:photo.name||`foto-${index}.${ext}`,type:photo.type||blob.type||'image/jpeg',category:photo.category||'Foto',storagePath:path,data:photo.data};
+}
+async function downloadStorageData(path){
+  if(!path) return '';
+  const c=cloudConfig();
+  const res=await fetch(`${c.url}/storage/v1/object/${MEDIA_BUCKET}/${path}`,{headers:storageHeaders()});
+  if(!res.ok) throw new Error(`Falha ao baixar imagem da nuvem (${res.status})`);
+  return await blobToDataUrl(await res.blob());
+}
+async function hydrateRecordMedia(record){
+  if(!record) return record;
+  const photos=record.photos||[];
+  let changed=false;
+  for(const p of photos){
+    if(!p.data && p.storagePath){
+      try{p.data=await downloadStorageData(p.storagePath);changed=true}catch(e){console.warn(e)}
+    }
+  }
+  if(changed && record.id) await dbPut(record);
+  return record;
+}
 function toCloud(r){
+  const mediaManifest=(r.photos||[]).map(p=>({
+    name:p.name||'',type:p.type||'image/jpeg',category:p.category||'Foto',storagePath:p.storagePath||''
+  })).filter(p=>p.storagePath);
   return {
     client_uuid:String(r.cloudId||crypto.randomUUID()),
     created_at:r.createdAt,
@@ -593,35 +870,63 @@ function toCloud(r){
     placas:r.placas, pot_placa:r.potPlaca, marca_placa:r.marcaPlaca, marca_inv:r.marcaInv, modelo_inv:r.modeloInv,
     ano_inst:String(r.anoInst||''), telhado:r.telhado, sujeira:r.sujeira, sujidades:r.sujidades||[], estrutura:r.estrutura,
     dps:r.dps, qtd_dps:String(r.qtdDps||''), modelo_dps:r.modeloDps, inv_status:r.invStatus, erro_inv:r.erroInv,
-    antes:r.antes, depois:r.depois, limpeza:r.limpeza, retorno:r.retorno, obs:r.obs, pct:r.pct, tecnico:r.tecnico||'', tecnico_email:r.tecnicoEmail||''
+    show_generation:r.showGeneration!==false, antes:r.antes, depois:r.depois, limpeza:r.limpeza, retorno:r.retorno, obs:r.obs, pct:r.pct,
+    tecnico:r.tecnico||'', tecnico_email:r.tecnicoEmail||'',
+    media_manifest:mediaManifest,
+    client_signature:r.clientSignature||'',
+    signature_at:r.signatureAt||null,
+    tech_signature:r.techSignature||''
   };
 }
 function fromCloud(c){
+  const photos=Array.isArray(c.media_manifest)?c.media_manifest.map(p=>({
+    name:p.name||'',type:p.type||'image/jpeg',category:p.category||'Foto',storagePath:p.storagePath||'',data:''
+  })):[];
   return {
     cloudId:c.client_uuid, createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
     cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,
     marcaPlaca:c.marca_placa||'', marcaInv:c.marca_inv||'', modeloInv:c.modelo_inv||'', anoInst:c.ano_inst||'', telhado:c.telhado||'Não informado',
     sujeira:c.sujeira||'Não informado', sujidades:c.sujidades||[], estrutura:c.estrutura||'Não informado', dps:c.dps||'Não informado',
     qtdDps:c.qtd_dps||'', modeloDps:c.modelo_dps||'', invStatus:c.inv_status||'Não informado', erroInv:c.erro_inv||'',
-    antes:Number(c.antes||0), depois:Number(c.depois||0), limpeza:c.limpeza||'Não informado', retorno:c.retorno||'Não informado',
-    obs:c.obs||'', pct:c.pct, tecnico:c.tecnico||'', tecnicoEmail:c.tecnico_email||'', photos:[], syncStatus:'synced'
+    showGeneration:c.show_generation!==false, antes:Number(c.antes||0), depois:Number(c.depois||0), limpeza:c.limpeza||'Não informado', retorno:c.retorno||'Não informado',
+    obs:c.obs||'', pct:c.pct, tecnico:c.tecnico||'', tecnicoEmail:c.tecnico_email||'',
+    photos, clientSignature:c.client_signature||'', signatureAt:c.signature_at||'', techSignature:c.tech_signature||'',
+    syncStatus:'synced'
   };
 }
 async function testCloud(){
-  if(!cloudReady()){throw new Error('Preencha a URL e a Anon Key do Supabase.')}
+  if(!cloudReady()) throw new Error('Preencha a URL e a Anon Key do Supabase.');
   const c=cloudConfig();
-  const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid&limit=1`,{headers:cloudHeaders({'Prefer':''})});
-  if(!res.ok) throw new Error(`Falha ${res.status}: verifique a tabela e as permissões.`);
+  const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,media_manifest,client_signature,tech_signature,show_generation&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+  if(!res.ok){
+    const msg=await res.text().catch(()=>'');
+    throw new Error(`Falha na tabela (${res.status})${msg?': '+msg.slice(0,140):''}`);
+  }
+  // Não consulta mais /storage/v1/bucket/:id, pois buckets privados podem
+  // existir e estar operacionais mesmo quando esse endpoint administrativo
+  // não é acessível com a chave pública. O upload real valida o Storage.
   return true;
 }
 async function pushRecord(local){
-  const c=cloudConfig(), payload=toCloud(local);
+  const c=cloudConfig();
+  local.cloudId=String(local.cloudId||crypto.randomUUID());
+  const sourcePhotos=local.photos||[];
+  const uploaded=[];
+  for(let i=0;i<sourcePhotos.length;i++){
+    uploaded.push(await uploadPhotoToStorage(sourcePhotos[i],local.cloudId,i));
+  }
+  local.photos=uploaded;
+  local.updatedAt=new Date().toISOString();
+  const payload=toCloud(local);
   const res=await fetch(`${c.url}/rest/v1/vistorias?on_conflict=client_uuid`,{
     method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(payload)
   });
-  if(!res.ok) throw new Error(`Envio falhou (${res.status})`);
+  if(!res.ok){
+    const msg=await res.text().catch(()=>'');
+    throw new Error(`Envio falhou (${res.status})${msg?': '+msg.slice(0,160):''}`);
+  }
   const rows=await res.json();
-  local.cloudId=payload.client_uuid; local.syncStatus='synced'; local.updatedAt=new Date().toISOString();
+  local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
 }
 async function pullCloud(){
@@ -706,14 +1011,14 @@ async function renderHistory(){
         <button data-del="${r.id}" style="min-height:42px;padding:8px 12px">Excluir vistoria</button>
       </div>
     </div>`).join('');
-  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r)renderReport(r)});
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r){await hydrateRecordMedia(r);renderReport(r)}});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
-    if(r){editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=r.photos||[];step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
-    if(r){editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=r.photos||[];step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
@@ -799,7 +1104,7 @@ async function cloudAuthLogin(){
   if(!res.ok)throw new Error('Login inválido ou usuário não cadastrado.');
   const data=await res.json();
   localStorage.setItem('solarCleanAccessToken',data.access_token||'');
-  setTech({name:$('#techName').value.trim()||email,email,cloud:true});
+  setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature:window.__techSignatureData||currentTech()?.signature||''});
   return true;
 }
 
@@ -813,18 +1118,50 @@ async function renderAdmin(){
   const filtered=all.filter(r=>(!q||(r.cliente||'').toLowerCase().includes(q))&&(!city||(r.cidade||'').toLowerCase().includes(city))&&(!tech||r.tecnico===tech));
   $('#adminTotal').textContent=all.length; $('#adminTechs').textContent=techs.length; $('#adminPending').textContent=all.filter(x=>x.syncStatus!=='synced').length;
   $('#adminList').innerHTML=filtered.length?filtered.map(r=>`<div class="admin-row"><div><b>${escapeHtml(r.cliente||'Cliente')}</b><div class="small">${escapeHtml(r.cidade||'')}</div></div><div>${escapeHtml(r.tecnico||'Não identificado')}</div><div>${escapeHtml(r.dateLabel||'')}</div><div><button data-admin-open="${r.id}" style="min-height:40px">Abrir</button></div></div>`).join(''):'<p class="muted">Nenhuma vistoria encontrada.</p>';
-  document.querySelectorAll('[data-admin-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.adminOpen));if(r)renderReport(r)});
+  document.querySelectorAll('[data-admin-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.adminOpen));if(r){await hydrateRecordMedia(r);renderReport(r)}});
 }
 
 /* ---------- Eventos ---------- */
-$('#newBtn').onclick=()=>{editingRecord=null;resetForm();window.__pendingPhotos=[];$('#photoPreview').innerHTML='';step=1;stepView();show('formScreen')};
-$('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')}; $('#adminBtn').onclick=async()=>{await renderAdmin();show('adminScreen')}; $('#loginBtn').onclick=()=>{const t=currentTech();$('#techName').value=t?.name||'';$('#techEmail').value=t?.email||'';show('loginScreen')};
+$('#newBtn').onclick=()=>{editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();step=1;stepView();show('formScreen')};
+$('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')}; $('#adminBtn').onclick=async()=>{await renderAdmin();show('adminScreen')}; $('#loginBtn').onclick=()=>{
+  const t=currentTech();
+  $('#techName').value=t?.name||'';
+  $('#techEmail').value=t?.email||'';
+  window.__techSignatureData=t?.signature||'';
+  show('loginScreen');
+  setTimeout(()=>{techSignatureCtx=null;prepareTechSignatureCanvas()},0);
+};
 $('#settingsBtn').onclick=()=>show('settingsScreen');
 $('#homeFromHistory').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
 document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
-$('#antes').oninput=calc; $('#depois').oninput=calc; $('#photoBefore').onchange=updatePhotos; $('#photoAfter').onchange=updatePhotos; $('#photoIssues').onchange=updatePhotos; $('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>window.print();
-$('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{const name=$('#techName').value.trim();if(!name){$('#loginStatus').textContent='Informe o nome do técnico.';return}setTech({name,email:$('#techEmail').value.trim(),cloud:false});$('#loginStatus').textContent='Técnico salvo neste aparelho.';show('home')}; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{setTech(null);localStorage.removeItem('solarCleanAccessToken');$('#loginStatus').textContent='Identificação removida.'};
+$('#showGeneration').onchange=updateGenerationVisibility; $('#antes').oninput=calc; $('#depois').oninput=calc; Object.keys(photoCategories).forEach(id=>$('#'+id).onchange=()=>addPhotosFromInput(id));
+const sigCanvas=signatureCanvas();
+if(sigCanvas){
+  sigCanvas.addEventListener('pointerdown',startSignature);
+  sigCanvas.addEventListener('pointermove',moveSignature);
+  sigCanvas.addEventListener('pointerup',endSignature);
+  sigCanvas.addEventListener('pointercancel',endSignature);
+}
+$('#clearSignature').onclick=()=>clearSignaturePad(true);
+const techSigCanvas=techSignatureCanvas();
+if(techSigCanvas){
+  techSigCanvas.addEventListener('pointerdown',startTechSignature);
+  techSigCanvas.addEventListener('pointermove',moveTechSignature);
+  techSigCanvas.addEventListener('pointerup',endTechSignature);
+  techSigCanvas.addEventListener('pointercancel',endTechSignature);
+}
+$('#clearTechSignature').onclick=()=>clearTechSignaturePad(true);
+setTimeout(prepareSignatureCanvas,0);
+$('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>window.print();
+$('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{
+  const name=$('#techName').value.trim();
+  if(!name){$('#loginStatus').textContent='Informe o nome do técnico.';return}
+  const existing=currentTech()||{};
+  setTech({name,email:$('#techEmail').value.trim(),cloud:false,signature:window.__techSignatureData||existing.signature||''});
+  $('#loginStatus').textContent='Técnico e assinatura salvos neste aparelho.';
+  show('home');
+}; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{setTech(null);localStorage.removeItem('solarCleanAccessToken');$('#loginStatus').textContent='Identificação removida.'};
 $('#testCloud').onclick=async()=>{try{saveCompany();$('#cloudStatus').textContent='Testando...';await testCloud();$('#cloudStatus').textContent='Conexão OK. Banco pronto para sincronizar.';updateSyncBadge('Nuvem conectada',true)}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Somente local')}};
 $('#syncNow').onclick=async()=>{try{saveCompany();await syncAll()}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Falha na nuvem')}};
 $('#historySearch').oninput=renderHistory; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
@@ -832,7 +1169,7 @@ window.addEventListener('online',()=>{if(cloudReady())syncAll().catch(()=>{})});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').disabled=false});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else{alert('Para instalar: abra este site no Chrome/Edge e use “Adicionar à tela inicial” ou “Instalar aplicativo”.')}};
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-loadCompany(); updateLoggedUser(); stepView(); updateDashboard(); if(navigator.onLine&&cloudReady()) syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'));
+loadCompany(); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard(); if(navigator.onLine&&cloudReady()) syncAll().catch(()=>updateSyncBadge('Pendente de sincronizar'));
 </script>
 </body>
 </html>
