@@ -1498,7 +1498,8 @@ async function pullAgenda(){
           placas:x.placas||0,unit:x.unidade||'RS',date:x.data,time:x.hora||'',duration:x.duracao_min||90,tech:x.tecnico||'',
           status:x.status||'Agendado',note:x.observacao||'',
           serviceValue:Number(x.valor_servico||0),extraExpense:Number(x.gasto_extra||0),extraExpenseNote:x.gasto_extra_obs||'',
-          updatedAt:x.updated_at||''
+          updatedAt:x.updated_at||'', 
+          googleEventId:x.google_event_id||''
         }));
         saveAgendaLocal(rows);
       }
