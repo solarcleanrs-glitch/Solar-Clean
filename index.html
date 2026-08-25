@@ -2101,7 +2101,7 @@ googleEventId: window.__agendaEditingGoogleEventId || '',
       }
     };
 
-    alert('Google ID: ' + (ev.googleEventId || 'VAZIO') + '\nMétodo: ' + (ev.googleEventId ? 'PATCH' : 'POST'));
+   
    const googleUrl = ev.googleEventId
   ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(ev.googleEventId)}`
   : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
