@@ -128,6 +128,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
     <p class="muted">Agendamentos vinculados aos clientes. A agenda SC fica visível somente para o perfil Regis.</p>
 <div class="section">
   <button id="googleConnectBtn" type="button">Conectar Google Agenda</button>
+  <button id="googleTestBtn" type="button">Enviar teste Google</button>
   <span id="googleConnectStatus" class="muted" style="margin-left:10px;">Não conectado</span>
 </div>
     <div class="agenda-toolbar section">
@@ -1393,8 +1394,20 @@ alert('Google Agenda conectado com sucesso.');
       }
 
       connectGoogleCalendar();
-    });
-  }
+    }); }
+    const testBtn = document.getElementById('googleTestBtn');
+
+if(testBtn){
+  testBtn.addEventListener('click', async () => {
+    if(!googleAccessToken){
+      alert('Conecte o Google Agenda primeiro.');
+      return;
+    }
+
+    alert('Botão de teste funcionando e Google conectado.');
+  });
+}
+  
 });
 function agendaGoogleUrl(ev){
   const date = ev.date || '';
