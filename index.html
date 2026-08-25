@@ -1595,6 +1595,7 @@ async function renderAgenda(){
       <div class="agenda-actions">
         <button data-agenda-start="${i}">Iniciar vistoria</button>
         <button data-agenda-google="${i}">Google Agenda</button>
+        <button data-agenda-edit="${i}">Editar</button>
         <button data-agenda-status="${i}">Avançar status</button>
         ${canSeeAgendaFinance()?`<button data-agenda-finance="${i}">Valores</button>`:''}
       </div>
@@ -1619,6 +1620,31 @@ async function renderAgenda(){
     $('#placas').value=ev.placas||$('#placas').value;
     step=1;stepView();show('formScreen');
   });
+  document.querySelectorAll('[data-agenda-edit]').forEach(b=>b.onclick=()=>{
+  const ev=filtered[Number(b.dataset.agendaEdit)];
+  if(!ev)return;
+
+  window.__agendaEditingId=ev.id;
+  window.__agendaEditingGoogleEventId=ev.googleEventId||'';
+
+  const client=$('#agendaClient');
+  if(client && ev.clientKey) client.value=ev.clientKey;
+
+  $('#agendaUnit').value=ev.unit||'RS';
+  $('#agendaDate').value=ev.date||'';
+  $('#agendaTime').value=ev.time||'';
+  $('#agendaDuration').value=ev.duration||90;
+  $('#agendaTech').value=ev.tech||'';
+  $('#agendaStatus').value=ev.status||'Agendado';
+  $('#agendaNote').value=ev.note||'';
+
+  $('#agendaStatusMsg').textContent='Editando agendamento de '+(ev.cliente||'Cliente');
+
+  $('#agendaDate').scrollIntoView({
+    behavior:'smooth',
+    block:'center'
+  });
+});
   document.querySelectorAll('[data-agenda-status]').forEach(b=>b.onclick=async()=>{
     const ev=filtered[Number(b.dataset.agendaStatus)];
     if(!ev)return;
@@ -2036,6 +2062,8 @@ $('#agendaSave').onclick=async()=>{
   if(unit==='SC'&&!isRegisTech()){$('#agendaStatusMsg').textContent='Agenda SC disponível somente para Regis.';return}
   if(!$('#agendaDate').value||!$('#agendaTime').value){$('#agendaStatusMsg').textContent='Informe data e horário.';return}
   const ev={
+    id: window.__agendaEditingId || undefined,
+googleEventId: window.__agendaEditingGoogleEventId || '',
     clientKey:key,cliente:r.cliente||'',telefone:r.telefone||'',cidade:r.cidade||'',endereco:r.endereco||'',placas:r.placas||0,
     unit,date:$('#agendaDate').value,time:$('#agendaTime').value,duration:Number($('#agendaDuration').value||90),
     tech:$('#agendaTech').value.trim()||(currentTech()?.name||''),status:$('#agendaStatus').value,note:$('#agendaNote').value.trim(),
@@ -2072,10 +2100,14 @@ $('#agendaSave').onclick=async()=>{
       }
     };
 
-    const googleRes = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-      {
-        method: 'POST',
+    const googleUrl = ev.googleEventId
+  ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(ev.googleEventId)}`
+  : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
+const googleRes = await fetch(
+  googleUrl,
+  {
+    method: ev.googleEventId ? 'PATCH' : 'POST',
         headers: {
           'Authorization': 'Bearer ' + googleAccessToken,
           'Content-Type': 'application/json'
@@ -2132,6 +2164,8 @@ if(!patchRes.ok){
     $('#agendaNote').value='';
     $('#agendaNewName').value='';$('#agendaNewPhone').value='';$('#agendaNewCity').value='';$('#agendaNewAddress').value='';$('#agendaNewPanels').value='';
     $('#agendaNewClientFields').classList.add('hidden');
+    window.__agendaEditingId = '';
+window.__agendaEditingGoogleEventId = '';
     await renderAgenda();
     await renderCrm();
   }catch(e){
