@@ -2091,7 +2091,40 @@ $('#agendaSave').onclick=async()=>{
         erroGoogle.slice(0,120)
       );
     }
-  }catch(googleErr){
+  
+
+const googleData = await googleRes.json();
+
+if(googleData.id){
+  ev.googleEventId = googleData.id;
+
+  const c = cloudConfig();
+
+  const patchRes = await fetch(
+    `${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(ev.id)}`,
+    {
+      method: 'PATCH',
+      headers: cloudHeaders({
+        'Prefer': 'return=minimal'
+      }),
+      body: JSON.stringify({
+        google_event_id: googleData.id,
+        updated_at: new Date().toISOString()
+      })
+    }
+  );
+ 
+
+if(!patchRes.ok){
+  const patchErro = await patchRes.text();
+  throw new Error(
+    'Google criou o evento, mas o ID não foi salvo no Supabase (' +
+    patchRes.status + '): ' + patchErro.slice(0,120)
+  );
+}
+}
+
+}catch(googleErr){
     alert('Agendamento salvo no app, mas não foi enviado ao Google: ' + googleErr.message);
   }
 }
