@@ -1450,7 +1450,6 @@ async function pullAgenda(){
           status:x.status||'Agendado',note:x.observacao||'',
           serviceValue:Number(x.valor_servico||0),extraExpense:Number(x.gasto_extra||0),extraExpenseNote:x.gasto_extra_obs||'',
           updatedAt:x.updated_at||''
-          googleEventId:x.google_event_id||'',
         }));
         saveAgendaLocal(rows);
       }
@@ -1458,71 +1457,6 @@ async function pullAgenda(){
   }
   agendaCache=rows.filter(x=>canSeeAgendaUnit(x.unit));
   return agendaCache;
-}
-  async function syncGoogleCalendarEvent(ev){
-  if(!googleAccessToken) return null;
-
-  const time = String(ev.time || '08:00').slice(0,5);
-  const duration = Number(ev.duration || 90);
-
-  const start = new Date(`${ev.date}T${time}:00`);
-  const end = new Date(start.getTime() + duration * 60000);
-
-  const pad = n => String(n).padStart(2,'0');
-
-  const localDateTime = d =>
-    `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-
-  const body = {
-    summary: `Solar Clean - ${ev.cliente || 'Cliente'}`,
-    location: ev.endereco || ev.cidade || '',
-    description: [
-      `Cliente: ${ev.cliente || ''}`,
-      `Telefone: ${ev.telefone || ''}`,
-      `Placas: ${ev.placas || ''}`,
-      `Técnico: ${ev.tech || ''}`,
-      `Unidade: ${ev.unit || ''}`,
-      `Status: ${ev.status || 'Agendado'}`,
-      ev.note ? `Obs: ${ev.note}` : ''
-    ].filter(Boolean).join('\n'),
-
-    start: {
-      dateTime: localDateTime(start),
-      timeZone: 'America/Sao_Paulo'
-    },
-
-    end: {
-      dateTime: localDateTime(end),
-      timeZone: 'America/Sao_Paulo'
-    }
-  };
-
-  const base =
-    'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-
-  const url = ev.googleEventId
-    ? `${base}/${encodeURIComponent(ev.googleEventId)}`
-    : base;
-
-  const res = await fetch(url,{
-    method: ev.googleEventId ? 'PATCH' : 'POST',
-    headers:{
-      'Authorization': `Bearer ${googleAccessToken}`,
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify(body)
-  });
-
-  if(!res.ok){
-    const msg = await res.text().catch(()=>'');
-    throw new Error(
-      `Falha ao sincronizar Google Agenda (${res.status}) ${msg.slice(0,120)}`
-    );
-  }
-
-  const data = await res.json();
-  return data.id || ev.googleEventId || null;
 }
 async function saveAgendaEvent(ev){
   let rows=agendaLocal();
@@ -1538,7 +1472,7 @@ async function saveAgendaEvent(ev){
       id:ev.id,client_key:ev.clientKey||'',cliente:ev.cliente||'',telefone:ev.telefone||'',cidade:ev.cidade||'',endereco:ev.endereco||'',
       placas:Number(ev.placas||0),unidade:ev.unit||'RS',data:ev.date,hora:ev.time||null,duracao_min:Number(ev.duration||90),
       tecnico:ev.tech||'',status:ev.status||'Agendado',observacao:ev.note||'',
-      valor_servico:Number(ev.serviceValue||0),gasto_extra:Number(ev.extraExpense||0),gasto_extra_obs:ev.extraExpenseNote||'',google_event_id:ev.googleEventId||null,
+      valor_servico:Number(ev.serviceValue||0),gasto_extra:Number(ev.extraExpense||0),gasto_extra_obs:ev.extraExpenseNote||'',
       updated_at:ev.updatedAt
     };
     const res=await fetch(`${c.url}/rest/v1/agenda_eventos?on_conflict=id`,{
