@@ -1014,7 +1014,8 @@ function cloudHeaders(extra={}){
 }
 const MEDIA_BUCKET='vistoria-media';
 function cloudToken(){
-  return localStorage.getItem('solarCleanAccessToken')||cloudConfig().key;
+  return cloudConfig().key;
+}
 }
 function storageHeaders(extra={}){
   const c=cloudConfig();
@@ -1123,7 +1124,11 @@ async function testCloud(){
 }
 async function pushRecord(local){
   const c=cloudConfig();
-  local.cloudId=String(local.cloudId||crypto.randomUUID());
+  if(!local.cloudId){
+  local.cloudId=crypto.randomUUID();
+  local.updatedAt=new Date().toISOString();
+  await dbPut(local);
+}
   const sourcePhotos=local.photos||[];
   const uploaded=[];
   for(let i=0;i<sourcePhotos.length;i++){
@@ -1173,15 +1178,40 @@ async function pullCloud(){
     }
   }
 }
+  
+ let syncAllRunning=false;
+
 async function syncAll(){
-  if(!cloudReady()){updateSyncBadge('Somente local');return false}
-  updateSyncBadge('Sincronizando…');
-  const all=await dbAll();
-  for(const r of all.filter(x=>x.syncStatus!=='synced'||!x.cloudId)){await pushRecord(r)}
-  await pullCloud();
-  updateSyncBadge('Nuvem sincronizada',true);
-  $('#cloudStatus').textContent='Sincronização concluída.';
-  await updateDashboard(); await renderHistory(); return true;
+  if(syncAllRunning) return false;
+  syncAllRunning=true;
+
+  try{
+    if(!cloudReady()){
+      updateSyncBadge('Somente local');
+      return false;
+    }
+
+    updateSyncBadge('Sincronizando...');
+
+    const all=await dbAll();
+
+    for(const r of all.filter(x=>x.syncStatus!=='synced'||!x.cloudId)){
+      await pushRecord(r);
+    }
+
+    await pullCloud();
+
+    updateSyncBadge('Nuvem sincronizada',true);
+    $('#cloudStatus').textContent='Sincronização concluída.';
+
+    await updateDashboard();
+    await renderHistory();
+
+    return true;
+
+  }finally{
+    syncAllRunning=false;
+  }
 }
 
 let autoSyncRunning=false;
@@ -2226,7 +2256,22 @@ $('#crmSaveClient').onclick=async()=>{
 };
 
 $('#testCloud').onclick=async()=>{try{saveCompany();$('#cloudStatus').textContent='Testando...';await testCloud();$('#cloudStatus').textContent='Conexão OK. Banco pronto para sincronizar.';updateSyncBadge('Nuvem conectada',true)}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Somente local')}};
-$('#syncNow').onclick=async()=>{try{saveCompany();await syncAll()}catch(e){$('#cloudStatus').textContent=e.message;updateSyncBadge('Falha na nuvem')}};
+$('#syncNow').onclick=async()=>{
+  const btn=$('#syncNow');
+  if(syncAllRunning) return;
+  btn.disabled=true;
+  const oldText=btn.textContent;
+  btn.textContent='Sincronizando...';
+  try{
+    saveCompany();
+    await syncAll();
+  }catch(e){
+    $('#cloudStatus').textContent=e.message||String(e);
+  }finally{
+    btn.disabled=false;
+    btn.textContent=oldText;
+  }
+};
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
 window.addEventListener('online',()=>{autoSync('conexão restaurada')});
 window.addEventListener('focus',()=>{autoSync('retorno ao app')});
