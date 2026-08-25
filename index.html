@@ -2043,7 +2043,58 @@ $('#agendaSave').onclick=async()=>{
   };
   $('#agendaStatusMsg').textContent='Salvando...';
   try{
+    
     await saveAgendaEvent(ev);
+    if(googleAccessToken){
+  try{
+    const inicio = new Date(`${ev.date}T${String(ev.time || '08:00').slice(0,5)}:00`);
+    const fim = new Date(inicio.getTime() + Number(ev.duration || 90) * 60000);
+
+    const eventoGoogle = {
+      summary: `Solar Clean - ${ev.cliente || 'Cliente'}`,
+      description: [
+        `Cliente: ${ev.cliente || ''}`,
+        `Telefone: ${ev.telefone || ''}`,
+        `Placas: ${ev.placas || ''}`,
+        `Técnico: ${ev.tech || ''}`,
+        `Unidade: ${ev.unit || ''}`,
+        ev.note ? `Obs: ${ev.note}` : ''
+      ].filter(Boolean).join('\n'),
+
+      location: ev.endereco || ev.cidade || '',
+
+      start: {
+        dateTime: inicio.toISOString()
+      },
+
+      end: {
+        dateTime: fim.toISOString()
+      }
+    };
+
+    const googleRes = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + googleAccessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventoGoogle)
+      }
+    );
+
+    if(!googleRes.ok){
+      const erroGoogle = await googleRes.text();
+      throw new Error(
+        'Erro Google Agenda (' + googleRes.status + '): ' +
+        erroGoogle.slice(0,120)
+      );
+    }
+  }catch(googleErr){
+    alert('Agendamento salvo no app, mas não foi enviado ao Google: ' + googleErr.message);
+  }
+}
     $('#agendaStatusMsg').textContent='Agendamento salvo e sincronizado.';
     $('#agendaNote').value='';
     $('#agendaNewName').value='';$('#agendaNewPhone').value='';$('#agendaNewCity').value='';$('#agendaNewAddress').value='';$('#agendaNewPanels').value='';
