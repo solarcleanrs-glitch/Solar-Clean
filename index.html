@@ -1404,7 +1404,43 @@ if(testBtn){
       return;
     }
 
-    alert('Botão de teste funcionando e Google conectado.');
+    try{
+  const inicio = new Date(Date.now() + 10 * 60000);
+  const fim = new Date(inicio.getTime() + 30 * 60000);
+
+  const evento = {
+    summary: 'Solar Clean - Teste de integração',
+    description: 'Evento criado pelo aplicativo Solar Clean.',
+    start: {
+      dateTime: inicio.toISOString()
+    },
+    end: {
+      dateTime: fim.toISOString()
+    }
+  };
+
+  const res = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + googleAccessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(evento)
+    }
+  );
+
+  if(!res.ok){
+    const erro = await res.text();
+    alert('Erro Google Agenda (' + res.status + '): ' + erro.slice(0,120));
+    return;
+  }
+
+  alert('Evento de teste criado no Google Agenda!');
+}catch(e){
+  alert('Erro no teste Google: ' + e.message);
+}
   });
 }
   
