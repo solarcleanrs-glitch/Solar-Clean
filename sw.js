@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-v1";
+const CACHE_NAME = "solar-clean-v2";
 
 const FILES_TO_CACHE = [
   "./",
