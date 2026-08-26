@@ -1016,7 +1016,7 @@ const MEDIA_BUCKET='vistoria-media';
 function cloudToken(){
   return cloudConfig().key;
 }
-}
+
 function storageHeaders(extra={}){
   const c=cloudConfig();
   return {'apikey':c.key,'Authorization':`Bearer ${cloudToken()}`,...extra};
