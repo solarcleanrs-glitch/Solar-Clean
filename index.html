@@ -1570,8 +1570,39 @@ async function saveAgendaEvent(ev){
   async function deleteAgendaEvent(ev){
   if(!ev || !ev.id) throw new Error('Agendamento inválido.');
 
-  // Se a nuvem estiver configurada, exige internet para evitar
-  // que o agendamento volte na próxima sincronização.
+  // 1. Se existe evento vinculado ao Google, exclui primeiro no Google Agenda.
+  if(ev.googleEventId){
+    if(!navigator.onLine){
+      throw new Error('Conecte-se à internet para excluir este agendamento.');
+    }
+
+    if(!googleAccessToken){
+      throw new Error(
+        'Conecte o Google Agenda antes de excluir este agendamento.'
+      );
+    }
+
+    const googleUrl =
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(ev.googleEventId)}`;
+
+    const googleRes = await fetch(googleUrl,{
+      method:'DELETE',
+      headers:{
+        'Authorization':'Bearer ' + googleAccessToken
+      }
+    });
+
+    // 404 significa que o evento já não existe no Google.
+    // Nesse caso podemos continuar normalmente.
+    if(!googleRes.ok && googleRes.status!==404){
+      const msg=await googleRes.text().catch(()=>'');
+      throw new Error(
+        `Falha ao excluir do Google Agenda (${googleRes.status}) ${msg}`
+      );
+    }
+  }
+
+  // 2. Exclui da nuvem/Supabase.
   if(cloudReady()){
     if(!navigator.onLine){
       throw new Error('Conecte-se à internet para excluir este agendamento.');
@@ -1589,11 +1620,13 @@ async function saveAgendaEvent(ev){
 
     if(!res.ok){
       const msg=await res.text().catch(()=>'');
-      throw new Error(`Falha ao excluir agendamento da nuvem (${res.status}) ${msg}`);
+      throw new Error(
+        `Falha ao excluir agendamento da nuvem (${res.status}) ${msg}`
+      );
     }
   }
 
-  // Só remove do aparelho depois que a nuvem confirmou a exclusão.
+  // 3. Só depois remove do aparelho.
   const rows=agendaLocal().filter(x=>x.id!==ev.id);
   saveAgendaLocal(rows);
 
