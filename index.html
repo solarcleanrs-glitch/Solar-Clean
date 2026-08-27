@@ -2247,6 +2247,14 @@ const googleData = await googleRes.json();
 
 if(googleData.id){
   ev.googleEventId = googleData.id;
+  const localRows = agendaLocal();
+const localIndex = localRows.findIndex(x=>x.id===ev.id);
+
+if(localIndex>=0){
+  localRows[localIndex].googleEventId = googleData.id;
+  localRows[localIndex].updatedAt = new Date().toISOString();
+  saveAgendaLocal(localRows);
+}
 
   const c = cloudConfig();
 
