@@ -1567,6 +1567,38 @@ async function saveAgendaEvent(ev){
   }
   return ev;
 }
+  async function deleteAgendaEvent(ev){
+  if(!ev || !ev.id) throw new Error('Agendamento inválido.');
+
+  // Se a nuvem estiver configurada, exige internet para evitar
+  // que o agendamento volte na próxima sincronização.
+  if(cloudReady()){
+    if(!navigator.onLine){
+      throw new Error('Conecte-se à internet para excluir este agendamento.');
+    }
+
+    const c=cloudConfig();
+
+    const res=await fetch(
+      `${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(ev.id)}`,
+      {
+        method:'DELETE',
+        headers:cloudHeaders()
+      }
+    );
+
+    if(!res.ok){
+      const msg=await res.text().catch(()=>'');
+      throw new Error(`Falha ao excluir agendamento da nuvem (${res.status}) ${msg}`);
+    }
+  }
+
+  // Só remove do aparelho depois que a nuvem confirmou a exclusão.
+  const rows=agendaLocal().filter(x=>x.id!==ev.id);
+  saveAgendaLocal(rows);
+
+  return true;
+}
 async function populateAgendaClients(){
   const all=await dbAll();
   const standalone=await pullStandaloneClients();
@@ -1628,6 +1660,7 @@ async function renderAgenda(){
         <button data-agenda-google="${i}">Google Agenda</button>
         <button data-agenda-edit="${i}">Editar</button>
         <button data-agenda-status="${i}">Avançar status</button>
+        <button data-agenda-delete="${i}">Excluir</button>
         ${canSeeAgendaFinance()?`<button data-agenda-finance="${i}">Valores</button>`:''}
       </div>
     </div>`).join(''):'<p class="muted">Nenhum agendamento encontrado.</p>';
@@ -1684,6 +1717,26 @@ async function renderAgenda(){
     if(ix>=0&&ix<seq.length-1)ev.status=seq[ix+1];
     try{await saveAgendaEvent(ev);await renderAgenda()}catch(e){alert(e.message)}
   });
+  document.querySelectorAll('[data-agenda-delete]').forEach(b=>b.onclick=async()=>{
+  const ev=filtered[Number(b.dataset.agendaDelete)];
+  if(!ev)return;
+
+  const nome=ev.cliente||'este cliente';
+
+  const confirmar=confirm(
+    `Excluir o agendamento de ${nome}?\n\nEsta ação não pode ser desfeita.`
+  );
+
+  if(!confirmar)return;
+
+  try{
+    await deleteAgendaEvent(ev);
+    await renderAgenda();
+    alert('Agendamento excluído com sucesso.');
+  }catch(e){
+    alert(e.message||'Não foi possível excluir o agendamento.');
+  }
+});
   document.querySelectorAll('[data-agenda-finance]').forEach(b=>b.onclick=()=>{
     
     const ev=filtered[Number(b.dataset.agendaFinance)];
