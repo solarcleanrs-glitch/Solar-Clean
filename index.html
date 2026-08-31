@@ -1308,6 +1308,8 @@ async function renderHistory(){
         <b>${escapeHtml(r.cliente||'Cliente sem nome')}</b>
         <div class="muted">${escapeHtml(r.dateLabel||'')} • ${escapeHtml(r.cidade||'Cidade não informada')}</div>
         <div class="muted">${escapeHtml(r.telefone||'')} • ${r.syncStatus==='synced'?'☁ Sincronizado':'● Pendente'}</div>
+        <div class="muted">Pagamento: ${escapeHtml(r.pagamentoStatus||'Pendente')} ${r.pagamentoForma?`• ${escapeHtml(r.pagamentoForma)}`:''} ${r.valorCobrado?`• R$ ${Number(r.valorCobrado).toFixed(2).replace('.',',')}`:''}</div>
+        
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button data-open="${r.id}" style="min-height:42px;padding:8px 12px">Abrir</button>
