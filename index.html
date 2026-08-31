@@ -2367,13 +2367,13 @@ $('#syncNow').onclick=async()=>{
   }
 };
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
-//window.addEventListener('online',()=>{autoSync('conexão restaurada')});
-//window.addEventListener('focus',()=>{autoSync('retorno ao app')});
-//document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync('app visível')});
+window.addEventListener('online',()=>{autoSync('conexão restaurada')});
+window.addEventListener('focus',()=>{autoSync('retorno ao app')});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync('app visível')});
 // Enquanto o app estiver aberto, busca novas vistorias da equipe automaticamente.
-// 60 segundos evita excesso de chamadas e mantém o painel praticamente em tempo real.
-//
-  //setInterval(()=>{if(document.visibilityState==='visible')autoSync('periódica')},60000);
+ //60 segundos evita excesso de chamadas e mantém o painel praticamente em tempo real.
+
+  setInterval(()=>{if(document.visibilityState==='visible')autoSync('periódica')},60000);
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').disabled=false});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else{alert('Para instalar: abra este site no Chrome/Edge e use “Adicionar à tela inicial” ou “Instalar aplicativo”.')}};
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
