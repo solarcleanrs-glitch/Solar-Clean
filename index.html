@@ -354,6 +354,33 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <label><span>WhatsApp</span><input id="telefone" placeholder="(00) 00000-0000"></label>
         <label><span>Cidade</span><input id="cidade"></label>
         <label><span>Endereço</span><input id="endereco"></label>
+        <label>
+  <span>Status do pagamento</span>
+  <select id="pagamentoStatus">
+    <option value="Pendente">Pendente</option>
+    <option value="Pago">Pago</option>
+  </select>
+</label>
+
+<label>
+  <span>Forma de pagamento</span>
+  <select id="pagamentoForma">
+    <option value="">Selecione</option>
+    <option value="Pix">Pix</option>
+    <option value="Dinheiro">Dinheiro</option>
+    <option value="Cartão">Cartão</option>
+  </select>
+</label>
+
+<label>
+  <span>Valor cobrado (R$)</span>
+  <input id="valorCobrado" type="number" step="0.01" min="0">
+</label>
+
+<label>
+  <span>Valor recebido (R$)</span>
+  <input id="valorRecebido" type="number" step="0.01" min="0">
+</label>
       </div>
     </div>
 
@@ -712,7 +739,10 @@ function collectForm(){
   const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
-    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'',
+    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'',pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
+pagamentoForma:$("#pagamentoForma").value||'',
+valorCobrado:Number($("#valorCobrado").value||0),
+valorRecebido:Number($("#valorRecebido").value||0),
     placas:Number($('#placas').value||0), potPlaca:Number($('#potPlaca').value||0), marcaPlaca:$('#marcaPlaca').value||'',
     marcaInv:$('#marcaInv').value||'', modeloInv:$('#modeloInv').value||'', anoInst:$('#anoInst').value||'', telhado:radio('telhado'),
     sujeira:radio('sujeira'), sujidades:checks('sujidade'), estrutura:radio('estrutura'),
@@ -723,14 +753,17 @@ function collectForm(){
   };
 }
 function resetForm(){
-  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal'].forEach(id=>$('#'+id).value='');
-  document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false);
+  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal''pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');$("#pagamentoStatus").value='Pendente';
+  document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false); 
   $('#showGeneration').checked=true;
   $('#dpsExtra').classList.add('hidden'); updateGenerationVisibility();
   window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
 }
 function loadRecordToForm(r){
-  $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';
+  $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';$("#pagamentoStatus").value=r.pagamentoStatus||'Pendente';
+$("#pagamentoForma").value=r.pagamentoForma||'';
+$("#valorCobrado").value=r.valorCobrado||'';
+$("#valorRecebido").value=r.valorRecebido||'';
   $('#placas').value=r.placas||''; $('#potPlaca').value=r.potPlaca||''; $('#marcaPlaca').value=r.marcaPlaca||''; $('#marcaInv').value=r.marcaInv||''; $('#modeloInv').value=r.modeloInv||''; $('#anoInst').value=r.anoInst||'';
   setRadio('telhado',r.telhado); setRadio('sujeira',r.sujeira); setChecks('sujidade',r.sujidades||[]); setRadio('estrutura',r.estrutura);
   setRadio('dps',r.dps); $('#qtdDps').value=r.qtdDps||''; $('#modeloDps').value=r.modeloDps||''; $('#dpsExtra').classList.toggle('hidden',r.dps!=='Utilizadas');
@@ -1081,7 +1114,10 @@ function toCloud(r){
     client_uuid:String(r.cloudId||crypto.randomUUID()),
     created_at:r.createdAt,
     updated_at:r.updatedAt||r.createdAt,
-    cliente:r.cliente, telefone:r.telefone, cidade:r.cidade, endereco:r.endereco,
+    cliente:r.cliente, telefone:r.telefone, cidade:r.cidade, endereco:r.endereco,pagamento_status:r.pagamentoStatus||'Pendente',
+pagamento_forma:r.pagamentoForma||'',
+valor_cobrado:Number(r.valorCobrado||0),
+valor_recebido:Number(r.valorRecebido||0),
     placas:r.placas, pot_placa:r.potPlaca, marca_placa:r.marcaPlaca, marca_inv:r.marcaInv, modelo_inv:r.modeloInv,
     ano_inst:String(r.anoInst||''), telhado:r.telhado, sujeira:r.sujeira, sujidades:r.sujidades||[], estrutura:r.estrutura,
     dps:r.dps, qtd_dps:String(r.qtdDps||''), modelo_dps:r.modeloDps, inv_status:r.invStatus, inv_internet:r.invInternet||'Não verificado', erro_inv:r.erroInv,
@@ -1099,7 +1135,10 @@ function fromCloud(c){
   })):[];
   return {
     cloudId:c.client_uuid, createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
-    cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,
+    cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,pagamentoStatus:c.pagamento_status||'Pendente',
+pagamentoForma:c.pagamento_forma||'',
+valorCobrado:Number(c.valor_cobrado||0),
+valorRecebido:Number(c.valor_recebido||0),
     marcaPlaca:c.marca_placa||'', marcaInv:c.marca_inv||'', modeloInv:c.modelo_inv||'', anoInst:c.ano_inst||'', telhado:c.telhado||'Não informado',
     sujeira:c.sujeira||'Não informado', sujidades:c.sujidades||[], estrutura:c.estrutura||'Não informado', dps:c.dps||'Não informado',
     qtdDps:c.qtd_dps||'', modeloDps:c.modelo_dps||'', invStatus:c.inv_status||'Não informado', invInternet:c.inv_internet||'Não verificado', erroInv:c.erro_inv||'',
