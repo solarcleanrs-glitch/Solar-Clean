@@ -1571,6 +1571,10 @@ async function pullAgenda(){
           placas:x.placas||0,unit:x.unidade||'RS',date:x.data,time:x.hora||'',duration:x.duracao_min||90,tech:x.tecnico||'',
           status:x.status||'Agendado',note:x.observacao||'',
           serviceValue:Number(x.valor_servico||0),extraExpense:Number(x.gasto_extra||0),extraExpenseNote:x.gasto_extra_obs||'',
+          pagamentoStatus:x.pagamento_status||'Pendente',
+pagamentoForma:x.pagamento_forma||'',
+valorCobrado:Number(x.valor_cobrado||0),
+valorRecebido:Number(x.valor_recebido||0),
           updatedAt:x.updated_at||'', 
           googleEventId:x.google_event_id||''
         }));
@@ -1596,6 +1600,14 @@ async function saveAgendaEvent(ev){
       placas:Number(ev.placas||0),unidade:ev.unit||'RS',data:ev.date,hora:ev.time||null,duracao_min:Number(ev.duration||90),
       tecnico:ev.tech||'',status:ev.status||'Agendado',observacao:ev.note||'',
       valor_servico:Number(ev.serviceValue||0),gasto_extra:Number(ev.extraExpense||0),gasto_extra_obs:ev.extraExpenseNote||'',
+     
+
+
+pagamento_status:ev.pagamentoStatus||'Pendente',
+pagamento_forma:ev.pagamentoForma||'',
+valor_cobrado:Number(ev.valorCobrado||0),
+valor_recebido:Number(ev.valorRecebido||0),
+
       updated_at:ev.updatedAt
     };
     const res=await fetch(`${c.url}/rest/v1/agenda_eventos?on_conflict=id`,{
@@ -1728,6 +1740,14 @@ async function renderAgenda(){
         <div><span class="muted">Técnico</span><br>${escapeHtml(ev.tech||'Não definido')}</div>
         <div><span class="muted">Telefone</span><br>${escapeHtml(ev.telefone||'')}</div>
         <div><span class="muted">Endereço</span><br>${escapeHtml(ev.endereco||ev.cidade||'')}</div>
+        ${canSeeAgendaFinance() && ev.pagamentoStatus ? `
+<div>
+  <span class="muted">Pagamento</span><br>
+  <span class="finance-value">${escapeHtml(ev.pagamentoStatus)}
+  ${ev.pagamentoForma ? ` • ${escapeHtml(ev.pagamentoForma)}` : ''}
+  ${ev.valorCobrado ? ` • R$ ${Number(ev.valorCobrado).toFixed(2).replace('.',',')}` : ''}
+  </span>
+</div>` : ''}
         ${canSeeAgendaFinance()?`<div><span class="muted">Valor do serviço</span><br><span class="finance-value">${ev.serviceValue?`R$ ${Number(ev.serviceValue).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'Não informado'}</span></div>`:''}
         ${canSeeAgendaFinance()?`<div><span class="muted">Gasto extra</span><br><span class="finance-value">${ev.extraExpense?`R$ ${Number(ev.extraExpense).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:'R$ 0,00'}</span></div>`:''}
       </div>
@@ -1749,6 +1769,7 @@ async function renderAgenda(){
   document.querySelectorAll('[data-agenda-start]').forEach(b=>b.onclick=async()=>{
     const ev=filtered[Number(b.dataset.agendaStart)];
     if(!ev)return;
+    window.__agendaSourceId=ev.id;
     const all=await dbAll();
     const r=all.find(x=>crmKey(x)===ev.clientKey)||null;
     editingRecord=null; resetForm(); window.__pendingPhotos=[]; renderPhotoPreview();
@@ -1758,6 +1779,10 @@ async function renderAgenda(){
     $('#cidade').value=ev.cidade||$('#cidade').value;
     $('#endereco').value=ev.endereco||$('#endereco').value;
     $('#placas').value=ev.placas||$('#placas').value;
+    $("#pagamentoStatus").value=ev.pagamentoStatus||'Pendente';
+$("#pagamentoForma").value=ev.pagamentoForma||'';
+$("#valorCobrado").value=ev.valorCobrado||ev.serviceValue||'';
+$("#valorRecebido").value=ev.valorRecebido||'';
     step=1;stepView();show('formScreen');
   });
   document.querySelectorAll('[data-agenda-edit]').forEach(b=>b.onclick=()=>{
@@ -2088,7 +2113,25 @@ async function generateAndSave(){
     const id=await dbAdd(r);
     r.id=id;
   }
+// Atualiza o pagamento no agendamento que originou esta vistoria.
+if(window.__agendaSourceId){
+  try{
+    const agendaRows=agendaLocal();
+    const agendaEv=agendaRows.find(x=>x.id===window.__agendaSourceId);
 
+    if(agendaEv){
+      agendaEv.pagamentoStatus=r.pagamentoStatus||'Pendente';
+      agendaEv.pagamentoForma=r.pagamentoForma||'';
+      agendaEv.valorCobrado=Number(r.valorCobrado||0);
+      agendaEv.valorRecebido=Number(r.valorRecebido||0);
+
+      await saveAgendaEvent(agendaEv);
+    }
+  }catch(e){
+    console.warn('Falha ao atualizar pagamento na agenda:',e);
+  }
+}
+  window.__agendaSourceId=null;
   // A vistoria fica salva no aparelho imediatamente.
   await updateDashboard();
   await renderHistory();
