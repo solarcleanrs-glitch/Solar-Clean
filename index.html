@@ -753,7 +753,9 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
-  ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal''pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');$("#pagamentoStatus").value='Pendente';
+ ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
+
+$("#pagamentoStatus").value='Pendente';
   document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false); 
   $('#showGeneration').checked=true;
   $('#dpsExtra').classList.add('hidden'); updateGenerationVisibility();
