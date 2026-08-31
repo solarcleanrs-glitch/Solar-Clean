@@ -2377,7 +2377,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').disabled=false});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else{alert('Para instalar: abra este site no Chrome/Edge e use “Adicionar à tela inicial” ou “Instalar aplicativo”.')}};
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-loadCompany(); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
+loadCompany(); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
 </script>
 </body>
 </html>
