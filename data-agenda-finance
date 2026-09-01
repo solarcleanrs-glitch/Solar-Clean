@@ -212,7 +212,6 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
     <option value="Pago">Pago</option>
   </select>
 </label>
-
 <label>
   <span>Forma de pagamento</span>
   <select id="agendaPagamentoForma">
