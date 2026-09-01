@@ -205,6 +205,33 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <div class="grid grid2">
         <label><span>Valor do serviço (R$)</span><input id="agendaServiceValue" type="number" min="0" step="0.01"></label>
         <label><span>Gasto extra pós-visita (R$)</span><input id="agendaExtraExpense" type="number" min="0" step="0.01"></label>
+        <label>
+  <span>Status do pagamento</span>
+  <select id="agendaPagamentoStatus">
+    <option value="Pendente">Pendente</option>
+    <option value="Pago">Pago</option>
+  </select>
+</label>
+
+<label>
+  <span>Forma de pagamento</span>
+  <select id="agendaPagamentoForma">
+    <option value="">Selecione</option>
+    <option value="Pix">Pix</option>
+    <option value="Dinheiro">Dinheiro</option>
+    <option value="Cartão">Cartão</option>
+  </select>
+</label>
+
+<label>
+  <span>Valor cobrado (R$)</span>
+  <input id="agendaValorCobrado" type="number" min="0" step="0.01">
+</label>
+
+<label>
+  <span>Valor recebido (R$)</span>
+  <input id="agendaValorRecebido" type="number" min="0" step="0.01">
+</label>
       </div>
       <label class="section"><span>Descrição do gasto extra</span><textarea id="agendaExtraExpenseNote" rows="3" placeholder="Ex.: material adicional, estacionamento, compra emergencial..."></textarea></label>
       <div class="finance-actions">
@@ -1847,6 +1874,10 @@ $("#valorRecebido").value=ev.valorRecebido||'';
     $('#agendaServiceValue').value=ev.serviceValue||'';
     $('#agendaExtraExpense').value=ev.extraExpense||'';
     $('#agendaExtraExpenseNote').value=ev.extraExpenseNote||'';
+    $("#agendaPagamentoStatus").value=ev.pagamentoStatus||'Pendente';
+$("#agendaPagamentoForma").value=ev.pagamentoForma||'';
+$("#agendaValorCobrado").value=ev.valorCobrado||ev.serviceValue||'';
+$("#agendaValorRecebido").value=ev.valorRecebido||'';
     $('#agendaFinanceStatus').textContent='';
     $('#agendaFinanceEditor').classList.remove('hidden');
     $('#agendaFinanceEditor').scrollIntoView({behavior:'smooth',block:'start'});
@@ -2401,6 +2432,10 @@ $('#agendaFinanceSave').onclick=async()=>{
   ev.serviceValue=Number($('#agendaServiceValue').value||0);
   ev.extraExpense=Number($('#agendaExtraExpense').value||0);
   ev.extraExpenseNote=$('#agendaExtraExpenseNote').value.trim();
+  ev.pagamentoStatus=$("#agendaPagamentoStatus").value||'Pendente';
+ev.pagamentoForma=$("#agendaPagamentoForma").value||'';
+ev.valorCobrado=Number($("#agendaValorCobrado").value||0);
+ev.valorRecebido=Number($("#agendaValorRecebido").value||0);
   $('#agendaFinanceStatus').textContent='Salvando...';
   try{
     await saveAgendaEvent(ev);
