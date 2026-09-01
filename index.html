@@ -769,7 +769,7 @@ function collectForm(){
   const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
-    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'' mapsUrl:$('#mapsUrl').value||'',,pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
+    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'', mapsUrl:$('#mapsUrl').value||'',pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
 pagamentoForma:$("#pagamentoForma").value||'',
 valorCobrado:Number($("#valorCobrado").value||0),
 valorRecebido:Number($("#valorRecebido").value||0),
