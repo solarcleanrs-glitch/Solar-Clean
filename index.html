@@ -1567,8 +1567,7 @@ function agendaGoogleUrl(ev){
     ev.note ? `Obs: ${ev.note}` : ''
   ].filter(Boolean).join('\n');
 
-  const location = ev.endereco || ev.cidade || '';
-
+ const location = [ev.endereco, ev.cidade].filter(Boolean).join(', ');
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: title,
