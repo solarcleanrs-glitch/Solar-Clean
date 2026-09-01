@@ -381,6 +381,10 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <label><span>Cidade</span><input id="cidade"></label>
         <label><span>Endereço</span><input id="endereco"></label>
         <label>
+  <span>Link do Google Maps (opcional)</span>
+  <input id="mapsUrl" type="url" placeholder="Cole aqui o link do Google Maps">
+</label>
+        <label>
   <span>Status do pagamento</span>
   <select id="pagamentoStatus">
     <option value="Pendente">Pendente</option>
@@ -765,7 +769,7 @@ function collectForm(){
   const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
-    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'',pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
+    cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'' mapsUrl:$('#mapsUrl').value||'',,pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
 pagamentoForma:$("#pagamentoForma").value||'',
 valorCobrado:Number($("#valorCobrado").value||0),
 valorRecebido:Number($("#valorRecebido").value||0),
@@ -779,7 +783,7 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
- ['cliente','telefone','cidade','endereco','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
+ ['cliente','telefone','cidade','endereco','mapsUrl','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
 
 $("#pagamentoStatus").value='Pendente';
   document.querySelectorAll('#formScreen input[type=radio],#formScreen input[type=checkbox]').forEach(x=>x.checked=false); 
@@ -788,7 +792,7 @@ $("#pagamentoStatus").value='Pendente';
   window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
 }
 function loadRecordToForm(r){
-  $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';$("#pagamentoStatus").value=r.pagamentoStatus||'Pendente';
+  $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';$('#mapsUrl').value=r.mapsUrl||'';$("#pagamentoStatus").value=r.pagamentoStatus||'Pendente';
 $("#pagamentoForma").value=r.pagamentoForma||'';
 $("#valorCobrado").value=r.valorCobrado||'';
 $("#valorRecebido").value=r.valorRecebido||'';
@@ -1567,7 +1571,7 @@ function agendaGoogleUrl(ev){
     ev.note ? `Obs: ${ev.note}` : ''
   ].filter(Boolean).join('\n');
 
- const location = [ev.endereco, ev.cidade].filter(Boolean).join(', ');
+ const location = ev.mapsUrl || [ev.endereco, ev.cidade].filter(Boolean).join(', ');
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: title,
