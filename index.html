@@ -189,6 +189,10 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
           <label><span>WhatsApp</span><input id="agendaNewPhone" placeholder="(00) 00000-0000"></label>
           <label><span>Cidade</span><input id="agendaNewCity"></label>
           <label><span>Endereço</span><input id="agendaNewAddress"></label>
+          <label>
+  <span>Link do Google Maps (opcional)</span>
+  <input id="agendaNewMapsUrl" type="url" placeholder="Cole aqui o link do Google Maps">
+</label>
           <label><span>Quantidade de placas</span><input id="agendaNewPanels" type="number" min="0"></label>
         </div>
         <p class="small">O cliente será salvo para aparecer nos próximos agendamentos e no CRM, mesmo antes da primeira vistoria.</p>
@@ -2289,6 +2293,7 @@ $('#agendaSave').onclick=async()=>{
       telefone:$('#agendaNewPhone').value.trim(),
       cidade:$('#agendaNewCity').value.trim(),
       endereco:$('#agendaNewAddress').value.trim(),
+      mapsUrl:$('#agendaNewMapsUrl').value.trim(),
       placas:Number($('#agendaNewPanels').value||0)
     };
     try{
@@ -2334,7 +2339,7 @@ googleEventId: window.__agendaEditingGoogleEventId || '',
         ev.note ? `Obs: ${ev.note}` : ''
       ].filter(Boolean).join('\n'),
 
-      location: ev.endereco || ev.cidade || '',
+      location: ev.mapsUrl || [ev.endereco, ev.cidade].filter(Boolean).join(', '),
 
       start: {
         dateTime: inicio.toISOString()
