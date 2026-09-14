@@ -1747,7 +1747,17 @@ async function populateAgendaClients(){
 async function renderAgenda(){
   await populateAgendaClients();
   const rows=await pullAgenda();
-  const df=$('#agendaDateFilter').value||'';
+  const dateInput = $('#agendaDateFilter');
+
+if (!dateInput.value) {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  dateInput.value = `${ano}-${mes}-${dia}`;
+}
+
+const df = dateInput.value;
   const uf=$('#agendaUnitFilter').value||'';
   const sf=$('#agendaStatusFilter').value||'';
 
@@ -1759,7 +1769,13 @@ async function renderAgenda(){
   if(!isRegisTech() && $('#agendaUnit').value==='SC') $('#agendaUnit').value='RS';
   if(!isRegisTech() && $('#agendaUnitFilter').value==='SC') $('#agendaUnitFilter').value='';
 
-  const filtered=rows.filter(x=>(!df||x.date===df)&&(!uf||x.unit===uf)&&(!sf||x.status===sf));
+ const filtered = rows
+  .filter(x =>
+    x.date === df &&
+    (!uf || x.unit === uf) &&
+    (!sf || x.status === sf)
+  )
+  .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   $('#agendaList').innerHTML=filtered.length?filtered.map((ev,i)=>`
     <div class="agenda-card">
       <div class="agenda-head">
