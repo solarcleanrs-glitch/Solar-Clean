@@ -132,7 +132,17 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <span id="googleConnectStatus" class="muted" style="margin-left:10px;">Não conectado</span>
 </div>
     <div class="agenda-toolbar section">
-      <label><span>Data</span><input id="agendaDateFilter" type="date"></label>
+     <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+  <button id="agendaPrevDay" type="button">← Dia anterior</button>
+
+  <label>
+    <span>Data</span>
+    <input id="agendaDateFilter" type="date">
+  </label>
+
+  <button id="agendaToday" type="button">Hoje</button>
+  <button id="agendaNextDay" type="button">Próximo dia →</button>
+</div>
       <label><span>Unidade</span>
         <select id="agendaUnitFilter">
           <option value="">Todas autorizadas</option>
@@ -2297,6 +2307,32 @@ $('#agendaClient').onchange=()=>{
 $('#agendaDateFilter').onchange=renderAgenda;
 $('#agendaUnitFilter').onchange=renderAgenda;
 $('#agendaStatusFilter').onchange=renderAgenda;
+  function formatAgendaDate(date){
+  const ano = date.getFullYear();
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+function changeAgendaDay(days){
+  const input = $('#agendaDateFilter');
+  const atual = input.value
+    ? new Date(input.value + 'T12:00:00')
+    : new Date();
+
+  atual.setDate(atual.getDate() + days);
+  input.value = formatAgendaDate(atual);
+  renderAgenda();
+}
+
+$('#agendaPrevDay').onclick = () => changeAgendaDay(-1);
+
+$('#agendaToday').onclick = () => {
+  $('#agendaDateFilter').value = formatAgendaDate(new Date());
+  renderAgenda();
+};
+
+$('#agendaNextDay').onclick = () => changeAgendaDay(1);
 $('#agendaSave').onclick=async()=>{
   let key=$('#agendaClient').value;
   let r=null;
