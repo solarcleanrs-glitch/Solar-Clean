@@ -143,6 +143,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <button id="agendaToday" type="button">Hoje</button>
   <button id="agendaNextDay" type="button">Próximo dia →</button>
 </div>
+      <h3 id="agendaDateTitle" style="margin-top:12px;"></h3>
       <label><span>Unidade</span>
         <select id="agendaUnitFilter">
           <option value="">Todas autorizadas</option>
@@ -1768,6 +1769,18 @@ if (!dateInput.value) {
 }
 
 const df = dateInput.value;
+  const tituloData = $('#agendaDateTitle');
+
+if (tituloData && df) {
+  const dataObj = new Date(df + 'T12:00:00');
+
+  tituloData.textContent = dataObj.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
   const uf=$('#agendaUnitFilter').value||'';
   const sf=$('#agendaStatusFilter').value||'';
 
