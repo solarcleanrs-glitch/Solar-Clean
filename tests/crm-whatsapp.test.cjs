@@ -75,6 +75,8 @@ assert.ok(js.includes("method:alreadyExists?'PATCH':'POST'"),'Atualização desc
 assert.ok(js.includes("method:'PATCH',headers:crmHistoryCloudHeaders({'Prefer':'return=representation'})"),'Status só muda por ação explícita');
 assert.ok(js.includes("changed.length!==1||changed[0].status!==commercialStatus"),'Confirmação remota obrigatória');
 assert.ok(js.includes("saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)"),'Salvar CRM compartilha status escolhido');
+assert.ok(js.includes("function updateHomologNotice()"),'Interface identifica ambiente de homologação');
+assert.ok(html.includes('id="homologNotice"'),'Aviso visual de testes está presente');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
 
 
