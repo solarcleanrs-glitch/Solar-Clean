@@ -89,7 +89,7 @@ async function testSharedProfileStatusProtection(){
   assert.ok(from>=0&&to>from,'Função compartilhada encontrada');
   const calls=[];
   const deps={
-    cloudReady:()=>true,navigator:{onLine:true},crmHistoryCloudHeaders:()=>({'apikey':'test'}),
+    cloudReady:()=>true,ensureVistoriaSession:async()=>{},navigator:{onLine:true},crmHistoryCloudHeaders:()=>({'apikey':'test'}),
     crmKey:()=> 'tel:51999998888',cloudConfig:()=>({url:'https://staging.invalid'}),
     recurrenceMonths:()=>6,
     fetch:async (url,opts={})=>{
