@@ -86,4 +86,38 @@ async function testRepeatedCloudPull() {
   assert.equal(adds,1,'Reimportar nuvem não deve duplicar vistoria');
   assert.equal(locals.length,1,'Histórico mantém um único registro pelo cloudId');
 }
-(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function testOfflineRecoveryWithoutDuplicate() {
+  const pushSource=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  const pullSource=extract('async function pullCloud()', 'let syncAllRunning=false;');
+  const records=[];
+  const cloud=new Map();
+  let nextId=1, uploads=0;
+  const dbAll=async()=>records.map(r=>({...r}));
+  const dbPut=async r=>{const i=records.findIndex(x=>x.id===r.id);if(i>=0)records[i]={...r};};
+  const dbAdd=async r=>{const id=nextId++;records.push({...r,id});return id;};
+  const dbDelete=async id=>{const i=records.findIndex(x=>x.id===id);if(i>=0)records.splice(i,1);};
+  const config=()=>({url:'https://example.invalid'});
+  const headers=()=>({});
+  const local={cloudId:'stable-uuid',syncStatus:'pending',cliente:'TESTE ISOLADO',photos:[],createdAt:'2026-10-28T13:00:00Z',updatedAt:'2026-10-28T13:00:00Z'};
+  local.id=await dbAdd(local);
+  const pushDeps={
+    cloudConfig:config,dbPut,uploadPhotoToStorage:async p=>p,
+    toCloud:r=>({client_uuid:r.cloudId,created_at:r.createdAt,updated_at:r.updatedAt,cliente:r.cliente}),
+    fetch:async (url,opts)=>{uploads++;const row=JSON.parse(opts.body);cloud.set(row.client_uuid,row);return {ok:true,json:async()=>[row]};},
+    cloudHeaders:headers,crypto:{randomUUID:()=>{throw Error('Already assigned UUID cannot be replaced')}}
+  };
+  const push=functionFrom(pushSource,Object.keys(pushDeps),Object.values(pushDeps),'pushRecord');
+  await push(records[0]);
+  const pullDeps={
+    cloudConfig:config,
+    fetch:async()=>({ok:true,json:async()=>[...cloud.values()]}),
+    cloudHeaders:headers,dbAll,dbPut,dbAdd,dbDelete,
+    fromCloud:r=>({cloudId:r.client_uuid,createdAt:r.created_at,updatedAt:r.updated_at,cliente:r.cliente,syncStatus:'synced',photos:[]})
+  };
+  const pull=functionFrom(pullSource,Object.keys(pullDeps),Object.values(pullDeps),'pullCloud');
+  await pull();await pull();
+  assert.equal(uploads,1,'Uma vistoria offline deve enviar uma vez');
+  assert.equal(records.length,1,'Baixar o mesmo serviço não deve duplicar o registro local');
+  assert.equal(records[0].cloudId,'stable-uuid','ID original preservado');
+}
+(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
