@@ -2218,7 +2218,7 @@ async function renderCrm(){
         <div><span class="muted">Nova limpeza</span><br><b>${escapeHtml(formatDateBR(c.nextDate))}</b></div>
         <div><span class="muted">Último contato</span><br>${escapeHtml(lastContact)}</div>
         <div><span class="muted">Atendimentos</span><br>${c.records.length}</div>
-        <div><span class="muted">WhatsApp</span><br>${escapeHtml(normalizeWhatsappPhone(r.telefone)?'Número válido':'Cadastrar número com DDD')}</div>
+        <div><span class="muted">WhatsApp</span><br>${escapeHtml(normalizeWhatsappPhone(r.telefone)?'Número válido':'Verificar telefone (DDD + 8 ou 9 dígitos)')}</div>
         ${c.meta?.lossReason?`<div><span class="muted">Motivo</span><br>${escapeHtml(c.meta.lossReason)}</div>`:''}
       </div>
       <div class="crm-actions">
@@ -2656,7 +2656,7 @@ $('#crmContactToday').onclick=()=>{
   $('#crmEditorStatus').textContent='Contato de hoje marcado. Clique em Salvar CRM para confirmar.';
 };
 $('#crmCloseEditor').onclick=()=>{$('#crmEditor').classList.add('hidden');crmEditingKey=''};
-$('#crmLogContact').onclick=()=>{
+$('#crmLogContact').onclick=async()=>{
   if(!crmEditingKey)return;
   const outcome=$('#crmContactOutcome').value;
   if(outcome==='Não deseja contato' && $('#crmClientStatus').value!=='Não contatar'){
@@ -2671,6 +2671,21 @@ $('#crmLogContact').onclick=()=>{
     });
     renderCrmContactHistory(crmEditingKey);
     $('#crmContactNote').value='';
+    const now=new Date();
+    const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    $('#crmLastContact').value=today;
+    try{
+      await saveCrmMeta(crmEditingKey,{
+        status:$('#crmClientStatus').value,
+        lastContact:today,
+        lossReason:$('#crmLossReason').value,
+        internalNote:$('#crmInternalNote').value.trim()
+      });
+      $('#crmEditorStatus').textContent='Contato registrado; data do último contato atualizada.';
+    }catch(e){
+      $('#crmEditorStatus').textContent='Contato e data salvos neste aparelho; sincronização do CRM pendente: '+e.message;
+    }
+    await renderCrm();
   }catch(e){$('#crmEditorStatus').textContent='Falha ao registrar histórico: '+e.message}
 };
 $('#crmSaveClient').onclick=async()=>{
