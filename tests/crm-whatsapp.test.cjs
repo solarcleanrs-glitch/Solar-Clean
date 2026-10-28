@@ -12,6 +12,8 @@ const helpers=new Function(js.slice(start,end)+'\nreturn {normalizeWhatsappPhone
 assert.equal(helpers.normalizeWhatsappPhone('(51) 99999-8888'),'5551999998888');
 assert.equal(helpers.normalizeWhatsappPhone('51999998888'),'5551999998888');
 assert.equal(helpers.normalizeWhatsappPhone('abc'),'');
+assert.equal(helpers.normalizeWhatsappPhone('519998877879'),'','Número com dígito extra não pode abrir WhatsApp');
+assert.equal(helpers.normalizeWhatsappPhone('5133334444'),'555133334444','Telefone fixo com DDD é válido');
 assert.equal(helpers.whatsappLink('','Cliente'),'');
 for(const status of ['overdue','soon','ok']){
  const c={last:{cliente:'Cliente Teste',telefone:'51999998888'},status:{key:status}};
