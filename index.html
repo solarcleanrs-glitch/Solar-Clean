@@ -2115,28 +2115,10 @@ function renderCrmContactHistory(clientKey){
     <div class="small">${escapeHtml(e.note||'')}</div></div></div>`).join(''):'<p class="muted small">Nenhum contato registrado neste aparelho.</p>';
 }
 async function pullCrmMeta(){
-  let meta=crmLocalMeta();
-  if(cloudReady() && navigator.onLine){
-    try{
-      const c=cloudConfig();
-      const res=await fetch(`${c.url}/rest/v1/crm_clientes?select=*`,{headers:cloudHeaders({'Prefer':''})});
-      if(res.ok){
-        const rows=await res.json();
-        for(const row of rows){
-          meta[row.client_key]={
-            status:row.status||'Ativo',
-            lastContact:row.last_contact_at||'',
-            internalNote:row.internal_note||'',
-            lossReason:row.loss_reason||'',
-            updatedAt:row.updated_at||''
-          };
-        }
-        saveCrmLocalMeta(meta);
-      }
-    }catch(e){console.warn('CRM nuvem indisponível:',e)}
-  }
-  crmMetaCache=meta;
-  return meta;
+  // Notas e motivo de perda permanecem locais até a implantação de uma
+  // tabela de metadados com RLS. O status compartilhado vem de crm_perfis.
+  crmMetaCache=crmLocalMeta();
+  return crmMetaCache;
 }
 async function saveCrmMeta(clientKey,data){
   const meta=crmLocalMeta();
@@ -2150,27 +2132,8 @@ async function saveCrmMeta(clientKey,data){
   meta[clientKey]=value;
   saveCrmLocalMeta(meta);
   crmMetaCache=meta;
-
-  if(cloudReady() && navigator.onLine){
-    const c=cloudConfig();
-    const payload={
-      client_key:clientKey,
-      status:value.status,
-      last_contact_at:value.lastContact||null,
-      internal_note:value.internalNote,
-      loss_reason:value.lossReason,
-      updated_at:value.updatedAt
-    };
-    const res=await fetch(`${c.url}/rest/v1/crm_clientes?on_conflict=client_key`,{
-      method:'POST',
-      headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
-      body:JSON.stringify(payload)
-    });
-    if(!res.ok){
-      const msg=await res.text().catch(()=>'');
-      throw new Error(`Falha ao salvar CRM na nuvem (${res.status})${msg?': '+msg.slice(0,140):''}`);
-    }
-  }
+  // Não chamar public.crm_clientes: a tabela não existe no banco de homologação.
+  // O status é salvo separadamente em crm_perfis, com confirmação do retorno.
   return value;
 }
 function addMonthsSafe(date,months){
@@ -2918,10 +2881,10 @@ $('#crmSaveClient').onclick=async()=>{
       lossReason:$('#crmLossReason').value,
       internalNote:$('#crmInternalNote').value.trim()
     });
-    $('#crmEditorStatus').textContent=profileError?'CRM salvo; perfil compartilhado pendente: '+profileError:'CRM salvo e sincronizado.';
+    $('#crmEditorStatus').textContent=profileError?'Dados comerciais locais salvos; status na nuvem pendente: '+profileError:'Status comercial sincronizado; observações e motivo de perda salvos somente neste aparelho.';
     await renderCrm();
   }catch(e){
-    $('#crmEditorStatus').textContent='Metadados salvos neste aparelho; sincronização pendente: '+e.message+(profileError?' | Perfil pendente: '+profileError:' | Perfil compartilhado enviado separadamente.');
+    $('#crmEditorStatus').textContent='Falha ao salvar dados comerciais: '+e.message+(profileError?' | Status na nuvem pendente: '+profileError:'');
     await renderCrm();
   }
 };
