@@ -70,7 +70,7 @@ assert.ok(js.includes("Sessão expirada. Entre novamente na nuvem."),'Sessão ex
 assert.ok(js.includes("async function ensureVistoriaSession()"),'Modo de testes renova sessão da vistoria');
 assert.ok(js.includes("solarCleanRefreshToken"),'Login persiste token para renovação');
 assert.ok(js.includes("await ensureVistoriaSession();"),'Envios aguardam validação de sessão');
-assert.ok(js.includes("profile.status==='Não contatar'"),'Bloqueio remoto tem prioridade');
+assert.ok(js.includes("crmMetaCache[profile.client_key]={...old,status:profile.status}"),'Status remoto, bloqueio ou liberação, tem prioridade');
 assert.ok(js.includes("method:alreadyExists?'PATCH':'POST'"),'Atualização descritiva preserva status existente');
 assert.ok(js.includes("method:'PATCH',headers:crmHistoryCloudHeaders({'Prefer':'return=representation'})"),'Status só muda por ação explícita');
 assert.ok(js.includes("changed.length!==1||changed[0].status!==commercialStatus"),'Confirmação remota obrigatória');
