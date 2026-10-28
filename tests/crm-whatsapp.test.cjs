@@ -70,4 +70,7 @@ assert.ok(js.includes("Sessão expirada. Entre novamente na nuvem."),'Sessão ex
 assert.ok(js.includes("async function ensureVistoriaSession()"),'Modo de testes renova sessão da vistoria');
 assert.ok(js.includes("solarCleanRefreshToken"),'Login persiste token para renovação');
 assert.ok(js.includes("await ensureVistoriaSession();"),'Envios aguardam validação de sessão');
+assert.ok(js.includes("profile.status==='Não contatar'"),'Bloqueio remoto tem prioridade');
+assert.ok(js.includes("if(commercialStatus!==undefined)payload.status=commercialStatus"),'Abrir editor não sobrescreve status remoto');
+assert.ok(js.includes("saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)"),'Salvar CRM compartilha status escolhido');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
