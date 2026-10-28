@@ -41,8 +41,7 @@ assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'][0].outcome,'Re
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-2'],undefined);
 historyHelpers.addCrmContactHistory('cliente-2',{outcome:'Cliente respondeu',note:'Isolado'});
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'].length,2,'Histórico separado por cliente');
-const historySyncHelpers=new Function('localStorage','crypto','
-,'escapeHtml','cloudReady','navigator','cloudConfig','cloudHeaders','fetch',js.slice(historyStart,historyEnd)+'\nreturn {mergeCrmContactHistory,crmContactHistoryLocal,syncCrmContactHistory};')(
+const historySyncHelpers=new Function('localStorage','crypto','$','escapeHtml','cloudReady','navigator','cloudConfig','cloudHeaders','fetch',js.slice(historyStart,historyEnd)+'\nreturn {mergeCrmContactHistory,crmContactHistoryLocal,syncCrmContactHistory};')(
   localStorage,{randomUUID:()=>String(store.size+1)},()=>documentMock,s=>s,
   ()=>false,{onLine:false},()=>({url:'https://test.invalid'}),()=>({}),async()=>{throw Error('Sem chamadas offline')}
 );
