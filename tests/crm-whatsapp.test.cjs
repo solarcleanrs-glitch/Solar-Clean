@@ -77,6 +77,8 @@ assert.ok(js.includes("changed.length!==1||changed[0].status!==commercialStatus"
 assert.ok(js.includes("saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)"),'Salvar CRM compartilha status escolhido');
 assert.ok(js.includes("function updateHomologNotice()"),'Interface identifica ambiente de homologação');
 assert.ok(html.includes('id="homologNotice"'),'Aviso visual de testes está presente');
+assert.ok(js.includes("const rows=[],pageSize=500;"),'Histórico remoto usa paginação');
+assert.ok(js.includes("order=created_at.desc,id.desc&limit="),'Histórico remoto tem ordenação estável');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
 
 
