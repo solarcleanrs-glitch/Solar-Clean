@@ -1208,7 +1208,12 @@ async function testCloud(){
   // não é acessível com a chave pública. O upload real valida o Storage.
   return true;
 }
+const pendingRecordUploads=new Map();
 async function pushRecord(local){
+  // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
+  const key=local.id;
+  if(key!=null && pendingRecordUploads.has(key)) return pendingRecordUploads.get(key);
+  const upload=(async()=>{
   const c=cloudConfig();
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
@@ -1233,6 +1238,10 @@ async function pushRecord(local){
   const rows=await res.json();
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
+  })();
+  if(key!=null) pendingRecordUploads.set(key,upload);
+  try{return await upload}
+  finally{if(key!=null && pendingRecordUploads.get(key)===upload) pendingRecordUploads.delete(key)}
 }
 async function pullCloud(){
   const c=cloudConfig();
@@ -2180,7 +2189,11 @@ async function exportBackup(){
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+let generateAndSaveRunning=false;
 async function generateAndSave(){
+  if(generateAndSaveRunning) return;
+  generateAndSaveRunning=true;
+  try{
   let r=collectForm();
 
   if(editingRecord){
@@ -2237,6 +2250,7 @@ if(window.__agendaSourceId){
   }else{
     updateSyncBadge(cloudReady()?'Pendente de sincronizar':'Somente local');
   }
+  }finally{generateAndSaveRunning=false}
 }
 
 
