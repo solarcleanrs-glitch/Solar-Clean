@@ -2141,7 +2141,7 @@ async function saveCrmMeta(clientKey,data){
   meta[clientKey]=value;
   saveCrmLocalMeta(meta);
   crmMetaCache=meta;
-  // Não chamar public.crm_clientes: a tabela não existe no banco de homologação.
+  // Metadados permanecem locais até a ativação segura de crm_metadados.
   // O status é salvo separadamente em crm_perfis, com confirmação do retorno.
   return value;
 }
