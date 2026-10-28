@@ -58,4 +58,7 @@ assert.equal(unauth(),null,'Sem login não autorizar acesso ao histórico na nuv
 const tokenStorage={getItem:()=> 'token-auth-ficticio'};
 const authed=new Function('localStorage','currentTech','cloudHeaders',js.slice(headerStart,headerEnd)+'\nreturn crmHistoryCloudHeaders;')(tokenStorage,()=>({cloud:true}),extras=>({apikey:'anon-key',Authorization:'Bearer anon-key',...extras}));
 assert.equal(authed().Authorization,'Bearer token-auth-ficticio','Deve usar token do técnico e não chave anon');
+assert.ok(js.includes('async function pullCrmContactClientKeys()'),'CRM consulta os IDs de clientes do histórico sem sincronizar vistorias');
+assert.ok(js.includes('if(r.__crmKey)return r.__crmKey;'),'Cliente remoto mantém chave do histórico');
+assert.ok(js.includes("r.__cloudContactOnly?'':whatsappLink"),'Cliente sem cadastro completo não recebe abertura de WhatsApp');
 console.log('PASS: sintaxe CRM, telefones, mensagens e links WhatsApp');
