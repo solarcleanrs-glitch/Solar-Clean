@@ -84,6 +84,7 @@ assert.ok(js.includes("async function syncCrmContactHistory(clientKey){\n  if(!c
 assert.ok(js.includes("/rest/v1/crm_metadados?on_conflict=client_key"),'Observações usam tabela dedicada');
 assert.ok(js.includes("if(res.status!==404)throw new Error"),'Falhas diferentes de tabela ausente não são ocultadas');
 assert.ok(js.includes("return {...value,cloudSynced:false}"),'Notas locais são preservadas sem migração');
+assert.ok(js.includes("crm_metadados?select=client_key,last_contact_at,internal_note,loss_reason,updated_at&order=client_key.asc&limit="),'Notas remotas são consultadas por páginas ordenadas');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
 
 
