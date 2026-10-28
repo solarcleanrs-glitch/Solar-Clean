@@ -1,5 +1,6 @@
 -- Execute somente no projeto Solar Clean testes crm.
 -- Tabela privada, visível apenas a usuários permitidos no CRM.
+begin;
 create table if not exists public.crm_metadados (
   client_key text primary key,
   last_contact_at date,
@@ -23,3 +24,4 @@ using (exists (select 1 from public.crm_usuarios u where u.user_id = (select aut
 with check (exists (select 1 from public.crm_usuarios u where u.user_id = (select auth.uid())));
 grant select,insert,update on public.crm_metadados to authenticated;
 revoke all on public.crm_metadados from anon;
+commit;
