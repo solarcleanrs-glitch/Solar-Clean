@@ -1111,13 +1111,27 @@ function updateSyncBadge(text,ok=false){
   $('#syncBadge').textContent=text;
   $('#syncBadge').style.background=ok?'#e9f8ef':'#fff';
 }
+// Modo de validação futura: DESLIGADO por padrão. Nenhuma mudança na sincronização atual.
+function strictVistoriaAuthEnabled(){
+  return localStorage.getItem('solarCleanStagingStrictVistoriaAuth')==='true';
+}
+function vistoriaAuthToken(){
+  if(!strictVistoriaAuthEnabled())return cloudConfig().key;
+  const token=localStorage.getItem('solarCleanAccessToken')||'';
+  if(!currentTech()?.cloud||!token)throw new Error('Vistorias: faça login na nuvem antes de sincronizar neste modo de teste.');
+  try{
+    const body=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    if(!body.exp||body.exp*1000<=Date.now()+30000)throw new Error('Sessão expirada. Entre novamente na nuvem.');
+  }catch(e){throw new Error('Sessão de teste inválida ou expirada. Entre novamente na nuvem.')}
+  return token;
+}
 function cloudHeaders(extra={}){
   const c=cloudConfig();
-  return {'apikey':c.key,'Authorization':`Bearer ${c.key}`,'Content-Type':'application/json','Prefer':'return=representation',...extra};
+  return {'apikey':c.key,'Authorization':`Bearer ${vistoriaAuthToken()}`,'Content-Type':'application/json','Prefer':'return=representation',...extra};
 }
 const MEDIA_BUCKET='vistoria-media';
 function cloudToken(){
-  return cloudConfig().key;
+  return vistoriaAuthToken();
 }
 
 function storageHeaders(extra={}){
