@@ -74,6 +74,7 @@ async function testRepeatedCloudPull() {
   const cloud=[{client_uuid:'fixed-uuid',created_at:'2026-10-28T13:00:00Z',updated_at:'2026-10-28T13:00:00Z'}];
   const deps={
     cloudConfig:()=>({url:'https://example.invalid'}),
+    ensureVistoriaSession:async()=>{},
     fetch:async()=>({ok:true,json:async()=>cloud}),
     cloudHeaders:()=>({}),
     dbAll:async()=>locals.map(r=>({...r})),
@@ -110,7 +111,7 @@ async function testOfflineRecoveryWithoutDuplicate() {
   const push=functionFrom(pushSource,Object.keys(pushDeps),Object.values(pushDeps),'pushRecord');
   await push(records[0]);
   const pullDeps={
-    cloudConfig:config,
+    cloudConfig:config,ensureVistoriaSession:async()=>{},
     fetch:async()=>({ok:true,json:async()=>[...cloud.values()]}),
     cloudHeaders:headers,dbAll,dbPut,dbAdd,dbDelete,
     fromCloud:r=>({cloudId:r.client_uuid,createdAt:r.created_at,updatedAt:r.updated_at,cliente:r.cliente,syncStatus:'synced',photos:[]})
