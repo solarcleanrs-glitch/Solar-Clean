@@ -2221,17 +2221,20 @@ async function pullCrmSharedProfiles(){
   if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];
   try{
     const c=cloudConfig();
-    const res=await fetch(`${c.url}/rest/v1/crm_perfis?select=client_key,cliente,telefone,cidade,last_visit_at,recurrence_months&limit=1000`,{headers:crmHistoryCloudHeaders()});
+    const res=await fetch(`${c.url}/rest/v1/crm_perfis?select=client_key,cliente,telefone,cidade,last_visit_at,recurrence_months,status,updated_at&limit=1000`,{headers:crmHistoryCloudHeaders()});
     if(!res.ok)return [];
     return await res.json();
   }catch(e){console.warn('Perfis comerciais indisponíveis:',e);return []}
 }
-async function saveCrmSharedProfile(r){
+async function saveCrmSharedProfile(r,commercialStatus){
   if(!r||r.__cloudContactOnly||!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return false;
   const key=crmKey(r),months=recurrenceMonths(r.retorno);
   const c=cloudConfig();
   const payload={client_key:key,cliente:String(r.cliente||''),telefone:String(r.telefone||''),cidade:String(r.cidade||''),
     last_visit_at:r.createdAt||null,recurrence_months:months,updated_at:new Date().toISOString()};
+  // Status só é enviado quando explicitamente escolhido; abrir o editor
+  // nunca deve apagar um bloqueio "Não contatar" registrado por outro técnico.
+  if(commercialStatus!==undefined)payload.status=commercialStatus;
   const res=await fetch(`${c.url}/rest/v1/crm_perfis?on_conflict=client_key`,{
     method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
     body:JSON.stringify(payload)});
@@ -2258,6 +2261,15 @@ async function buildCrmClients(){
   const profiles=await pullCrmSharedProfiles();
   const profileByKey=new Map(profiles.map(p=>[p.client_key,p]));
   await pullCrmMeta();
+  // Respeita o bloqueio compartilhado entre aparelhos mesmo sem vistorias locais.
+  for(const profile of profiles){
+    if(profile.status==='Não contatar'){
+      const old=crmMetaCache[profile.client_key]||{};
+      crmMetaCache[profile.client_key]={...old,status:'Não contatar'};
+    }else if(profile.status && !crmMetaCache[profile.client_key]?.updatedAt){
+      crmMetaCache[profile.client_key]={...(crmMetaCache[profile.client_key]||{}),status:profile.status};
+    }
+  }
   const groups=new Map();
 
   for(const r of all){
@@ -2871,7 +2883,7 @@ $('#crmSaveClient').onclick=async()=>{
   const selected=(window.__crmClients||[]).find(c=>c.key===crmEditingKey);
   let profileError='';
   if(selected){
-    try{await saveCrmSharedProfile(selected.last)}
+    try{await saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)}
     catch(e){profileError=e.message||String(e)}
   }
   try{
