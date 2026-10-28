@@ -66,4 +66,24 @@ async function testRepeatSaveAndNewForm() {
   assert.equal(saves,2,'Nova vistoria pode ser salva');
   assert.equal(uuid,2,'Vistorias novas têm IDs distintos');
 }
-(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); console.log('PASS: sintaxe, upload único, salvamento único e nova vistoria');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function testRepeatedCloudPull() {
+  const source=extract('async function pullCloud()', 'let syncAllRunning=false;');
+  let nextId=1, adds=0;
+  const locals=[];
+  const cloud=[{client_uuid:'fixed-uuid',created_at:'2026-10-28T13:00:00Z',updated_at:'2026-10-28T13:00:00Z'}];
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),
+    fetch:async()=>({ok:true,json:async()=>cloud}),
+    cloudHeaders:()=>({}),
+    dbAll:async()=>locals.map(r=>({...r})),
+    fromCloud:r=>({cloudId:r.client_uuid,createdAt:r.created_at,updatedAt:r.updated_at,syncStatus:'synced'}),
+    dbAdd:async r=>{adds++;locals.push({...r,id:nextId++});},
+    dbPut:async r=>{const ix=locals.findIndex(x=>x.id===r.id);if(ix>=0)locals[ix]={...r};},
+    dbDelete:async id=>{const ix=locals.findIndex(x=>x.id===id);if(ix>=0)locals.splice(ix,1);}
+  };
+  const pull=functionFrom(source,Object.keys(deps),Object.values(deps),'pullCloud');
+  await pull(); await pull(); await pull();
+  assert.equal(adds,1,'Reimportar nuvem não deve duplicar vistoria');
+  assert.equal(locals.length,1,'Histórico mantém um único registro pelo cloudId');
+}
+(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
