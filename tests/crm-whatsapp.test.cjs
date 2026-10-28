@@ -67,4 +67,7 @@ assert.ok(js.includes("if(recent.length)"),'Último contato considera histórico
 assert.ok(js.includes("solarCleanStagingStrictVistoriaAuth"),'Modo seguro é opt-in');
 assert.ok(js.includes("function vistoriaAuthToken()"),'Autenticação de vistoria separada');
 assert.ok(js.includes("Sessão expirada. Entre novamente na nuvem."),'Sessão expirada é bloqueada no modo de teste');
+assert.ok(js.includes("async function ensureVistoriaSession()"),'Modo de testes renova sessão da vistoria');
+assert.ok(js.includes("solarCleanRefreshToken"),'Login persiste token para renovação');
+assert.ok(js.includes("await ensureVistoriaSession();"),'Envios aguardam validação de sessão');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
