@@ -798,6 +798,8 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
+  // Uma nova vistoria libera um novo salvamento; a anterior não pode ser criada de novo.
+  savedCurrentFormRecordId=null;
  ['cliente','telefone','cidade','endereco','mapsUrl','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
 
 $("#pagamentoStatus").value='Pendente';
@@ -1208,7 +1210,12 @@ async function testCloud(){
   // não é acessível com a chave pública. O upload real valida o Storage.
   return true;
 }
+const pendingRecordUploads=new Map();
 async function pushRecord(local){
+  // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
+  const key=local.id;
+  if(key!=null && pendingRecordUploads.has(key)) return pendingRecordUploads.get(key);
+  const upload=(async()=>{
   const c=cloudConfig();
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
@@ -1233,6 +1240,10 @@ async function pushRecord(local){
   const rows=await res.json();
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
+  })();
+  if(key!=null) pendingRecordUploads.set(key,upload);
+  try{return await upload}
+  finally{if(key!=null && pendingRecordUploads.get(key)===upload) pendingRecordUploads.delete(key)}
 }
 async function pullCloud(){
   const c=cloudConfig();
@@ -1366,11 +1377,11 @@ async function renderHistory(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r){await hydrateRecordMedia(r);renderReport(r)}});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
-    if(r){await hydrateRecordMedia(r);editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
-    if(r){await hydrateRecordMedia(r);editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
@@ -2175,12 +2186,49 @@ function loadCompany(){
   try{const c=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}');Object.entries(c).forEach(([k,v])=>{if($('#'+k))$('#'+k).value=v||''})}catch(e){}
 }
 async function exportBackup(){
-  const all=await dbAll();
-  const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company:JSON.parse(localStorage.getItem('solarCleanCompany')||'{}'),vistorias:all};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const btn=$('#exportBackup'),oldText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Preparando backup...';
+  let url=null;
+  try{
+    // Preserva todas as informações e fotos locais, sem alterar as vistorias.
+    const all=await dbAll();
+    let company={};
+    try{company=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}')}
+    catch(e){console.warn('Configurações locais inválidas no backup:',e)}
+    const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company,vistorias:all};
+    const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+    url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Evita revogar o arquivo antes que o navegador inicie o download.
+    const downloadUrl=url;
+    setTimeout(()=>URL.revokeObjectURL(downloadUrl),60000);
+    url=null;
+  }catch(e){
+    console.error('Erro ao exportar backup:',e);
+    alert('Não foi possível preparar o backup. Nenhuma vistoria foi apagada. Detalhe: '+(e?.message||String(e)));
+  }finally{
+    if(url) URL.revokeObjectURL(url);
+    btn.disabled=false;
+    btn.textContent=oldText;
+  }
 }
+let generateAndSaveRunning=false;
+let savedCurrentFormRecordId=null;
 async function generateAndSave(){
+  if(generateAndSaveRunning) return;
+  if(savedCurrentFormRecordId!=null){
+    alert('Esta vistoria já foi salva. Para um novo serviço, toque em Nova vistoria. Para corrigir informações, use Editar no histórico.');
+    return;
+  }
+  generateAndSaveRunning=true;
+  try{
   let r=collectForm();
 
   if(editingRecord){
@@ -2193,11 +2241,14 @@ async function generateAndSave(){
     await dbPut(r);
     editingRecord=null;
   }else{
-    r.cloudId=null;
+    // ID definido antes do primeiro salvamento: o envio na nuvem é idempotente.
+    r.cloudId=crypto.randomUUID();
     r.syncStatus='pending';
     const id=await dbAdd(r);
     r.id=id;
   }
+  // Desde o primeiro armazenamento local, esta tela só pode salvar esta vistoria uma vez.
+  savedCurrentFormRecordId=r.id;
 // Atualiza o pagamento no agendamento que originou esta vistoria.
 if(window.__agendaSourceId){
   try{
@@ -2237,6 +2288,7 @@ if(window.__agendaSourceId){
   }else{
     updateSyncBadge(cloudReady()?'Pendente de sincronizar':'Somente local');
   }
+  }finally{generateAndSaveRunning=false}
 }
 
 
