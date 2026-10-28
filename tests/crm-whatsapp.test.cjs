@@ -38,12 +38,3 @@ assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'].length,2);
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'][0].outcome,'Retornar mais tarde');
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-2'],undefined);
 console.log('PASS: sintaxe CRM, telefones, mensagens e links WhatsApp');
-,'escapeHtml',js.slice(historyStart,historyEnd)+'\nreturn {addCrmContactHistory,crmContactHistoryLocal,renderCrmContactHistory};')(
- localStorage,{randomUUID:()=>String(store.size+1)},()=>documentMock,s=>String(s).replaceAll('<','&lt;')
-);
-historyHelpers.addCrmContactHistory('cliente-1',{outcome:'Cliente respondeu',note:'Solicitou orçamento'});
-historyHelpers.addCrmContactHistory('cliente-1',{outcome:'Retornar mais tarde',followup:'2026-11-05'});
-assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'].length,2);
-assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'][0].outcome,'Retornar mais tarde');
-assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-2'],undefined);
-console.log('PASS: sintaxe CRM, telefones, mensagens e links WhatsApp');
