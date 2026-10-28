@@ -2227,17 +2227,30 @@ async function pullCrmSharedProfiles(){
   }catch(e){console.warn('Perfis comerciais indisponíveis:',e);return []}
 }
 async function saveCrmSharedProfile(r,commercialStatus){
-  if(!r||r.__cloudContactOnly||!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return false;
-  const key=crmKey(r),months=recurrenceMonths(r.retorno);
-  const c=cloudConfig();
+  if(!r||!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return false;
+  const key=crmKey(r),c=cloudConfig(),headers=crmHistoryCloudHeaders({'Prefer':'return=minimal'});
+  if(commercialStatus!==undefined){
+    // Somente uma ação explícita do usuário altera o bloqueio de contato.
+    // Não sobrescrever o perfil inteiro com dados antigos vindos de outro navegador.
+    const res=await fetch(`${c.url}/rest/v1/crm_perfis?client_key=eq.${encodeURIComponent(key)}`,{
+      method:'PATCH',headers,body:JSON.stringify({status:commercialStatus,updated_at:new Date().toISOString()})});
+    if(!res.ok)throw new Error('Status comercial pendente ('+res.status+')');
+    return true;
+  }
+  if(r.__cloudContactOnly)return false;
+  // Dados descritivos são gravados sem incluir "status": PATCH preserva o
+  // bloqueio já existente; INSERT só é feito para um cliente novo.
+  const months=recurrenceMonths(r.retorno);
   const payload={client_key:key,cliente:String(r.cliente||''),telefone:String(r.telefone||''),cidade:String(r.cidade||''),
-    last_visit_at:r.createdAt||null,recurrence_months:months,updated_at:new Date().toISOString()};
-  // Status só é enviado quando explicitamente escolhido; abrir o editor
-  // nunca deve apagar um bloqueio "Não contatar" registrado por outro técnico.
-  if(commercialStatus!==undefined)payload.status=commercialStatus;
-  const res=await fetch(`${c.url}/rest/v1/crm_perfis?on_conflict=client_key`,{
-    method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-    body:JSON.stringify(payload)});
+    last_visit_at:r.createdAt||null,recurrence_months:months};
+  const existing=await fetch(`${c.url}/rest/v1/crm_perfis?client_key=eq.${encodeURIComponent(key)}&select=client_key&limit=1`,{headers:crmHistoryCloudHeaders()});
+  if(!existing.ok)throw new Error('Consulta de perfil pendente ('+existing.status+')');
+  const rows=await existing.json();
+  const alreadyExists=Array.isArray(rows)&&rows.length>0;
+  const res=await fetch(alreadyExists?
+    `${c.url}/rest/v1/crm_perfis?client_key=eq.${encodeURIComponent(key)}`:
+    `${c.url}/rest/v1/crm_perfis`,{
+    method:alreadyExists?'PATCH':'POST',headers,body:JSON.stringify(payload)});
   if(!res.ok)throw new Error('Perfil comercial pendente ('+res.status+')');
   return true;
 }
@@ -2883,7 +2896,7 @@ $('#crmSaveClient').onclick=async()=>{
   const selected=(window.__crmClients||[]).find(c=>c.key===crmEditingKey);
   let profileError='';
   if(selected){
-    try{await saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)}
+    try{await saveCrmSharedProfile(selected.last);await saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)}
     catch(e){profileError=e.message||String(e)}
   }
   try{
