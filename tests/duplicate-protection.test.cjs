@@ -145,4 +145,18 @@ async function testPaginatedCloudPullNeverDeletesMissingRecords(){
   assert.equal(added,501,'Todas as páginas devem ser processadas');
   assert.equal(deleted,0,'A ausência na resposta não prova que o registro foi excluído');
 }
-(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function testRemotePhotoRecovery(){
+  const source=extract('async function hydrateRecordMedia(', 'function toCloud(');
+  let downloaded=0,written=0;const warnings=[];
+  const deps={
+    downloadStorageData:async path=>{downloaded++;assert.equal(path,'record-1/antes/foto.jpg');return 'data:image/jpeg;base64,Zm9v';},
+    dbPut:async()=>{written++;},alert:msg=>warnings.push(msg),console:{warn:()=>{}}
+  };
+  const hydrate=functionFrom(source,Object.keys(deps),Object.values(deps),'hydrateRecordMedia');
+  const rec={id:8,photos:[{storagePath:'record-1/antes/foto.jpg',data:''}]};
+  await hydrate(rec);await hydrate(rec);
+  assert.equal(downloaded,1,'Foto remota baixa apenas uma vez e permanece em cache local');
+  assert.equal(written,1,'Foto recuperada é persistida localmente');
+  assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
+}
+(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
