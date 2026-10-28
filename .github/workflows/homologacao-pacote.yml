@@ -1,0 +1,38 @@
+name: Preparar pacote de homologacao
+on:
+  push:
+    branches:
+      - feature/crm-whatsapp-recorrencia-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pacote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar codigo
+        run: |
+          node tests/crm-whatsapp.test.cjs
+          node tests/duplicate-protection.test.cjs
+      - name: Montar pacote da versao de testes
+        run: |
+          mkdir -p homologacao
+          cp index.html manifest.json sw.js homologacao/
+          for file in logo.png icon-192.svg icon-512.svg; do
+            if [ -f "$file" ]; then cp "$file" homologacao/; fi
+          done
+          test -s homologacao/index.html
+          test -s homologacao/sw.js
+          grep -q 'homologNotice' homologacao/index.html
+          grep -q 'solarCleanStagingStrictVistoriaAuth' homologacao/index.html
+          if grep -R -E 'service_role|SUPABASE_SERVICE_ROLE_KEY' homologacao; then
+            echo "Credencial privilegiada detectada. Interrompendo."
+            exit 1
+          fi
+      - name: Publicar artefato para homologacao (sem deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: solar-clean-homologacao
+          path: homologacao/
+          retention-days: 14
