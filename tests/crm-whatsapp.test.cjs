@@ -64,4 +64,7 @@ assert.ok(js.includes("r.__cloudContactOnly?'':whatsappLink"),'Cliente sem cadas
 assert.ok(js.includes('async function pullCrmSharedProfiles()'),'CRM acessa perfis da nuvem');
 assert.ok(js.includes("saveCrmSharedProfile(client.last)"),'CRM persiste perfis após contato');
 assert.ok(js.includes("if(recent.length)"),'Último contato considera histórico recuperado');
+assert.ok(js.includes("solarCleanStagingStrictVistoriaAuth"),'Modo seguro é opt-in');
+assert.ok(js.includes("function vistoriaAuthToken()"),'Autenticação de vistoria separada');
+assert.ok(js.includes("Sessão expirada. Entre novamente na nuvem."),'Sessão expirada é bloqueada no modo de teste');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
