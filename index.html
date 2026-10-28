@@ -1113,7 +1113,11 @@ function updateSyncBadge(text,ok=false){
 }
 // Modo de validação futura: DESLIGADO por padrão. Nenhuma mudança na sincronização atual.
 function strictVistoriaAuthEnabled(){
-  return localStorage.getItem('solarCleanStagingStrictVistoriaAuth')==='true';
+  // A homologação sempre exige autenticação, inclusive em novos navegadores.
+  // Em outros projetos, a chave de teste preserva o comportamento anterior.
+  const projectUrl=cloudConfig().url.replace(/\/+$/,'');
+  return projectUrl==='https://zzphucuiqhzrilrddxnf.supabase.co' ||
+    localStorage.getItem('solarCleanStagingStrictVistoriaAuth')==='true';
 }
 function vistoriaAuthToken(){
   if(!strictVistoriaAuthEnabled())return cloudConfig().key;
@@ -1181,13 +1185,17 @@ async function downloadStorageData(path){
 async function hydrateRecordMedia(record){
   if(!record) return record;
   const photos=record.photos||[];
-  let changed=false;
+  let changed=false,failures=0;
   for(const p of photos){
     if(!p.data && p.storagePath){
-      try{p.data=await downloadStorageData(p.storagePath);changed=true}catch(e){console.warn(e)}
+      try{p.data=await downloadStorageData(p.storagePath);changed=true}
+      catch(e){failures++;console.warn('Foto não recuperada do Storage:',e)}
     }
   }
   if(changed && record.id) await dbPut(record);
+  if(failures){
+    alert(failures+' foto(s) não puderam ser baixadas do armazenamento privado. Verifique sua conexão e o login na nuvem e abra a vistoria novamente. O registro não foi apagado.');
+  }
   return record;
 }
 function toCloud(r){
