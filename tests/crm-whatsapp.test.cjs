@@ -39,4 +39,15 @@ historyHelpers.addCrmContactHistory('cliente-1',{outcome:'Retornar mais tarde',f
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'].length,2);
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'][0].outcome,'Retornar mais tarde');
 assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-2'],undefined);
+historyHelpers.addCrmContactHistory('cliente-2',{outcome:'Cliente respondeu',note:'Isolado'});
+assert.equal(historyHelpers.crmContactHistoryLocal()['cliente-1'].length,2,'Histórico separado por cliente');
+const historySyncHelpers=new Function('localStorage','crypto','
+,'escapeHtml','cloudReady','navigator','cloudConfig','cloudHeaders','fetch',js.slice(historyStart,historyEnd)+'\nreturn {mergeCrmContactHistory,crmContactHistoryLocal,syncCrmContactHistory};')(
+  localStorage,{randomUUID:()=>String(store.size+1)},()=>documentMock,s=>s,
+  ()=>false,{onLine:false},()=>({url:'https://test.invalid'}),()=>({}),async()=>{throw Error('Sem chamadas offline')}
+);
+const before=historySyncHelpers.crmContactHistoryLocal()['cliente-1'];
+historySyncHelpers.mergeCrmContactHistory('cliente-1',[before[0],{id:'remote-one',at:'2026-10-28T15:00:00Z',outcome:'Cliente respondeu',note:'Do outro aparelho'}]);
+historySyncHelpers.mergeCrmContactHistory('cliente-1',[before[0],{id:'remote-one',at:'2026-10-28T15:00:00Z',outcome:'Cliente respondeu',note:'Do outro aparelho'}]);
+assert.equal(historySyncHelpers.crmContactHistoryLocal()['cliente-1'].length,3,'Mesclar duas vezes não duplica');
 console.log('PASS: sintaxe CRM, telefones, mensagens e links WhatsApp');
