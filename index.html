@@ -1251,6 +1251,7 @@ async function pushRecord(local){
   const key=local.id;
   if(key!=null && pendingRecordUploads.has(key)) return pendingRecordUploads.get(key);
   const upload=(async()=>{
+  await ensureVistoriaSession();
   const c=cloudConfig();
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
@@ -1313,6 +1314,32 @@ async function pullCloud(){
   
  let syncAllRunning=false;
 
+// Renova a sessão no modo experimental ANTES do envio de vistorias ou fotos.
+// Sem refresh token, interrompe com segurança, preservando dados locais.
+let pendingVistoriaSessionRefresh=null;
+async function ensureVistoriaSession(){
+  if(!strictVistoriaAuthEnabled())return;
+  if(!cloudReady()||!currentTech()?.cloud)throw new Error('Faça login na nuvem antes de sincronizar vistorias.');
+  const jwt=localStorage.getItem('solarCleanAccessToken')||'';
+  let expiry=0;
+  try{expiry=Number(JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp||0)*1000}catch(e){}
+  if(expiry>Date.now()+60000)return;
+  if(pendingVistoriaSessionRefresh)return pendingVistoriaSessionRefresh;
+  pendingVistoriaSessionRefresh=(async()=>{
+    const refresh=localStorage.getItem('solarCleanRefreshToken')||'';
+    if(!refresh)throw new Error('Sessão expirada. Entre novamente na nuvem.');
+    const c=cloudConfig();
+    const response=await fetch(`${c.url}/auth/v1/token?grant_type=refresh_token`,{
+      method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:refresh})});
+    if(!response.ok)throw new Error('Não foi possível renovar a sessão. Entre novamente na nuvem.');
+    const data=await response.json();
+    if(!data.access_token)throw new Error('Renovação de sessão sem token. Entre novamente na nuvem.');
+    localStorage.setItem('solarCleanAccessToken',data.access_token);
+    if(data.refresh_token)localStorage.setItem('solarCleanRefreshToken',data.refresh_token);
+  })();
+  try{await pendingVistoriaSessionRefresh}finally{pendingVistoriaSessionRefresh=null}
+}
 async function syncAll(){
   if(syncAllRunning) return false;
   syncAllRunning=true;
@@ -1324,6 +1351,7 @@ async function syncAll(){
     }
 
     updateSyncBadge('Sincronizando...');
+    await ensureVistoriaSession();
 
     const all=await dbAll();
 
@@ -2491,6 +2519,7 @@ async function cloudAuthLogin(){
   if(!res.ok)throw new Error('Login inválido ou usuário não cadastrado.');
   const data=await res.json();
   localStorage.setItem('solarCleanAccessToken',data.access_token||'');
+  localStorage.setItem('solarCleanRefreshToken',data.refresh_token||'');
   setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature:window.__techSignatureData||currentTech()?.signature||''});
   return true;
 }
