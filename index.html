@@ -263,7 +263,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="crmScreen" class="hidden">
   <div class="card">
     <h2>CRM / Recorrência</h2>
-    <p class="muted">Clientes organizados automaticamente pela última vistoria e pelo prazo recomendado de nova limpeza.</p>
+    <p class="muted">Clientes organizados automaticamente pela última vistoria e pelo prazo recomendado de nova limpeza. O WhatsApp abre uma mensagem para sua revisão; nenhum envio é automático.</p>
 
     <div class="grid grid3 section">
       <div class="metric"><span class="muted">Clientes</span><b id="crmTotal">0</b></div>
@@ -277,6 +277,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <select id="crmFilter">
           <option value="">Todas</option>
           <option value="overdue">Atrasados</option>
+          <option value="contact">Prioridade para contato (atrasados e próximos)</option>
           <option value="soon">Próximos 30 dias</option>
           <option value="ok">Em dia</option>
           <option value="none">Sem prazo definido</option>
@@ -2050,11 +2051,28 @@ function crmStatus(nextDate){
   if(diff<=30) return {key:'soon',label:diff===0?'Recorrência hoje':`Em ${diff} dia${diff===1?'':'s'}`,rank:2};
   return {key:'ok',label:'Em dia',rank:3};
 }
-function whatsappLink(phone,client){
+function normalizeWhatsappPhone(phone){
   const digits=String(phone||'').replace(/\D/g,'');
-  if(!digits) return '';
   const full=digits.startsWith('55')?digits:`55${digits}`;
-  const msg=`Olá, ${client||''}! Aqui é da Solar Clean. Estamos entrando em contato sobre a recorrência da limpeza do seu sistema fotovoltaico.`;
+  // Aceita apenas números brasileiros com DDD e 10 ou 11 dígitos nacionais.
+  return /^55[1-9][0-9]{9,10}$/.test(full)?full:'';
+}
+function recurrenceWhatsappMessage(client){
+  const name=String(client?.last?.cliente||'').trim();
+  const firstName=name.split(/\s+/)[0]||'tudo bem';
+  const greeting=firstName==='tudo bem'?'Olá!':`Olá, ${firstName}! Tudo bem?`;
+  const status=client?.status?.key;
+  const period=status==='overdue'
+    ?'Já passou o período recomendado para a próxima limpeza do seu sistema fotovoltaico.'
+    :status==='soon'
+    ?'Está chegando o período recomendado para a próxima limpeza do seu sistema fotovoltaico.'
+    :'Gostaríamos de conversar sobre a manutenção e a próxima limpeza do seu sistema fotovoltaico.';
+  return `${greeting} Aqui é da Solar Clean. ${period} Podemos preparar um orçamento e verificar uma data para o atendimento? Se preferir não receber mais lembretes, é só nos avisar.`;
+}
+function whatsappLink(phone,client,message){
+  const full=normalizeWhatsappPhone(phone);
+  if(!full) return '';
+  const msg=message||`Olá, ${client||''}! Aqui é da Solar Clean. Gostaríamos de conversar sobre a manutenção do seu sistema fotovoltaico.`;
   return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
 }
 async function buildCrmClients(){
@@ -2122,7 +2140,9 @@ async function renderCrm(){
   const filtered=clients.filter(c=>{
     const r=c.last;
     const hay=[r.cliente,r.telefone,r.cidade,c.meta?.status,c.meta?.lossReason].join(' ').toLowerCase();
-    return (!q||hay.includes(q))&&(!filter||c.status.key===filter)&&(!commercialFilter||(c.meta?.status||'Ativo')===commercialFilter);
+    return (!q||hay.includes(q))
+      &&(!filter||(filter==='contact'?(['overdue','soon'].includes(c.status.key)&&c.meta?.status!=='Não contatar'):c.status.key===filter))
+      &&(!commercialFilter||(c.meta?.status||'Ativo')===commercialFilter);
   });
   window.__crmFiltered=filtered;
 
@@ -2133,7 +2153,7 @@ async function renderCrm(){
 
   $('#crmList').innerHTML=filtered.map((c,i)=>{
     const r=c.last;
-    const whats=whatsappLink(r.telefone,r.cliente);
+    const whats=whatsappLink(r.telefone,r.cliente,recurrenceWhatsappMessage(c));
     const lastContact=c.meta?.lastContact?new Date(c.meta.lastContact+'T12:00:00').toLocaleDateString('pt-BR'):'Sem contato registrado';
     return `<div class="crm-card">
       <div class="crm-head">
@@ -2149,12 +2169,13 @@ async function renderCrm(){
         <div><span class="muted">Nova limpeza</span><br><b>${escapeHtml(formatDateBR(c.nextDate))}</b></div>
         <div><span class="muted">Último contato</span><br>${escapeHtml(lastContact)}</div>
         <div><span class="muted">Atendimentos</span><br>${c.records.length}</div>
+        <div><span class="muted">WhatsApp</span><br>${escapeHtml(normalizeWhatsappPhone(r.telefone)?'Número válido':'Cadastrar número com DDD')}</div>
         ${c.meta?.lossReason?`<div><span class="muted">Motivo</span><br>${escapeHtml(c.meta.lossReason)}</div>`:''}
       </div>
       <div class="crm-actions">
         <button data-crm-edit="${i}">Editar CRM</button>
         ${c.records.length?`<button data-crm-open="${r.id}">Último relatório</button>`:'<button disabled>Sem vistoria ainda</button>'}
-        ${whats&&c.meta?.status!=='Não contatar'?`<button data-crm-whatsapp="${i}">Abrir WhatsApp</button>`:''}
+        ${whats&&c.meta?.status!=='Não contatar'?`<button data-crm-whatsapp="${i}">Preparar WhatsApp</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -2169,7 +2190,8 @@ async function renderCrm(){
   });
   document.querySelectorAll('[data-crm-whatsapp]').forEach(b=>b.onclick=()=>{
     const c=filtered[Number(b.dataset.crmWhatsapp)];
-    const url=whatsappLink(c?.last?.telefone,c?.last?.cliente);
+    if(!c || c.meta?.status==='Não contatar')return;
+    const url=whatsappLink(c.last.telefone,c.last.cliente,recurrenceWhatsappMessage(c));
     if(url) window.open(url,'_blank','noopener');
   });
 }
