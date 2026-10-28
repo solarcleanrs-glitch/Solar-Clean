@@ -2232,9 +2232,13 @@ async function saveCrmSharedProfile(r,commercialStatus){
   if(commercialStatus!==undefined){
     // Somente uma ação explícita do usuário altera o bloqueio de contato.
     // Não sobrescrever o perfil inteiro com dados antigos vindos de outro navegador.
-    const res=await fetch(`${c.url}/rest/v1/crm_perfis?client_key=eq.${encodeURIComponent(key)}`,{
-      method:'PATCH',headers,body:JSON.stringify({status:commercialStatus,updated_at:new Date().toISOString()})});
+    const res=await fetch(`${c.url}/rest/v1/crm_perfis?client_key=eq.${encodeURIComponent(key)}&select=client_key,status`,{
+      method:'PATCH',headers:crmHistoryCloudHeaders({'Prefer':'return=representation'}),
+      body:JSON.stringify({status:commercialStatus,updated_at:new Date().toISOString()})});
     if(!res.ok)throw new Error('Status comercial pendente ('+res.status+')');
+    const changed=await res.json();
+    if(!Array.isArray(changed)||changed.length!==1||changed[0].status!==commercialStatus)
+      throw new Error('Status comercial não confirmado na nuvem; verifique o cadastro e suas permissões.');
     return true;
   }
   if(r.__cloudContactOnly)return false;
