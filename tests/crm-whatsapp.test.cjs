@@ -61,4 +61,7 @@ assert.equal(authed().Authorization,'Bearer token-auth-ficticio','Deve usar toke
 assert.ok(js.includes('async function pullCrmContactClientKeys()'),'CRM consulta os IDs de clientes do histórico sem sincronizar vistorias');
 assert.ok(js.includes('if(r.__crmKey)return r.__crmKey;'),'Cliente remoto mantém chave do histórico');
 assert.ok(js.includes("r.__cloudContactOnly?'':whatsappLink"),'Cliente sem cadastro completo não recebe abertura de WhatsApp');
-console.log('PASS: sintaxe CRM, telefones, mensagens e links WhatsApp');
+assert.ok(js.includes('async function pullCrmSharedProfiles()'),'CRM acessa perfis da nuvem');
+assert.ok(js.includes("saveCrmSharedProfile(client.last)"),'CRM persiste perfis após contato');
+assert.ok(js.includes("if(recent.length)"),'Último contato considera histórico recuperado');
+console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
