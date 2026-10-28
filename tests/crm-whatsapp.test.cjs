@@ -72,7 +72,8 @@ assert.ok(js.includes("solarCleanRefreshToken"),'Login persiste token para renov
 assert.ok(js.includes("await ensureVistoriaSession();"),'Envios aguardam validação de sessão');
 assert.ok(js.includes("profile.status==='Não contatar'"),'Bloqueio remoto tem prioridade');
 assert.ok(js.includes("method:alreadyExists?'PATCH':'POST'"),'Atualização descritiva preserva status existente');
-assert.ok(js.includes("method:'PATCH',headers,body:JSON.stringify({status:commercialStatus"),'Status só muda por ação explícita');
+assert.ok(js.includes("method:'PATCH',headers:crmHistoryCloudHeaders({'Prefer':'return=representation'})"),'Status só muda por ação explícita');
+assert.ok(js.includes("changed.length!==1||changed[0].status!==commercialStatus"),'Confirmação remota obrigatória');
 assert.ok(js.includes("saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)"),'Salvar CRM compartilha status escolhido');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
 
@@ -87,7 +88,7 @@ async function testSharedProfileStatusProtection(){
     recurrenceMonths:()=>6,
     fetch:async (url,opts={})=>{
       calls.push({url,method:opts.method||'GET',body:opts.body?JSON.parse(opts.body):null});
-      return {ok:true,json:async()=>[{client_key:'tel:51999998888',status:'Não contatar'}]};
+      return {ok:true,json:async()=>[{client_key:'tel:51999998888',status:opts.body?JSON.parse(opts.body).status||'Não contatar':'Não contatar'}]};
     },Date
   };
   const save=new Function(...Object.keys(deps),js.slice(from,to)+'\nreturn saveCrmSharedProfile;')(...Object.values(deps));
