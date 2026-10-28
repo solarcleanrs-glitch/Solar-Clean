@@ -2141,9 +2141,19 @@ async function saveCrmMeta(clientKey,data){
   meta[clientKey]=value;
   saveCrmLocalMeta(meta);
   crmMetaCache=meta;
-  // Metadados permanecem locais até a ativação segura de crm_metadados.
-  // O status é salvo separadamente em crm_perfis, com confirmação do retorno.
-  return value;
+  // A migração crm_metadados é opcional: sem ela, preserva o conteúdo local.
+  if(cloudReady()&&navigator.onLine&&crmHistoryCloudHeaders()){
+    await ensureVistoriaSession();
+    const c=cloudConfig();
+    const payload={client_key:clientKey,last_contact_at:value.lastContact||null,
+      internal_note:value.internalNote,loss_reason:value.lossReason,updated_at:value.updatedAt};
+    const res=await fetch(`${c.url}/rest/v1/crm_metadados?on_conflict=client_key`,{
+      method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body:JSON.stringify(payload)});
+    if(res.ok)return {...value,cloudSynced:true};
+    if(res.status!==404)throw new Error('Metadados locais preservados; nuvem pendente ('+res.status+')');
+  }
+  return {...value,cloudSynced:false};
 }
 function addMonthsSafe(date,months){
   const d=new Date(date);
