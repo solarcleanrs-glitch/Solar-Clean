@@ -2184,10 +2184,38 @@ function loadCompany(){
   try{const c=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}');Object.entries(c).forEach(([k,v])=>{if($('#'+k))$('#'+k).value=v||''})}catch(e){}
 }
 async function exportBackup(){
-  const all=await dbAll();
-  const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company:JSON.parse(localStorage.getItem('solarCleanCompany')||'{}'),vistorias:all};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const btn=$('#exportBackup'),oldText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Preparando backup...';
+  let url=null;
+  try{
+    // Preserva todas as informações e fotos locais, sem alterar as vistorias.
+    const all=await dbAll();
+    let company={};
+    try{company=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}')}
+    catch(e){console.warn('Configurações locais inválidas no backup:',e)}
+    const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company,vistorias:all};
+    const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+    url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`solar-clean-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Evita revogar o arquivo antes que o navegador inicie o download.
+    const downloadUrl=url;
+    setTimeout(()=>URL.revokeObjectURL(downloadUrl),60000);
+    url=null;
+  }catch(e){
+    console.error('Erro ao exportar backup:',e);
+    alert('Não foi possível preparar o backup. Nenhuma vistoria foi apagada. Detalhe: '+(e?.message||String(e)));
+  }finally{
+    if(url) URL.revokeObjectURL(url);
+    btn.disabled=false;
+    btn.textContent=oldText;
+  }
 }
 let generateAndSaveRunning=false;
 async function generateAndSave(){
