@@ -1234,6 +1234,8 @@ valorRecebido:Number(c.valor_recebido||0),
 }
 async function testCloud(){
   if(!cloudReady()) throw new Error('Preencha a URL e a Anon Key do Supabase.');
+  // Em homologação, a consulta deve usar JWT válido, nunca credenciais anônimas.
+  await ensureVistoriaSession();
   const c=cloudConfig();
   const res=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,media_manifest,client_signature,tech_signature,show_generation,inv_internet&limit=1`,{headers:cloudHeaders({'Prefer':''})});
   if(!res.ok){
@@ -1282,6 +1284,7 @@ async function pushRecord(local){
   finally{if(key!=null && pendingRecordUploads.get(key)===upload) pendingRecordUploads.delete(key)}
 }
 async function pullCloud(){
+  await ensureVistoriaSession();
   const c=cloudConfig();
   const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc`,{headers:cloudHeaders({'Prefer':''})});
   if(!res.ok) throw new Error(`Leitura falhou (${res.status})`);
