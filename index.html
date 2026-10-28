@@ -323,7 +323,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <label class="section"><span>Observação comercial interna</span><textarea id="crmInternalNote" rows="4" placeholder="Informações somente para a equipe"></textarea></label>
       <div class="section" style="border-top:1px solid var(--line);padding-top:14px">
         <h3>Histórico comercial neste aparelho</h3>
-        <p class="muted small">Registros ficam salvos neste aparelho e são sincronizados quando a tabela crm_contatos está configurada no Supabase.</p>
+        <p class="muted small">Registros ficam salvos neste aparelho. A sincronização exige login com Supabase e permissão específica para a equipe.</p>
         <div class="grid grid2">
           <label><span>Resultado do contato</span>
             <select id="crmContactOutcome">
@@ -2015,8 +2015,16 @@ function mergeCrmContactHistory(clientKey,incoming){
   localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
   return all[clientKey];
 }
+function crmHistoryCloudHeaders(extra={}){
+  // Não usar a chave anon como identidade: RLS exige sessão real do técnico.
+  const token=localStorage.getItem('solarCleanAccessToken')||'';
+  if(!currentTech()?.cloud||!token)return null;
+  return cloudHeaders({...extra,Authorization:`Bearer ${token}`});
+}
 async function syncCrmContactHistory(clientKey){
   if(!cloudReady()||!navigator.onLine)return false;
+  const headers=crmHistoryCloudHeaders();
+  if(!headers)return false;
   const c=cloudConfig();
   const locals=crmContactHistoryLocal()[clientKey]||[];
   // O registro tem UUID permanente: reenvios são idempotentes.
@@ -2024,11 +2032,11 @@ async function syncCrmContactHistory(clientKey){
   for(const e of locals){
     const payload={id:e.id,client_key:clientKey,created_at:e.at,outcome:e.outcome,followup_date:e.followup||null,note:e.note||''};
     const response=await fetch(`${c.url}/rest/v1/crm_contatos?on_conflict=id`,{
-      method:'POST',headers:cloudHeaders({'Prefer':'resolution=ignore-duplicates,return=minimal'}),body:JSON.stringify(payload)
+      method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=ignore-duplicates,return=minimal'}),body:JSON.stringify(payload)
     });
     if(!response.ok)throw new Error('Histórico comercial não sincronizado ('+response.status+')');
   }
-  const res=await fetch(`${c.url}/rest/v1/crm_contatos?client_key=eq.${encodeURIComponent(clientKey)}&select=*&order=created_at.desc&limit=100`,{headers:cloudHeaders()});
+  const res=await fetch(`${c.url}/rest/v1/crm_contatos?client_key=eq.${encodeURIComponent(clientKey)}&select=*&order=created_at.desc&limit=100`,{headers:crmHistoryCloudHeaders()});
   if(!res.ok)throw new Error('Falha ao consultar histórico ('+res.status+')');
   const rows=await res.json();
   mergeCrmContactHistory(clientKey,rows.map(r=>({id:r.id,at:r.created_at,outcome:r.outcome,followup:r.followup_date||'',note:r.note||''})));
