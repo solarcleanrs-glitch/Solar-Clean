@@ -2912,13 +2912,13 @@ $('#crmSaveClient').onclick=async()=>{
     catch(e){profileError=e.message||String(e)}
   }
   try{
-    await saveCrmMeta(crmEditingKey,{
+    const metaResult=await saveCrmMeta(crmEditingKey,{
       status:$('#crmClientStatus').value,
       lastContact:$('#crmLastContact').value,
       lossReason:$('#crmLossReason').value,
       internalNote:$('#crmInternalNote').value.trim()
     });
-    $('#crmEditorStatus').textContent=profileError?'Dados comerciais locais salvos; status na nuvem pendente: '+profileError:'Status comercial sincronizado; observações e motivo de perda salvos somente neste aparelho.';
+    $('#crmEditorStatus').textContent=profileError?'Dados comerciais locais salvos; status na nuvem pendente: '+profileError:(metaResult.cloudSynced?'Status, observações e motivo de perda sincronizados.':'Status comercial sincronizado; observações e motivo de perda salvos neste aparelho.');
     await renderCrm();
   }catch(e){
     $('#crmEditorStatus').textContent='Falha ao salvar dados comerciais: '+e.message+(profileError?' | Status na nuvem pendente: '+profileError:'');
