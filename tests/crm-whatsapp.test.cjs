@@ -29,7 +29,7 @@ assert.ok(historyStart>=0&&historyEnd>historyStart);
 const store=new Map();
 const localStorage={getItem:key=>store.get(key)||null,setItem:(key,val)=>store.set(key,val)};
 const documentMock={innerHTML:''};
-const historyHelpers=new Function('localStorage','crypto','js.slice(historyStart,historyEnd)+'\nreturn {addCrmContactHistory,crmContactHistoryLocal,renderCrmContactHistory};')(
+const historyHelpers=new Function('localStorage','crypto','$','escapeHtml',js.slice(historyStart,historyEnd)+'\nreturn {addCrmContactHistory,crmContactHistoryLocal,renderCrmContactHistory};')(
  localStorage,{randomUUID:()=>String(store.size+1)},()=>documentMock,s=>String(s).replaceAll('<','&lt;')
 );
 historyHelpers.addCrmContactHistory('cliente-1',{outcome:'Cliente respondeu',note:'Solicitou orçamento'});
