@@ -91,6 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
+<div id="homologNotice" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.</div>
 
 <main>
 <section id="home">
@@ -1107,6 +1108,12 @@ function cloudConfig(){
   };
 }
 function cloudReady(){const c=cloudConfig();return c.url.startsWith('https://')&&c.key.length>20}
+function updateHomologNotice(){
+  const el=document.getElementById('homologNotice');
+  if(!el)return;
+  const isTest=cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co';
+  el.classList.toggle('hidden',!isTest);
+}
 function updateSyncBadge(text,ok=false){
   $('#syncBadge').textContent=text;
   $('#syncBadge').style.background=ok?'#e9f8ef':'#fff';
@@ -2443,10 +2450,11 @@ function saveCompany(){
     empresa:$('#empresa').value,empresaTel:$('#empresaTel').value,empresaCnpj:$('#empresaCnpj').value,empresaInsta:$('#empresaInsta').value,
     empresaEmail:$('#empresaEmail').value,empresaSite:$('#empresaSite').value,supabaseUrl:$('#supabaseUrl').value,supabaseKey:$('#supabaseKey').value
   };
-  localStorage.setItem('solarCleanCompany',JSON.stringify(c)); $('#cloudStatus').textContent='Configurações salvas neste aparelho.'; updateDashboard();
+  localStorage.setItem('solarCleanCompany',JSON.stringify(c)); updateHomologNotice(); $('#cloudStatus').textContent='Configurações salvas neste aparelho.'; updateDashboard();
 }
 function loadCompany(){
   try{const c=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}');Object.entries(c).forEach(([k,v])=>{if($('#'+k))$('#'+k).value=v||''})}catch(e){}
+  updateHomologNotice();
 }
 async function exportBackup(){
   const btn=$('#exportBackup'),oldText=btn.textContent;
@@ -2946,7 +2954,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').disabled=false});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null}else{alert('Para instalar: abra este site no Chrome/Edge e use “Adicionar à tela inicial” ou “Instalar aplicativo”.')}};
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-loadCompany(); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
+loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
 </script>
 </body>
 </html>
