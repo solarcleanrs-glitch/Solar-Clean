@@ -2808,6 +2808,13 @@ $('#crmLogContact').onclick=async()=>{
 $('#crmSaveClient').onclick=async()=>{
   if(!crmEditingKey)return;
   $('#crmEditorStatus').textContent='Salvando...';
+  // O perfil compartilhado não depende da tabela de metadados CRM.
+  const selected=(window.__crmClients||[]).find(c=>c.key===crmEditingKey);
+  let profileError='';
+  if(selected){
+    try{await saveCrmSharedProfile(selected.last)}
+    catch(e){profileError=e.message||String(e)}
+  }
   try{
     await saveCrmMeta(crmEditingKey,{
       status:$('#crmClientStatus').value,
@@ -2815,10 +2822,10 @@ $('#crmSaveClient').onclick=async()=>{
       lossReason:$('#crmLossReason').value,
       internalNote:$('#crmInternalNote').value.trim()
     });
-    $('#crmEditorStatus').textContent='CRM salvo e sincronizado.';
+    $('#crmEditorStatus').textContent=profileError?'CRM salvo; perfil compartilhado pendente: '+profileError:'CRM salvo e sincronizado.';
     await renderCrm();
   }catch(e){
-    $('#crmEditorStatus').textContent='Salvo neste aparelho, mas pendente de nuvem: '+e.message;
+    $('#crmEditorStatus').textContent='Metadados salvos neste aparelho; sincronização pendente: '+e.message+(profileError?' | Perfil pendente: '+profileError:' | Perfil compartilhado enviado separadamente.');
     await renderCrm();
   }
 };
