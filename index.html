@@ -2089,6 +2089,7 @@ function crmHistoryCloudHeaders(extra={}){
 }
 async function syncCrmContactHistory(clientKey){
   if(!cloudReady()||!navigator.onLine)return false;
+  await ensureVistoriaSession();
   const headers=crmHistoryCloudHeaders();
   if(!headers)return false;
   const c=cloudConfig();
@@ -2197,6 +2198,7 @@ function whatsappLink(phone,client,message){
 }
 async function pullCrmSharedProfiles(){
   if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];
+  await ensureVistoriaSession();
   try{
     const c=cloudConfig();
     const res=await fetch(`${c.url}/rest/v1/crm_perfis?select=client_key,cliente,telefone,cidade,last_visit_at,recurrence_months,status,updated_at&limit=1000`,{headers:crmHistoryCloudHeaders()});
@@ -2206,6 +2208,7 @@ async function pullCrmSharedProfiles(){
 }
 async function saveCrmSharedProfile(r,commercialStatus){
   if(!r||!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return false;
+  await ensureVistoriaSession();
   const key=crmKey(r),c=cloudConfig(),headers=crmHistoryCloudHeaders({'Prefer':'return=minimal'});
   if(commercialStatus!==undefined){
     // Somente uma ação explícita do usuário altera o bloqueio de contato.
