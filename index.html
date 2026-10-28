@@ -1286,9 +1286,19 @@ async function pushRecord(local){
 async function pullCloud(){
   await ensureVistoriaSession();
   const c=cloudConfig();
-  const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc`,{headers:cloudHeaders({'Prefer':''})});
-  if(!res.ok) throw new Error(`Leitura falhou (${res.status})`);
-  const rows=await res.json(), locals=await dbAll();
+  // Busca todas as páginas antes de conciliar registros locais. Um resultado
+  // parcial nunca deve ser interpretado como exclusão de vistorias.
+  const rows=[];
+  const pageSize=500;
+  for(let offset=0;;offset+=pageSize){
+    const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc,client_uuid.asc&limit=${pageSize}&offset=${offset}`,{headers:cloudHeaders({'Prefer':''})});
+    if(!res.ok) throw new Error(`Leitura falhou (${res.status}); nenhum registro local foi removido.`);
+    const page=await res.json();
+    if(!Array.isArray(page)) throw new Error('Resposta inesperada da nuvem; sincronização interrompida.');
+    rows.push(...page);
+    if(page.length<pageSize)break;
+  }
+  const locals=await dbAll();
 
   // 1) Atualiza ou adiciona o que existe na nuvem.
   for(const row of rows){
@@ -1304,15 +1314,10 @@ async function pullCloud(){
     }
   }
 
-  // 2) Propaga exclusões feitas em outro aparelho.
-  // Se um registro local já estava sincronizado e possui cloudId,
-  // mas esse cloudId não existe mais no Supabase, remove a cópia local.
-  const cloudIds = new Set(rows.map(r=>r.client_uuid).filter(Boolean));
-  for(const local of locals){
-    if(local.cloudId && local.syncStatus==='synced' && !cloudIds.has(local.cloudId)){
-      await dbDelete(local.id);
-    }
-  }
+  // Não apagar cópias locais por ausência na consulta. Ausência pode indicar
+  // filtragem de acesso, inconsistência temporária ou mudança de projeto.
+  // Exclusões devem exigir um evento explícito e verificável.
+
 }
   
  let syncAllRunning=false;
