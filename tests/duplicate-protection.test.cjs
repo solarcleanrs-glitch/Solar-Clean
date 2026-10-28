@@ -21,6 +21,7 @@ async function testConcurrentUploads() {
   let posts=0, uuid=0;
   const deps={
     cloudConfig:()=>({url:'https://example.invalid'}),
+    ensureVistoriaSession:async()=>{},
     dbPut:async()=>{},
     uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId}),
