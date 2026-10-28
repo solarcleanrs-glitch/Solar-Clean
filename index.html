@@ -323,7 +323,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <label class="section"><span>Observação comercial interna</span><textarea id="crmInternalNote" rows="4" placeholder="Informações somente para a equipe"></textarea></label>
       <div class="section" style="border-top:1px solid var(--line);padding-top:14px">
         <h3>Histórico comercial neste aparelho</h3>
-        <p class="muted small">Registros de acompanhamento ficam salvos somente neste navegador nesta versão. Não são enviados automaticamente ao Supabase.</p>
+        <p class="muted small">Registros ficam salvos neste aparelho e são sincronizados quando a tabela crm_contatos está configurada no Supabase.</p>
         <div class="grid grid2">
           <label><span>Resultado do contato</span>
             <select id="crmContactOutcome">
@@ -2004,6 +2004,36 @@ function addCrmContactHistory(clientKey,entry){
   localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
   return all[clientKey];
 }
+function mergeCrmContactHistory(clientKey,incoming){
+  const all=crmContactHistoryLocal();
+  const existing=Array.isArray(all[clientKey])?all[clientKey]:[];
+  const byId=new Map();
+  for(const e of [...existing,...incoming]){
+    if(e&&e.id)byId.set(e.id,e);
+  }
+  all[clientKey]=[...byId.values()].sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,100);
+  localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
+  return all[clientKey];
+}
+async function syncCrmContactHistory(clientKey){
+  if(!cloudReady()||!navigator.onLine)return false;
+  const c=cloudConfig();
+  const locals=crmContactHistoryLocal()[clientKey]||[];
+  // O registro tem UUID permanente: reenvios são idempotentes.
+  // Caso a tabela ainda não tenha sido criada, preserva todo o histórico local.
+  for(const e of locals){
+    const payload={id:e.id,client_key:clientKey,created_at:e.at,outcome:e.outcome,followup_date:e.followup||null,note:e.note||''};
+    const response=await fetch(`${c.url}/rest/v1/crm_contatos?on_conflict=id`,{
+      method:'POST',headers:cloudHeaders({'Prefer':'resolution=ignore-duplicates,return=minimal'}),body:JSON.stringify(payload)
+    });
+    if(!response.ok)throw new Error('Histórico comercial não sincronizado ('+response.status+')');
+  }
+  const res=await fetch(`${c.url}/rest/v1/crm_contatos?client_key=eq.${encodeURIComponent(clientKey)}&select=*&order=created_at.desc&limit=100`,{headers:cloudHeaders()});
+  if(!res.ok)throw new Error('Falha ao consultar histórico ('+res.status+')');
+  const rows=await res.json();
+  mergeCrmContactHistory(clientKey,rows.map(r=>({id:r.id,at:r.created_at,outcome:r.outcome,followup:r.followup_date||'',note:r.note||''})));
+  return true;
+}
 function renderCrmContactHistory(clientKey){
   const entries=crmContactHistoryLocal()[clientKey]||[];
   $('#crmContactHistory').innerHTML=entries.length?entries.map(e=>`<div class="history-item"><div><b>${escapeHtml(e.outcome||'Contato')}</b>
@@ -2173,6 +2203,10 @@ function openCrmEditor(client){
   $('#crmFollowupDate').value='';
   $('#crmContactNote').value='';
   renderCrmContactHistory(client.key);
+  if(cloudReady()&&navigator.onLine){
+    syncCrmContactHistory(client.key).then(()=>renderCrmContactHistory(client.key))
+      .catch(e=>{console.warn('Histórico de contatos disponível localmente:',e)});
+  }
   $('#crmEditor').classList.remove('hidden');
   $('#crmEditor').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -2684,6 +2718,14 @@ $('#crmLogContact').onclick=async()=>{
       $('#crmEditorStatus').textContent='Contato registrado; data do último contato atualizada.';
     }catch(e){
       $('#crmEditorStatus').textContent='Contato e data salvos neste aparelho; sincronização do CRM pendente: '+e.message;
+    }
+    if(cloudReady()&&navigator.onLine){
+      try{
+        await syncCrmContactHistory(crmEditingKey);
+        renderCrmContactHistory(crmEditingKey);
+      }catch(e){
+        $('#crmEditorStatus').textContent+=' Histórico detalhado pendente de sincronização; permanece salvo neste aparelho.';
+      }
     }
     await renderCrm();
   }catch(e){$('#crmEditorStatus').textContent='Falha ao registrar histórico: '+e.message}
