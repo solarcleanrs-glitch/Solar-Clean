@@ -2129,17 +2129,23 @@ async function pullCrmMeta(){
     try{
       await ensureVistoriaSession();
       const c=cloudConfig();
-      const res=await fetch(`${c.url}/rest/v1/crm_metadados?select=client_key,last_contact_at,internal_note,loss_reason,updated_at&limit=1000`,{headers:crmHistoryCloudHeaders()});
-      if(res.ok){
-        for(const row of await res.json()){
-          const old=meta[row.client_key]||{};
-          if(String(row.updated_at||'')>=String(old.updatedAt||'')){
-            meta[row.client_key]={...old,lastContact:row.last_contact_at||'',
-              internalNote:row.internal_note||'',lossReason:row.loss_reason||'',updatedAt:row.updated_at||''};
-          }
-        }
-        saveCrmLocalMeta(meta);
+      const rows=[],pageSize=500;
+      for(let offset=0;;offset+=pageSize){
+        const res=await fetch(`${c.url}/rest/v1/crm_metadados?select=client_key,last_contact_at,internal_note,loss_reason,updated_at&order=client_key.asc&limit=${pageSize}&offset=${offset}`,{headers:crmHistoryCloudHeaders()});
+        if(!res.ok)break;
+        const page=await res.json();
+        if(!Array.isArray(page))break;
+        rows.push(...page);
+        if(page.length<pageSize)break;
       }
+      for(const row of rows){
+        const old=meta[row.client_key]||{};
+        if(String(row.updated_at||'')>=String(old.updatedAt||'')){
+          meta[row.client_key]={...old,lastContact:row.last_contact_at||'',
+            internalNote:row.internal_note||'',lossReason:row.loss_reason||'',updatedAt:row.updated_at||''};
+        }
+      }
+      if(rows.length)saveCrmLocalMeta(meta);
     }catch(e){console.warn('Metadados comerciais disponíveis localmente:',e)}
   }
   crmMetaCache=meta;
