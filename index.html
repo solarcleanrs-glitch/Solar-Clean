@@ -2278,13 +2278,13 @@ async function buildCrmClients(){
   const profiles=await pullCrmSharedProfiles();
   const profileByKey=new Map(profiles.map(p=>[p.client_key,p]));
   await pullCrmMeta();
-  // Respeita o bloqueio compartilhado entre aparelhos mesmo sem vistorias locais.
+  // O perfil compartilhado é a fonte do status comercial entre aparelhos.
+  // Isso aplica tanto o bloqueio quanto a liberação posterior de "Não contatar".
+  // Metadados como notas e histórico continuam vindo de crm_clientes.
   for(const profile of profiles){
-    if(profile.status==='Não contatar'){
+    if(profile.status){
       const old=crmMetaCache[profile.client_key]||{};
-      crmMetaCache[profile.client_key]={...old,status:'Não contatar'};
-    }else if(profile.status && !crmMetaCache[profile.client_key]?.updatedAt){
-      crmMetaCache[profile.client_key]={...(crmMetaCache[profile.client_key]||{}),status:profile.status};
+      crmMetaCache[profile.client_key]={...old,status:profile.status};
     }
   }
   const groups=new Map();
