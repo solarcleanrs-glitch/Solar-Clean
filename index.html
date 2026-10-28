@@ -2159,6 +2159,27 @@ function whatsappLink(phone,client,message){
   const msg=message||`Olá, ${client||''}! Aqui é da Solar Clean. Gostaríamos de conversar sobre a manutenção do seu sistema fotovoltaico.`;
   return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
 }
+async function pullCrmSharedProfiles(){
+  if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];
+  try{
+    const c=cloudConfig();
+    const res=await fetch(`${c.url}/rest/v1/crm_perfis?select=client_key,cliente,telefone,cidade,last_visit_at,recurrence_months&limit=1000`,{headers:crmHistoryCloudHeaders()});
+    if(!res.ok)return [];
+    return await res.json();
+  }catch(e){console.warn('Perfis comerciais indisponíveis:',e);return []}
+}
+async function saveCrmSharedProfile(r){
+  if(!r||r.__cloudContactOnly||!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return false;
+  const key=crmKey(r),months=recurrenceMonths(r.retorno);
+  const c=cloudConfig();
+  const payload={client_key:key,cliente:String(r.cliente||''),telefone:String(r.telefone||''),cidade:String(r.cidade||''),
+    last_visit_at:r.createdAt||null,recurrence_months:months,updated_at:new Date().toISOString()};
+  const res=await fetch(`${c.url}/rest/v1/crm_perfis?on_conflict=client_key`,{
+    method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify(payload)});
+  if(!res.ok)throw new Error('Perfil comercial pendente ('+res.status+')');
+  return true;
+}
 async function pullCrmContactClientKeys(){
   if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];
   try{
@@ -2176,6 +2197,8 @@ async function buildCrmClients(){
   const all=await dbAll();
   const standalone=await pullStandaloneClients();
   const cloudContactKeys=await pullCrmContactClientKeys();
+  const profiles=await pullCrmSharedProfiles();
+  const profileByKey=new Map(profiles.map(p=>[p.client_key,p]));
   await pullCrmMeta();
   const groups=new Map();
 
@@ -2200,15 +2223,17 @@ async function buildCrmClients(){
   // Exibe também clientes cujo contato já existe na nuvem, mas cuja
   // vistoria/cadastro ainda não foi importado para este aparelho.
   // O identificador preserva o vínculo com o histórico remoto.
-  for(const key of cloudContactKeys){
+  for(const key of new Set([...cloudContactKeys,...profileByKey.keys()])){
     if(groups.has(key))continue;
+    const profile=profileByKey.get(key);
     const phone=key.startsWith('tel:')?key.slice(4):'';
     const name=key.startsWith('nome:')?key.slice(5).split('|')[0]:'';
     groups.set(key,[{
       __crmKey:key,__standaloneClient:true,__cloudContactOnly:true,
-      cliente:name||'Cliente do histórico (sem cadastro local)',
-      telefone:phone,cidade:'',createdAt:'',dateLabel:'Não disponível',
-      retorno:'',syncStatus:'synced'
+      cliente:profile?.cliente||name||'Cliente do histórico (sem cadastro local)',
+      telefone:profile?.telefone||phone,cidade:profile?.cidade||'',
+      createdAt:profile?.last_visit_at||'',dateLabel:profile?.last_visit_at?new Date(profile.last_visit_at).toLocaleDateString('pt-BR'):'Não disponível',
+      retorno:profile?.recurrence_months?String(profile.recurrence_months)+' meses':'',syncStatus:'synced'
     }]);
   }
 
@@ -2218,7 +2243,12 @@ async function buildCrmClients(){
     const months=recurrenceMonths(last.retorno);
     const nextDate=months?addMonthsSafe(last.createdAt,months):null;
     const status=crmStatus(nextDate);
-    const meta=crmMetaCache[crmKey(last)]||{status:'Ativo',lastContact:'',internalNote:'',lossReason:''};
+    const meta={status:'Ativo',lastContact:'',internalNote:'',lossReason:'',...(crmMetaCache[crmKey(last)]||{})};
+    const recent=crmContactHistoryLocal()[crmKey(last)]||[];
+    if(recent.length){
+      const latest=recent.map(e=>String(e.at||'').slice(0,10)).filter(Boolean).sort().at(-1);
+      if(latest&&(!meta.lastContact||latest>meta.lastContact))meta.lastContact=latest;
+    }
     const realVisits=records.filter(r=>!r.__standaloneClient);
     return {key:crmKey(last),last,records:realVisits,nextDate,status,meta};
   }).sort((a,b)=>{
@@ -2242,7 +2272,7 @@ function openCrmEditor(client){
   $('#crmContactNote').value='';
   renderCrmContactHistory(client.key);
   if(cloudReady()&&navigator.onLine){
-    syncCrmContactHistory(client.key).then(()=>renderCrmContactHistory(client.key))
+    syncCrmContactHistory(client.key).then(()=>{renderCrmContactHistory(client.key);renderCrm()})
       .catch(e=>{console.warn('Histórico de contatos disponível localmente:',e)});
   }
   $('#crmEditor').classList.remove('hidden');
@@ -2765,6 +2795,10 @@ $('#crmLogContact').onclick=async()=>{
         $('#crmEditorStatus').textContent+=' Histórico detalhado pendente de sincronização; permanece salvo neste aparelho.';
       }
     }
+    try{
+      const client=(window.__crmClients||[]).find(c=>c.key===crmEditingKey);
+      if(client)await saveCrmSharedProfile(client.last);
+    }catch(e){console.warn('Perfil comercial pendente:',e)}
     await renderCrm();
   }catch(e){$('#crmEditorStatus').textContent='Falha ao registrar histórico: '+e.message}
 };
