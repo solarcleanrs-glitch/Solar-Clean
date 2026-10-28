@@ -798,6 +798,8 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
+  // Uma nova vistoria libera um novo salvamento; a anterior não pode ser criada de novo.
+  savedCurrentFormRecordId=null;
  ['cliente','telefone','cidade','endereco','mapsUrl','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
 
 $("#pagamentoStatus").value='Pendente';
@@ -1375,11 +1377,11 @@ async function renderHistory(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r){await hydrateRecordMedia(r);renderReport(r)}});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
-    if(r){await hydrateRecordMedia(r);editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
-    if(r){await hydrateRecordMedia(r);editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
@@ -2218,8 +2220,13 @@ async function exportBackup(){
   }
 }
 let generateAndSaveRunning=false;
+let savedCurrentFormRecordId=null;
 async function generateAndSave(){
   if(generateAndSaveRunning) return;
+  if(savedCurrentFormRecordId!=null){
+    alert('Esta vistoria já foi salva. Para um novo serviço, toque em Nova vistoria. Para corrigir informações, use Editar no histórico.');
+    return;
+  }
   generateAndSaveRunning=true;
   try{
   let r=collectForm();
@@ -2234,11 +2241,14 @@ async function generateAndSave(){
     await dbPut(r);
     editingRecord=null;
   }else{
-    r.cloudId=null;
+    // ID definido antes do primeiro salvamento: o envio na nuvem é idempotente.
+    r.cloudId=crypto.randomUUID();
     r.syncStatus='pending';
     const id=await dbAdd(r);
     r.id=id;
   }
+  // Desde o primeiro armazenamento local, esta tela só pode salvar esta vistoria uma vez.
+  savedCurrentFormRecordId=r.id;
 // Atualiza o pagamento no agendamento que originou esta vistoria.
 if(window.__agendaSourceId){
   try{
