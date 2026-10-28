@@ -321,6 +321,26 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         </label>
       </div>
       <label class="section"><span>Observação comercial interna</span><textarea id="crmInternalNote" rows="4" placeholder="Informações somente para a equipe"></textarea></label>
+      <div class="section" style="border-top:1px solid var(--line);padding-top:14px">
+        <h3>Histórico comercial neste aparelho</h3>
+        <p class="muted small">Registros de acompanhamento ficam salvos somente neste navegador nesta versão. Não são enviados automaticamente ao Supabase.</p>
+        <div class="grid grid2">
+          <label><span>Resultado do contato</span>
+            <select id="crmContactOutcome">
+              <option value="Tentativa sem resposta">Tentativa sem resposta</option>
+              <option value="Cliente respondeu">Cliente respondeu</option>
+              <option value="Orçamento solicitado">Orçamento solicitado</option>
+              <option value="Agendamento combinado">Agendamento combinado</option>
+              <option value="Retornar mais tarde">Retornar mais tarde</option>
+              <option value="Não deseja contato">Não deseja contato</option>
+            </select>
+          </label>
+          <label><span>Data para retornar (opcional)</span><input type="date" id="crmFollowupDate"></label>
+        </div>
+        <label class="section"><span>Detalhes do contato</span><textarea id="crmContactNote" rows="2" placeholder="Ex.: respondeu pelo WhatsApp e pediu orçamento"></textarea></label>
+        <button type="button" id="crmLogContact">Adicionar ao histórico</button>
+        <div id="crmContactHistory" class="section"></div>
+      </div>
       <div class="crm-editor-actions">
         <button type="button" id="crmContactToday">Registrar contato hoje</button>
         <button type="button" class="primary" id="crmSaveClient">Salvar CRM</button>
@@ -1965,6 +1985,31 @@ function crmLocalMeta(){
 function saveCrmLocalMeta(meta){
   localStorage.setItem('solarCleanCrmMeta',JSON.stringify(meta||{}));
 }
+function crmContactHistoryLocal(){
+  try{
+    const entries=JSON.parse(localStorage.getItem('solarCleanCrmContactHistory')||'{}');
+    return entries&&typeof entries==='object'&&!Array.isArray(entries)?entries:{};
+  }catch(e){return {}}
+}
+function addCrmContactHistory(clientKey,entry){
+  if(!clientKey)throw new Error('Cliente não selecionado');
+  const all=crmContactHistoryLocal();
+  const items=Array.isArray(all[clientKey])?all[clientKey]:[];
+  all[clientKey]=[{
+    id:crypto.randomUUID(),at:new Date().toISOString(),
+    outcome:String(entry.outcome||'Tentativa sem resposta').slice(0,80),
+    followup:String(entry.followup||'').slice(0,10),
+    note:String(entry.note||'').slice(0,1000)
+  },...items].slice(0,100);
+  localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
+  return all[clientKey];
+}
+function renderCrmContactHistory(clientKey){
+  const entries=crmContactHistoryLocal()[clientKey]||[];
+  $('#crmContactHistory').innerHTML=entries.length?entries.map(e=>`<div class="history-item"><div><b>${escapeHtml(e.outcome||'Contato')}</b>
+    <div class="small">${escapeHtml(new Date(e.at).toLocaleString('pt-BR'))}${e.followup?' • Retornar: '+escapeHtml(e.followup.split('-').reverse().join('/')):''}</div>
+    <div class="small">${escapeHtml(e.note||'')}</div></div></div>`).join(''):'<p class="muted small">Nenhum contato registrado neste aparelho.</p>';
+}
 async function pullCrmMeta(){
   let meta=crmLocalMeta();
   if(cloudReady() && navigator.onLine){
@@ -2124,6 +2169,10 @@ function openCrmEditor(client){
   $('#crmLossReason').value=meta.lossReason||'';
   $('#crmInternalNote').value=meta.internalNote||'';
   $('#crmEditorStatus').textContent='';
+  $('#crmContactOutcome').value='Tentativa sem resposta';
+  $('#crmFollowupDate').value='';
+  $('#crmContactNote').value='';
+  renderCrmContactHistory(client.key);
   $('#crmEditor').classList.remove('hidden');
   $('#crmEditor').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -2607,6 +2656,23 @@ $('#crmContactToday').onclick=()=>{
   $('#crmEditorStatus').textContent='Contato de hoje marcado. Clique em Salvar CRM para confirmar.';
 };
 $('#crmCloseEditor').onclick=()=>{$('#crmEditor').classList.add('hidden');crmEditingKey=''};
+$('#crmLogContact').onclick=()=>{
+  if(!crmEditingKey)return;
+  const outcome=$('#crmContactOutcome').value;
+  if(outcome==='Não deseja contato' && $('#crmClientStatus').value!=='Não contatar'){
+    $('#crmClientStatus').value='Não contatar';
+    $('#crmEditorStatus').textContent='Status alterado para Não contatar. Clique em Salvar CRM para sincronizar esta preferência.';
+  }else{
+    $('#crmEditorStatus').textContent='Contato registrado neste aparelho. Não foi enviada nenhuma mensagem.';
+  }
+  try{
+    addCrmContactHistory(crmEditingKey,{
+      outcome,followup:$('#crmFollowupDate').value,note:$('#crmContactNote').value.trim()
+    });
+    renderCrmContactHistory(crmEditingKey);
+    $('#crmContactNote').value='';
+  }catch(e){$('#crmEditorStatus').textContent='Falha ao registrar histórico: '+e.message}
+};
 $('#crmSaveClient').onclick=async()=>{
   if(!crmEditingKey)return;
   $('#crmEditorStatus').textContent='Salvando...';
