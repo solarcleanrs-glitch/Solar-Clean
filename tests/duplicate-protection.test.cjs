@@ -122,4 +122,27 @@ async function testOfflineRecoveryWithoutDuplicate() {
   assert.equal(records.length,1,'Baixar o mesmo serviço não deve duplicar o registro local');
   assert.equal(records[0].cloudId,'stable-uuid','ID original preservado');
 }
-(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function testPaginatedCloudPullNeverDeletesMissingRecords(){
+  const source=extract('async function pullCloud()', 'let syncAllRunning=false;');
+  const locals=[{id:1,cloudId:'existing-local',syncStatus:'synced',updatedAt:'2026-10-28T13:00:00Z'}];
+  let requests=0,deleted=0,added=0;
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    fetch:async url=>{
+      const offset=Number(new URL(url).searchParams.get('offset'));
+      requests++;
+      const page=offset===0?Array.from({length:500},(_,i)=>({client_uuid:'remote-'+i,updated_at:'2026-10-28T14:00:00Z'})):[{client_uuid:'remote-500',updated_at:'2026-10-28T14:00:00Z'}];
+      return {ok:true,json:async()=>page};
+    },
+    cloudHeaders:()=>({}),dbAll:async()=>locals.map(x=>({...x})),
+    fromCloud:r=>({cloudId:r.client_uuid,updatedAt:r.updated_at,syncStatus:'synced'}),
+    dbPut:async()=>{},dbAdd:async()=>{added++;},
+    dbDelete:async()=>{deleted++;}
+  };
+  const pull=functionFrom(source,Object.keys(deps),Object.values(deps),'pullCloud');
+  await pull();
+  assert.equal(requests,2,'Busca deve percorrer duas páginas');
+  assert.equal(added,501,'Todas as páginas devem ser processadas');
+  assert.equal(deleted,0,'A ausência na resposta não prova que o registro foi excluído');
+}
+(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
