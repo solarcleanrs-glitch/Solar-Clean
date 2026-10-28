@@ -75,3 +75,29 @@ assert.ok(js.includes("method:alreadyExists?'PATCH':'POST'"),'Atualização desc
 assert.ok(js.includes("method:'PATCH',headers,body:JSON.stringify({status:commercialStatus"),'Status só muda por ação explícita');
 assert.ok(js.includes("saveCrmSharedProfile(selected.last,$('#crmClientStatus').value)"),'Salvar CRM compartilha status escolhido');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
+
+
+async function testSharedProfileStatusProtection(){
+  const from=js.indexOf('async function saveCrmSharedProfile('),to=js.indexOf('async function pullCrmContactClientKeys()',from);
+  assert.ok(from>=0&&to>from,'Função compartilhada encontrada');
+  const calls=[];
+  const deps={
+    cloudReady:()=>true,navigator:{onLine:true},crmHistoryCloudHeaders:()=>({'apikey':'test'}),
+    crmKey:()=> 'tel:51999998888',cloudConfig:()=>({url:'https://staging.invalid'}),
+    recurrenceMonths:()=>6,
+    fetch:async (url,opts={})=>{
+      calls.push({url,method:opts.method||'GET',body:opts.body?JSON.parse(opts.body):null});
+      return {ok:true,json:async()=>[{client_key:'tel:51999998888',status:'Não contatar'}]};
+    },Date
+  };
+  const save=new Function(...Object.keys(deps),js.slice(from,to)+'\nreturn saveCrmSharedProfile;')(...Object.values(deps));
+  await save({cliente:'Teste',telefone:'51999998888',cidade:'Canoas',createdAt:'2026-10-28T10:00:00Z',retorno:'6 meses'});
+  const passive=calls.find(x=>x.method==='PATCH');
+  assert.ok(passive,'Perfil existente deve ser atualizado por PATCH');
+  assert.ok(!Object.hasOwn(passive.body,'status'),'Atualização passiva não pode liberar cliente bloqueado');
+  calls.length=0;
+  await save({__cloudContactOnly:true,telefone:'51999998888'},'Não contatar');
+  assert.equal(calls.length,1,'Salvar bloqueio deve fazer somente um PATCH');
+  assert.equal(calls[0].body.status,'Não contatar','Bloqueio explícito deve persistir');
+}
+testSharedProfileStatusProtection().catch(e=>{console.error(e);process.exitCode=1;});
