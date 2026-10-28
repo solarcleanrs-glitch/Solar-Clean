@@ -102,7 +102,7 @@ async function testOfflineRecoveryWithoutDuplicate() {
   const local={cloudId:'stable-uuid',syncStatus:'pending',cliente:'TESTE ISOLADO',photos:[],createdAt:'2026-10-28T13:00:00Z',updatedAt:'2026-10-28T13:00:00Z'};
   local.id=await dbAdd(local);
   const pushDeps={
-    cloudConfig:config,dbPut,uploadPhotoToStorage:async p=>p,
+    cloudConfig:config,ensureVistoriaSession:async()=>{},dbPut,uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId,created_at:r.createdAt,updated_at:r.updatedAt,cliente:r.cliente}),
     fetch:async (url,opts)=>{uploads++;const row=JSON.parse(opts.body);cloud.set(row.client_uuid,row);return {ok:true,json:async()=>[row]};},
     cloudHeaders:headers,crypto:{randomUUID:()=>{throw Error('Already assigned UUID cannot be replaced')}}
