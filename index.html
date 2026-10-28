@@ -2272,6 +2272,9 @@ function openCrmEditor(client){
   $('#crmContactNote').value='';
   renderCrmContactHistory(client.key);
   if(cloudReady()&&navigator.onLine){
+    if(!client.last.__cloudContactOnly){
+      saveCrmSharedProfile(client.last).catch(e=>console.warn('Perfil comercial pendente:',e));
+    }
     syncCrmContactHistory(client.key).then(()=>{renderCrmContactHistory(client.key);renderCrm()})
       .catch(e=>{console.warn('Histórico de contatos disponível localmente:',e)});
   }
