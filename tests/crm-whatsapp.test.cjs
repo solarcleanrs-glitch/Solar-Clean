@@ -79,6 +79,8 @@ assert.ok(js.includes("function updateHomologNotice()"),'Interface identifica am
 assert.ok(html.includes('id="homologNotice"'),'Aviso visual de testes está presente');
 assert.ok(js.includes("const rows=[],pageSize=500;"),'Histórico remoto usa paginação');
 assert.ok(js.includes("order=created_at.desc,id.desc&limit="),'Histórico remoto tem ordenação estável');
+assert.ok(js.includes("async function pullCrmSharedProfiles(){\n  if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];\n  await ensureVistoriaSession();"),'Leitura de perfis renova sessão');
+assert.ok(js.includes("async function syncCrmContactHistory(clientKey){\n  if(!cloudReady()||!navigator.onLine)return false;\n  await ensureVistoriaSession();"),'Histórico renova sessão');
 console.log('PASS: sintaxe CRM, telefones, mensagens, histórico e perfis');
 
 
