@@ -2102,9 +2102,17 @@ async function syncCrmContactHistory(clientKey){
     });
     if(!response.ok)throw new Error('Histórico comercial não sincronizado ('+response.status+')');
   }
-  const res=await fetch(`${c.url}/rest/v1/crm_contatos?client_key=eq.${encodeURIComponent(clientKey)}&select=*&order=created_at.desc&limit=100`,{headers:crmHistoryCloudHeaders()});
-  if(!res.ok)throw new Error('Falha ao consultar histórico ('+res.status+')');
-  const rows=await res.json();
+  // Recupera as páginas necessárias sem assumir que os 100 primeiros contatos
+  // representam todo o histórico. O armazenamento local mantém os mais recentes.
+  const rows=[],pageSize=500;
+  for(let offset=0;;offset+=pageSize){
+    const res=await fetch(`${c.url}/rest/v1/crm_contatos?client_key=eq.${encodeURIComponent(clientKey)}&select=*&order=created_at.desc,id.desc&limit=${pageSize}&offset=${offset}`,{headers:crmHistoryCloudHeaders()});
+    if(!res.ok)throw new Error('Falha ao consultar histórico ('+res.status+')');
+    const page=await res.json();
+    if(!Array.isArray(page))throw new Error('Resposta inesperada do histórico comercial');
+    rows.push(...page);
+    if(page.length<pageSize)break;
+  }
   mergeCrmContactHistory(clientKey,rows.map(r=>({id:r.id,at:r.created_at,outcome:r.outcome,followup:r.followup_date||'',note:r.note||''})));
   return true;
 }
@@ -2250,7 +2258,7 @@ async function buildCrmClients(){
   await pullCrmMeta();
   // O perfil compartilhado é a fonte do status comercial entre aparelhos.
   // Isso aplica tanto o bloqueio quanto a liberação posterior de "Não contatar".
-  // Metadados como notas e histórico continuam vindo de crm_clientes.
+  // Notas locais não alteram o status compartilhado. O histórico utiliza crm_contatos.
   for(const profile of profiles){
     if(profile.status){
       const old=crmMetaCache[profile.client_key]||{};
