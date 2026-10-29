@@ -182,6 +182,23 @@ async function testRevisionCreationDoesNotUpsert(){
   assert.ok(!urlSeen.includes('on_conflict'),'Nova vistoria não pode fazer upsert');
   assert.equal(rec.baseRevision,1,'Nova vistoria preserva revisão inicial');
 }
+async function testPreassignedUuidCanCreate(){
+  const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  let requests=0,method='';
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>true,
+    ensureVistoriaSession:async()=>{},dbPut:async()=>{},uploadPhotoToStorage:async p=>p,
+    toCloud:r=>({client_uuid:r.cloudId}),cloudHeaders:()=>({}),
+    crypto:{randomUUID:()=> 'not-needed'},
+    fetch:async(url,opts)=>{requests++;method=opts.method;return {ok:true,json:async()=>[{client_uuid:'preassigned-id',revision:1}]};}
+  };
+  const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
+  const rec={id:92,cloudId:'preassigned-id',photos:[],syncStatus:'pending',baseRevision:0};
+  await push(rec);
+  assert.equal(requests,1,'Nova vistoria com UUID pré-gerado não consulta linha ainda inexistente');
+  assert.equal(method,'POST','UUID pré-gerado usa criação inicial');
+  assert.equal(rec.baseRevision,1);
+}
 async function testRepeatSaveAndNewForm() {
   const source = extract('let generateAndSaveRunning=false;', '/* ---------- Supabase Auth');
   let saves=0, forms=0, uuid=0;
@@ -338,4 +355,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{testStagingRevisionControl(); await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRevisionCreationDoesNotUpsert(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testRevisionBootstrapPreservesCachedPhotos(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{testStagingRevisionControl(); await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRevisionCreationDoesNotUpsert(); await testPreassignedUuidCanCreate(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testRevisionBootstrapPreservesCachedPhotos(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
