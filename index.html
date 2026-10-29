@@ -1400,9 +1400,18 @@ async function inspectPendingStagingLink(){
     if(!res.ok)throw new Error('Consulta do Supabase recusada ('+res.status+').');
     const remotes=await res.json();
     if(!Array.isArray(remotes))throw new Error('Resposta inesperada do Supabase.');
+    const jwt=localStorage.getItem('solarCleanAccessToken')||'';
+    let authUser='não identificado',role='não identificado';
+    try{
+      const claims=JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      authUser=claims.sub?'presente':'ausente';
+      role=claims.role||'não informado';
+    }catch(e){role='token inválido'}
+    const access=await fetch(`${c.url}/rest/v1/crm_usuarios?select=user_id&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+    const membership=access.ok?(await access.json()).length>0?'visível':'nenhuma linha visível':'HTTP '+access.status;
     const matching=remotes.filter(r=>r.client_uuid===record.cloudId);
     out.textContent='Local: '+(record.cloudId||'sem UUID')+'; revisão-base: '+(record.baseRevision||0)+
-      '; remotos encontrados pelo UUID: '+remotes.length+
+      '; JWT usuário: '+authUser+'; papel: '+role+'; crm_usuarios: '+membership+'; remotos encontrados pelo UUID: '+remotes.length+
       '; UUID corresponde: '+(matching.length===1?'sim':'não')+
       '; revisão remota: '+(matching[0]?.revision||'não identificada')+
       '. Se zero, conferir autenticação e RLS desta sessão. Apenas diagnóstico, sem gravar.';
