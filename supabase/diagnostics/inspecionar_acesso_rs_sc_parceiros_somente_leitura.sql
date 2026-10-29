@@ -1,7 +1,6 @@
 -- SOMENTE LEITURA. Executar EXCLUSIVAMENTE no projeto Supabase "Solar Clean testes crm".
 -- Não retorna linhas de clientes, senhas, tokens ou conteúdo de relatórios.
 -- Confirmar o identificador do projeto antes de executar.
-select current_database() as database_name, current_schema() as schema_name;
 select table_name, column_name, data_type, is_nullable
 from information_schema.columns
 where table_schema='public'
