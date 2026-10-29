@@ -1102,8 +1102,13 @@ function renderReportPhotos(photos){
 
 /* ---------- Supabase REST sync ---------- */
 function cloudConfig(){
+  const configuredUrl=($('#supabaseUrl').value||'').trim().replace(/\/+$/,'');
+  const stagingSite=location.hostname==='solar-clean-testes-crm.pages.dev';
+  const stagingUrl='https://zzphucuiqhzrilrddxnf.supabase.co';
+  // Bloqueia conexões acidentais do site de homologação com qualquer projeto de produção.
+  // Retorna URL vazia em vez de disparar exceção, para permitir corrigir a configuração.
   return {
-    url:($('#supabaseUrl').value||'').trim().replace(/\/$/,''),
+    url:stagingSite && configuredUrl!==stagingUrl?'':configuredUrl,
     key:($('#supabaseKey').value||'').trim()
   };
 }
@@ -1111,7 +1116,7 @@ function cloudReady(){const c=cloudConfig();return c.url.startsWith('https://')&
 function updateHomologNotice(){
   const el=document.getElementById('homologNotice');
   if(!el)return;
-  const isTest=cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co';
+  const isTest=location.hostname==='solar-clean-testes-crm.pages.dev'||cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co';
   el.classList.toggle('hidden',!isTest);
 }
 function updateSyncBadge(text,ok=false){
