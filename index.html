@@ -1296,6 +1296,11 @@ async function pushRecord(local){
     throw new Error(`Envio falhou (${res.status})${msg?': '+msg.slice(0,160):''}`);
   }
   const rows=await res.json();
+  // O PostgREST pode responder 2xx e retornar [] quando RLS impede a gravação.
+  // Somente marcar como sincronizado após confirmar o registro retornado.
+  if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==payload.client_uuid){
+    throw new Error('Vistoria não confirmada na nuvem. O registro local permanece pendente.');
+  }
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
   })();
