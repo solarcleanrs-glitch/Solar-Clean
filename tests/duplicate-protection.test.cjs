@@ -77,6 +77,25 @@ async function testInterruptedPhotoUploadResumes(){
   assert.equal(attempts,3,'Reenvio não deve carregar primeira foto novamente');
   assert.equal(rec.syncStatus,'synced','Registro pode completar sincronização após recuperar');
 }
+async function testNewerRemoteEditStopsOverwrite(){
+  const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  let posts=0;
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    dbPut:async()=>{},uploadPhotoToStorage:async p=>p,
+    toCloud:r=>({client_uuid:r.cloudId}),
+    fetch:async(url,options)=>{
+      if(options?.method==='POST'){posts++;return {ok:true,json:async()=>[{client_uuid:'same-id'}]};}
+      return {ok:true,json:async()=>[{client_uuid:'same-id',updated_at:'2026-10-28T20:00:00Z'}]};
+    },
+    cloudHeaders:()=>({}),crypto:{randomUUID:()=> 'unused'}
+  };
+  const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
+  const record={id:51,cloudId:'same-id',updatedAt:'2026-10-28T19:00:00Z',syncStatus:'pending',photos:[]};
+  await assert.rejects(()=>push(record),/Conflito/);
+  assert.equal(posts,0,'Conflito detectado não sobrescreve dados remotos');
+  assert.equal(record.syncStatus,'pending','Edição local permanece pendente');
+}
 async function testRepeatSaveAndNewForm() {
   const source = extract('let generateAndSaveRunning=false;', '/* ---------- Supabase Auth');
   let saves=0, forms=0, uuid=0;
@@ -201,4 +220,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
