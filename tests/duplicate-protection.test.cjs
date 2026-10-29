@@ -169,7 +169,7 @@ async function testOfflineRecoveryWithoutDuplicate() {
   const pushSource=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   const pullSource=extract('async function pullCloud()', 'let syncAllRunning=false;');
   const records=[];
-  const cloud=new Map();
+  const cloud=new Map([['stable-uuid',{client_uuid:'stable-uuid',updated_at:'2026-10-28T13:00:00Z'}]]);
   let nextId=1, uploads=0;
   const dbAll=async()=>records.map(r=>({...r}));
   const dbPut=async r=>{const i=records.findIndex(x=>x.id===r.id);if(i>=0)records[i]={...r};};
