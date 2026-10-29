@@ -25,7 +25,7 @@ async function testConcurrentUploads() {
     dbPut:async()=>{},
     uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId}),
-    fetch:async()=>{posts++; await Promise.resolve(); return {ok:true,json:async()=>[{}]};},
+    fetch:async()=>{posts++; await Promise.resolve(); return {ok:true,json:async()=>[{client_uuid:'uuid-1'}]};},
     cloudHeaders:()=>({}),
     crypto:{randomUUID:()=> 'uuid-'+(++uuid)}
   };
@@ -34,6 +34,22 @@ async function testConcurrentUploads() {
   await Promise.all([push(record),push({...record})]);
   assert.equal(posts,1,'Enviar um único POST');
   assert.equal(uuid,1,'Gerar um único UUID');
+}
+async function testDeniedCloudWriteRemainsPending(){
+  const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  let saved=null;
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    dbPut:async r=>{saved={...r}},uploadPhotoToStorage:async p=>p,
+    toCloud:r=>({client_uuid:r.cloudId}),
+    fetch:async()=>({ok:true,json:async()=>[]}),
+    cloudHeaders:()=>({}),crypto:{randomUUID:()=> 'uuid-denied'}
+  };
+  const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
+  const record={id:42,photos:[],syncStatus:'pending'};
+  await assert.rejects(()=>push(record),/não confirmada na nuvem/);
+  assert.notEqual(record.syncStatus,'synced','Resposta vazia não pode confirmar sincronização');
+  assert.equal(saved.cloudId,'uuid-denied','UUID estável deve persistir para novo envio');
 }
 async function testRepeatSaveAndNewForm() {
   const source = extract('let generateAndSaveRunning=false;', '/* ---------- Supabase Auth');
@@ -159,4 +175,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{await testConcurrentUploads(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
