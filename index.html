@@ -147,7 +147,6 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <h3 id="agendaDateTitle" style="margin-top:12px;"></h3>
       <label><span>Unidade</span>
         <select id="agendaUnitFilter">
-          <option value="">Todas autorizadas</option>
           <option value="RS">RS</option>
           <option value="SC">SC</option>
         </select>
@@ -2002,7 +2001,16 @@ if (tituloData && df) {
     year: 'numeric'
   });
 }
-  const uf=$('#agendaUnitFilter').value||'';
+  // A agenda sempre abre em uma unidade explícita; não misturar RS e SC no campo.
+  const unitFilter=$('#agendaUnitFilter');
+  const preferredUnit=isRegisTech()?'SC':'RS';
+  const storedUnit=localStorage.getItem('solarCleanAgendaUnitPreference');
+  if(!unitFilter.dataset.unitInitialized){
+    unitFilter.value=(storedUnit==='RS'||(storedUnit==='SC'&&isRegisTech()))?storedUnit:preferredUnit;
+    unitFilter.dataset.unitInitialized='1';
+  }
+  if(!isRegisTech()||!['RS','SC'].includes(unitFilter.value))unitFilter.value='RS';
+  const uf=unitFilter.value;
   const sf=$('#agendaStatusFilter').value||'';
 
   // SC nunca aparece para perfis não autorizados.
@@ -2780,7 +2788,11 @@ $('#agendaClient').onchange=()=>{
   $('#agendaNewClientFields').classList.toggle('hidden',!isNew);
 };
 $('#agendaDateFilter').onchange=renderAgenda;
-$('#agendaUnitFilter').onchange=renderAgenda;
+$('#agendaUnitFilter').onchange=()=>{
+  const selected=$('#agendaUnitFilter').value;
+  if(selected==='RS'||(selected==='SC'&&isRegisTech()))localStorage.setItem('solarCleanAgendaUnitPreference',selected);
+  renderAgenda();
+};
 $('#agendaStatusFilter').onchange=renderAgenda;
   function formatAgendaDate(date){
   const ano = date.getFullYear();
