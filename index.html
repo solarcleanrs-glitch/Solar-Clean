@@ -2011,6 +2011,9 @@ if (tituloData && df) {
   }
   if(!isRegisTech()||!['RS','SC'].includes(unitFilter.value))unitFilter.value='RS';
   const uf=unitFilter.value;
+  // Em novo agendamento, sugerir a mesma unidade que Regis está visualizando.
+  // Durante a edição, preservar a unidade original até uma mudança explícita.
+  if(!window.__agendaEditingId && $('#agendaUnit').value!==uf) $('#agendaUnit').value=uf;
   const sf=$('#agendaStatusFilter').value||'';
 
   // SC nunca aparece para perfis não autorizados.
