@@ -51,6 +51,32 @@ async function testDeniedCloudWriteRemainsPending(){
   assert.notEqual(record.syncStatus,'synced','Resposta vazia não pode confirmar sincronização');
   assert.equal(saved.cloudId,'uuid-denied','UUID estável deve persistir para novo envio');
 }
+async function testInterruptedPhotoUploadResumes(){
+  const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  const stored=[];
+  let attempts=0;
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    dbPut:async r=>{stored.push(JSON.parse(JSON.stringify(r)))},
+    uploadPhotoToStorage:async p=>{
+      if(p.storagePath)return p;
+      attempts++;
+      if(attempts===2)throw Error('Falha temporária na segunda foto');
+      return {...p,storagePath:'uuid-photos/antes/'+p.name};
+    },
+    toCloud:r=>({client_uuid:r.cloudId}),
+    fetch:async()=>({ok:true,json:async()=>[{client_uuid:'uuid-photos'}]}),
+    cloudHeaders:()=>({}),crypto:{randomUUID:()=> 'uuid-photos'}
+  };
+  const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
+  const rec={id:43,photos:[{name:'a.jpg'},{name:'b.jpg'}],syncStatus:'pending'};
+  await assert.rejects(()=>push(rec),/Falha temporária/);
+  assert.equal(rec.photos[0].storagePath,'uuid-photos/antes/a.jpg','Primeira foto persiste após falha');
+  assert.ok(stored.some(r=>r.photos?.[0]?.storagePath),'Caminho de foto deve ser salvo no banco local');
+  await push(rec);
+  assert.equal(attempts,3,'Reenvio não deve carregar primeira foto novamente');
+  assert.equal(rec.syncStatus,'synced','Registro pode completar sincronização após recuperar');
+}
 async function testRepeatSaveAndNewForm() {
   const source = extract('let generateAndSaveRunning=false;', '/* ---------- Supabase Auth');
   let saves=0, forms=0, uuid=0;
@@ -175,4 +201,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
