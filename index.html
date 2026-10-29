@@ -1289,6 +1289,7 @@ async function pushRecord(local){
     if(!check.ok)throw new Error('Não foi possível conferir a versão remota; vistoria mantida pendente.');
     const remote=await check.json();
     if(!Array.isArray(remote))throw new Error('Consulta de conflito inválida; vistoria mantida pendente.');
+    if(remote.length!==1)throw new Error('Vistoria remota ausente ou duplicada; edição local preservada.');
     if(remote[0]?.updated_at && local.updatedAt &&
       Date.parse(remote[0].updated_at)>Date.parse(local.updatedAt)){
       throw new Error('Conflito: esta vistoria foi atualizada em outro aparelho. Os dados locais foram preservados; revise antes de reenviar.');
