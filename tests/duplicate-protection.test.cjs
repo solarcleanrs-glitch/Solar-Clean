@@ -20,7 +20,7 @@ async function testConcurrentUploads() {
   const source = extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   let posts=0, uuid=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,
     ensureVistoriaSession:async()=>{},
     dbPut:async()=>{},
     uploadPhotoToStorage:async p=>p,
@@ -39,7 +39,7 @@ async function testDeniedCloudWriteRemainsPending(){
   const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   let saved=null;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     dbPut:async r=>{saved={...r}},uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId}),
     fetch:async()=>({ok:true,json:async()=>[]}),
@@ -56,7 +56,7 @@ async function testInterruptedPhotoUploadResumes(){
   const stored=[];
   let attempts=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     dbPut:async r=>{stored.push(JSON.parse(JSON.stringify(r)))},
     uploadPhotoToStorage:async p=>{
       if(p.storagePath)return p;
@@ -81,7 +81,7 @@ async function testNewerRemoteEditStopsOverwrite(){
   const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   let posts=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     dbPut:async()=>{},uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId}),
     fetch:async(url,options)=>{
@@ -100,7 +100,7 @@ async function testMissingRemoteBlocksOverwrite(){
   const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   let posts=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     dbPut:async()=>{},uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId}),cloudHeaders:()=>({}),
     fetch:async(url,options)=>{if(options?.method==='POST')posts++;return {ok:true,json:async()=>[]};},
@@ -150,7 +150,7 @@ async function testRepeatedCloudPull() {
   const locals=[];
   const cloud=[{client_uuid:'fixed-uuid',created_at:'2026-10-28T13:00:00Z',updated_at:'2026-10-28T13:00:00Z'}];
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,
     ensureVistoriaSession:async()=>{},
     fetch:async()=>({ok:true,json:async()=>cloud}),
     cloudHeaders:()=>({}),
@@ -170,7 +170,7 @@ async function testCloudPullPreservesPendingEdit(){
   const local={id:17,cloudId:'shared-id',syncStatus:'pending',cliente:'Edição local',updatedAt:'2026-10-28T12:00:00Z'};
   let writes=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     fetch:async()=>({ok:true,json:async()=>[{client_uuid:'shared-id',updated_at:'2026-10-28T19:00:00Z',cliente:'Edição remota'}]}),
     cloudHeaders:()=>({}),dbAll:async()=>[{...local}],
     fromCloud:r=>({cloudId:r.client_uuid,updatedAt:r.updated_at,cliente:r.cliente,syncStatus:'synced'}),
@@ -196,7 +196,7 @@ async function testOfflineRecoveryWithoutDuplicate() {
   const local={cloudId:'stable-uuid',syncStatus:'pending',cliente:'TESTE ISOLADO',photos:[],createdAt:'2026-10-28T13:00:00Z',updatedAt:'2026-10-28T13:00:00Z'};
   local.id=await dbAdd(local);
   const pushDeps={
-    cloudConfig:config,ensureVistoriaSession:async()=>{},dbPut,uploadPhotoToStorage:async p=>p,
+    cloudConfig:config,revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},dbPut,uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId,created_at:r.createdAt,updated_at:r.updatedAt,cliente:r.cliente}),
     fetch:async (url,opts)=>{if(!opts?.body)return {ok:true,json:async()=>cloud.has('stable-uuid')?[cloud.get('stable-uuid')]:[]};uploads++;const row=JSON.parse(opts.body);cloud.set(row.client_uuid,row);return {ok:true,json:async()=>[row]};},
     cloudHeaders:headers,crypto:{randomUUID:()=>{throw Error('Already assigned UUID cannot be replaced')}}
@@ -220,7 +220,7 @@ async function testPaginatedCloudPullNeverDeletesMissingRecords(){
   const locals=[{id:1,cloudId:'existing-local',syncStatus:'synced',updatedAt:'2026-10-28T13:00:00Z'}];
   let requests=0,deleted=0,added=0;
   const deps={
-    cloudConfig:()=>({url:'https://example.invalid'}),ensureVistoriaSession:async()=>{},
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>false,ensureVistoriaSession:async()=>{},
     fetch:async url=>{
       const offset=Number(new URL(url).searchParams.get('offset'));
       requests++;
