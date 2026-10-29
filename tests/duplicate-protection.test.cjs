@@ -127,7 +127,7 @@ async function testConditionalRevisionUpdate(){
         return {ok:true,json:async()=>[{client_uuid:'record-4',revision:5,updated_at:'2026-10-28T21:00:00Z'}]};
       }
       if(opts?.method==='POST')posting++;
-      return {ok:true,json:async()=>[{client_uuid:'record-4',updated_at:'2026-10-28T12:00:00Z'}]};
+      return {ok:true,json:async()=>[{client_uuid:'record-4',revision:4,updated_at:'2026-10-28T12:00:00Z'}]};
     }
   };
   const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
@@ -149,7 +149,7 @@ async function testConditionalRevisionConflict(){
     crypto:{randomUUID:()=> 'new-id'},
     fetch:async(url,opts)=>{
       if(opts?.method==='PATCH'){patched++;return {ok:true,json:async()=>[]};}
-      return {ok:true,json:async()=>[{client_uuid:'record-4',updated_at:'2026-10-28T12:00:00Z'}]};
+      return {ok:true,json:async()=>[{client_uuid:'record-4',revision:4,updated_at:'2026-10-28T12:00:00Z'}]};
     }
   };
   const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
