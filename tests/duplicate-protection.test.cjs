@@ -166,7 +166,7 @@ async function testOfflineRecoveryWithoutDuplicate() {
   const pushDeps={
     cloudConfig:config,ensureVistoriaSession:async()=>{},dbPut,uploadPhotoToStorage:async p=>p,
     toCloud:r=>({client_uuid:r.cloudId,created_at:r.createdAt,updated_at:r.updatedAt,cliente:r.cliente}),
-    fetch:async (url,opts)=>{uploads++;const row=JSON.parse(opts.body);cloud.set(row.client_uuid,row);return {ok:true,json:async()=>[row]};},
+    fetch:async (url,opts)=>{if(!opts?.body)return {ok:true,json:async()=>cloud.has('stable-uuid')?[cloud.get('stable-uuid')]:[]};uploads++;const row=JSON.parse(opts.body);cloud.set(row.client_uuid,row);return {ok:true,json:async()=>[row]};},
     cloudHeaders:headers,crypto:{randomUUID:()=>{throw Error('Already assigned UUID cannot be replaced')}}
   };
   const push=functionFrom(pushSource,Object.keys(pushDeps),Object.values(pushDeps),'pushRecord');
