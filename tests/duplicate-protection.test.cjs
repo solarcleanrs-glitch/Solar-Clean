@@ -16,6 +16,12 @@ function extract(start, end) {
 function functionFrom(source, names, values, resultName) {
   return new Function(...names, source + '\nreturn ' + resultName)(...values);
 }
+function testStagingRevisionControl(){
+  assert.ok(html.includes('id="revisionLabToggle"'),'Controle visível de ativação deve existir');
+  assert.ok(js.includes("location.hostname!=='solar-clean-testes-crm.pages.dev'"),'Controle deve ser oculto fora da homologação');
+  assert.ok(js.includes("rows.some(r=>r.syncStatus!=='synced')"),'Não habilitar com vistorias locais pendentes');
+  assert.ok(js.includes("await pullCloud();"),'Habilitação recupera revisões antes de gravar');
+}
 async function testConcurrentUploads() {
   const source = extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
   let posts=0, uuid=0;
@@ -332,4 +338,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRevisionCreationDoesNotUpsert(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testRevisionBootstrapPreservesCachedPhotos(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{testStagingRevisionControl(); await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRevisionCreationDoesNotUpsert(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testRevisionBootstrapPreservesCachedPhotos(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
