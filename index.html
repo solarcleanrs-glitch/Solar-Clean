@@ -1372,7 +1372,7 @@ async function pullCloud(){
     if(existing){
       // Nunca descartar uma edição local pendente ao atualizar a lista.
       // O conflito será resolvido no envio; enquanto isso, preservar fotos e dados locais.
-      if(existing.syncStatus==='synced' && (incoming.updatedAt||'')>(existing.updatedAt||'')){
+      if(existing.syncStatus==='synced' && ((incoming.updatedAt||'')>(existing.updatedAt||'') || Number(incoming.baseRevision||0)>Number(existing.baseRevision||0))){
         incoming.id=existing.id;
         await dbPut(incoming);
       }
