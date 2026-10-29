@@ -1308,7 +1308,9 @@ async function pushRecord(local){
   const upload=(async()=>{
   await ensureVistoriaSession();
   const c=cloudConfig();
-  const hadCloudId=Boolean(local.cloudId) && (local.baseRevision>0 || local.syncStatus==='synced');
+  // No modo antigo, UUID indica registro remoto; no modo revisionado,
+  // somente uma revisão-base confirmada prova que já existe na nuvem.
+  const hadCloudId=Boolean(local.cloudId) && (!revisionProtocolEnabled() || Number(local.baseRevision)>0 || local.syncStatus==='synced');
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
   local.updatedAt=new Date().toISOString();
