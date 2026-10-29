@@ -621,6 +621,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <button id="syncNow">Sincronizar agora</button>
       </div>
       <p id="cloudStatus" class="muted"></p>
+      <div id="revisionLabControls" class="section hidden"><button type="button" id="revisionLabToggle">Ativar revisões no ambiente de testes</button><p id="revisionLabStatus" class="muted small">Somente homologação.</p></div>
     </div>
 
     <button class="primary section" id="saveCompany">Salvar configurações</button>
@@ -1269,6 +1270,36 @@ async function testCloud(){
 }
 // O protocolo transacional só pode ser habilitado após migração e testes no banco.
 function revisionProtocolEnabled(){return cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co' && localStorage.getItem('solarCleanStagingRevisionProtocol')==='enabled'}
+async function toggleStagingRevisionProtocol(){
+  const status=$('#revisionLabStatus'),button=$('#revisionLabToggle');
+  if(!status||!button||cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')return;
+  button.disabled=true;
+  try{
+    if(revisionProtocolEnabled()){
+      localStorage.removeItem('solarCleanStagingRevisionProtocol');
+      status.textContent='Controle de revisão desativado neste aparelho de testes.';
+    }else{
+      await ensureVistoriaSession();
+      const rows=await dbAll();
+      if(rows.some(r=>r.syncStatus!=='synced'))
+        throw new Error('Existem vistorias locais pendentes. Sincronize ou faça backup antes de ativar.');
+      const c=cloudConfig();
+      const check=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,revision&limit=1`,{headers:cloudHeaders()});
+      if(!check.ok)throw new Error('Não foi possível confirmar a coluna revision ('+check.status+').');
+      const sample=await check.json();
+      if(!Array.isArray(sample)||sample.some(r=>!Number.isSafeInteger(Number(r.revision))||Number(r.revision)<1))
+        throw new Error('A revisão da vistoria de teste não foi confirmada.');
+      await pullCloud();
+      localStorage.setItem('solarCleanStagingRevisionProtocol','enabled');
+      status.textContent='Controle de revisão habilitado neste aparelho de homologação.';
+    }
+  }catch(e){status.textContent=e.message||'Não foi possível alterar o controle de revisão.'}
+  finally{
+    button.disabled=false;
+    button.textContent=revisionProtocolEnabled()?'Desativar revisões (testes)':'Ativar revisões no ambiente de testes';
+  }
+}
+
 const pendingRecordUploads=new Map();
 async function pushRecord(local){
   // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
@@ -2517,6 +2548,11 @@ function saveCompany(){
 function loadCompany(){
   try{const c=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}');Object.entries(c).forEach(([k,v])=>{if($('#'+k))$('#'+k).value=v||''})}catch(e){}
   updateHomologNotice();
+  if($('#revisionLabControls')){
+    $('#revisionLabControls').classList.toggle('hidden',location.hostname!=='solar-clean-testes-crm.pages.dev');
+    $('#revisionLabToggle').textContent=revisionProtocolEnabled()?'Desativar revisões (testes)':'Ativar revisões no ambiente de testes';
+    $('#revisionLabToggle').onclick=toggleStagingRevisionProtocol;
+  }
 }
 async function exportBackup(){
   const btn=$('#exportBackup'),oldText=btn.textContent;
