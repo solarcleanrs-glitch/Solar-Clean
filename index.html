@@ -1351,7 +1351,9 @@ async function pullCloud(){
     const incoming=fromCloud(row);
     const existing=locals.find(x=>x.cloudId===incoming.cloudId);
     if(existing){
-      if((incoming.updatedAt||'')>(existing.updatedAt||'')){
+      // Nunca descartar uma edição local pendente ao atualizar a lista.
+      // O conflito será resolvido no envio; enquanto isso, preservar fotos e dados locais.
+      if(existing.syncStatus==='synced' && (incoming.updatedAt||'')>(existing.updatedAt||'')){
         incoming.id=existing.id;
         await dbPut(incoming);
       }
