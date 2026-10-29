@@ -1338,6 +1338,9 @@ async function pushRecord(local){
   }
   if(useRevision && (!Number.isSafeInteger(Number(rows[0].revision))||Number(rows[0].revision)<1||(hadCloudId&&Number(rows[0].revision)<=local.baseRevision)))throw new Error('Revisão não confirmada na nuvem; edição local preservada.');
   if(useRevision)local.baseRevision=Number(rows[0].revision);
+  // O servidor controla updated_at na migração. Guardar seu valor evita
+  // conflito falso na próxima edição, especialmente com relógios divergentes.
+  if(rows[0].updated_at)local.updatedAt=rows[0].updated_at;
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
   })();
