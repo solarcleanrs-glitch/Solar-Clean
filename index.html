@@ -1287,12 +1287,14 @@ async function pushRecord(local){
   // Este controle é preventivo; uma atualização simultânea após o GET ainda
   // exige controle transacional por versão no servidor (backlog).
   if(hadCloudId && local.syncStatus!=='synced'){
-    const check=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,updated_at&client_uuid=eq.${encodeURIComponent(local.cloudId)}&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+    const check=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,updated_at,revision&client_uuid=eq.${encodeURIComponent(local.cloudId)}&limit=1`,{headers:cloudHeaders({'Prefer':''})});
     if(!check.ok)throw new Error('Não foi possível conferir a versão remota; vistoria mantida pendente.');
     const remote=await check.json();
     if(!Array.isArray(remote))throw new Error('Consulta de conflito inválida; vistoria mantida pendente.');
     if(remote.length!==1)throw new Error('Vistoria remota ausente ou duplicada; edição local preservada.');
-    if(remote[0]?.updated_at && local.updatedAt &&
+    if(revisionProtocolEnabled() && Number.isSafeInteger(local.baseRevision) && local.baseRevision>0 && Number(remote[0].revision)!==local.baseRevision)
+      throw new Error('Conflito de revisão: vistoria alterada em outro aparelho; dados locais preservados.');
+    if(!revisionProtocolEnabled() && remote[0]?.updated_at && local.updatedAt &&
       Date.parse(remote[0].updated_at)>Date.parse(local.updatedAt)){
       throw new Error('Conflito: esta vistoria foi atualizada em outro aparelho. Os dados locais foram preservados; revise antes de reenviar.');
     }
