@@ -1395,17 +1395,17 @@ async function inspectPendingStagingLink(){
     const local=(await dbAll()).filter(r=>r.syncStatus!=='synced'&&String(r.cliente||'').toLowerCase().includes('teste fotos crm'));
     if(local.length!==1)throw new Error('Encontradas '+local.length+' vistorias locais pendentes com este nome. Nenhuma alteração realizada.');
     const record=local[0],c=cloudConfig();
-    const query=`${c.url}/rest/v1/vistorias?select=client_uuid,revision,cliente&cliente=ilike.*teste%20fotos%20crm*&limit=10`;
+    const query=`${c.url}/rest/v1/vistorias?select=client_uuid,revision,cliente&client_uuid=eq.${encodeURIComponent(record.cloudId)}&limit=1`;
     const res=await fetch(query,{headers:cloudHeaders({'Prefer':''})});
     if(!res.ok)throw new Error('Consulta do Supabase recusada ('+res.status+').');
     const remotes=await res.json();
     if(!Array.isArray(remotes))throw new Error('Resposta inesperada do Supabase.');
     const matching=remotes.filter(r=>r.client_uuid===record.cloudId);
     out.textContent='Local: '+(record.cloudId||'sem UUID')+'; revisão-base: '+(record.baseRevision||0)+
-      '; remotos encontrados pelo nome: '+remotes.length+
+      '; remotos encontrados pelo UUID: '+remotes.length+
       '; UUID corresponde: '+(matching.length===1?'sim':'não')+
       '; revisão remota: '+(matching[0]?.revision||'não identificada')+
-      '. Apenas diagnóstico, sem gravar.';
+      '. Se zero, conferir autenticação e RLS desta sessão. Apenas diagnóstico, sem gravar.';
   }catch(e){out.textContent=e.message||String(e)}
   finally{btn.disabled=false}
 }
