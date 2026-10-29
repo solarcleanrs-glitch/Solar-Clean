@@ -1374,6 +1374,8 @@ async function pullCloud(){
       // O conflito será resolvido no envio; enquanto isso, preservar fotos e dados locais.
       if(existing.syncStatus==='synced' && ((incoming.updatedAt||'')>(existing.updatedAt||'') || Number(incoming.baseRevision||0)>Number(existing.baseRevision||0))){
         incoming.id=existing.id;
+        const photoCache=new Map((existing.photos||[]).filter(p=>p.storagePath&&p.data).map(p=>[p.storagePath,p.data]));
+        incoming.photos=(incoming.photos||[]).map(p=>({...p,data:photoCache.get(p.storagePath)||p.data||''}));
         await dbPut(incoming);
       }
     }else{
