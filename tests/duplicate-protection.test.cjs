@@ -159,6 +159,23 @@ async function testConditionalRevisionConflict(){
   assert.equal(rec.syncStatus,'pending');
   assert.equal(rec.baseRevision,4);
 }
+async function testRevisionCreationDoesNotUpsert(){
+  const source=extract('const pendingRecordUploads=new Map();', 'async function pullCloud()');
+  let urlSeen='',methodSeen='';
+  const deps={
+    cloudConfig:()=>({url:'https://example.invalid'}),revisionProtocolEnabled:()=>true,
+    ensureVistoriaSession:async()=>{},dbPut:async()=>{},uploadPhotoToStorage:async p=>p,
+    toCloud:r=>({client_uuid:r.cloudId}),cloudHeaders:()=>({}),
+    crypto:{randomUUID:()=> 'fresh-uuid'},
+    fetch:async(url,opts)=>{urlSeen=url;methodSeen=opts.method;return {ok:true,json:async()=>[{client_uuid:'fresh-uuid',revision:1,updated_at:'2026-10-28T22:00:00Z'}]};}
+  };
+  const push=functionFrom(source,Object.keys(deps),Object.values(deps),'pushRecord');
+  const rec={id:91,photos:[],syncStatus:'pending'};
+  await push(rec);
+  assert.equal(methodSeen,'POST','Nova vistoria usa POST');
+  assert.ok(!urlSeen.includes('on_conflict'),'Nova vistoria não pode fazer upsert');
+  assert.equal(rec.baseRevision,1,'Nova vistoria preserva revisão inicial');
+}
 async function testRepeatSaveAndNewForm() {
   const source = extract('let generateAndSaveRunning=false;', '/* ---------- Supabase Auth');
   let saves=0, forms=0, uuid=0;
@@ -299,4 +316,4 @@ async function testRemotePhotoRecovery(){
   assert.equal(written,1,'Foto recuperada é persistida localmente');
   assert.equal(warnings.length,0,'Download bem-sucedido não gera alerta');
 }
-(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await testConcurrentUploads(); await testDeniedCloudWriteRemainsPending(); await testInterruptedPhotoUploadResumes(); await testNewerRemoteEditStopsOverwrite(); await testMissingRemoteBlocksOverwrite(); await testConditionalRevisionUpdate(); await testConditionalRevisionConflict(); await testRevisionCreationDoesNotUpsert(); await testRepeatSaveAndNewForm(); await testRepeatedCloudPull(); await testCloudPullPreservesPendingEdit(); await testOfflineRecoveryWithoutDuplicate(); await testPaginatedCloudPullNeverDeletesMissingRecords(); await testRemotePhotoRecovery(); console.log('PASS: sintaxe, upload único, salvamento único, nova vistoria e importação repetida');})().catch(e=>{console.error(e);process.exitCode=1;});
