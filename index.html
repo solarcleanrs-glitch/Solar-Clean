@@ -591,6 +591,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="exportBackup">Exportar backup</button>
       <button id="clearSearch">Limpar busca</button>
     </div>
+    <div id="historyDiagnostics" class="section hidden"><button type="button" id="inspectPendingLink">Verificar vínculo da vistoria pendente (testes)</button><p id="pendingLinkResult" class="muted small"></p></div>
     <div id="historyList" class="section"><p class="muted">Carregando histórico...</p></div>
     <button class="section" id="homeFromHistory">Voltar ao início</button>
   </div>
@@ -1382,6 +1383,31 @@ async function pushRecord(local){
   if(key!=null) pendingRecordUploads.set(key,upload);
   try{return await upload}
   finally{if(key!=null && pendingRecordUploads.get(key)===upload) pendingRecordUploads.delete(key)}
+}
+async function inspectPendingStagingLink(){
+  const out=$('#pendingLinkResult'),btn=$('#inspectPendingLink');
+  if(!out||!btn)return;
+  btn.disabled=true;
+  out.textContent='Verificando identificadores sem alterar dados...';
+  try{
+    if(location.hostname!=='solar-clean-testes-crm.pages.dev')throw new Error('Disponível somente em homologação.');
+    await ensureVistoriaSession();
+    const local=(await dbAll()).filter(r=>r.syncStatus!=='synced'&&String(r.cliente||'').toLowerCase().includes('teste fotos crm'));
+    if(local.length!==1)throw new Error('Encontradas '+local.length+' vistorias locais pendentes com este nome. Nenhuma alteração realizada.');
+    const record=local[0],c=cloudConfig();
+    const query=`${c.url}/rest/v1/vistorias?select=client_uuid,revision,cliente&cliente=ilike.*teste%20fotos%20crm*&limit=10`;
+    const res=await fetch(query,{headers:cloudHeaders({'Prefer':''})});
+    if(!res.ok)throw new Error('Consulta do Supabase recusada ('+res.status+').');
+    const remotes=await res.json();
+    if(!Array.isArray(remotes))throw new Error('Resposta inesperada do Supabase.');
+    const matching=remotes.filter(r=>r.client_uuid===record.cloudId);
+    out.textContent='Local: '+(record.cloudId||'sem UUID')+'; revisão-base: '+(record.baseRevision||0)+
+      '; remotos encontrados pelo nome: '+remotes.length+
+      '; UUID corresponde: '+(matching.length===1?'sim':'não')+
+      '; revisão remota: '+(matching[0]?.revision||'não identificada')+
+      '. Apenas diagnóstico, sem gravar.';
+  }catch(e){out.textContent=e.message||String(e)}
+  finally{btn.disabled=false}
 }
 async function pullCloud(){
   await ensureVistoriaSession();
@@ -2706,6 +2732,8 @@ $('#loginBtn').onclick=()=>{
   setTimeout(()=>{techSignatureCtx=null;prepareTechSignatureCanvas()},0);
 };
 $('#settingsBtn').onclick=()=>show('settingsScreen');
+if($('#inspectPendingLink'))$('#inspectPendingLink').onclick=inspectPendingStagingLink;
+if($('#historyDiagnostics'))$('#historyDiagnostics').classList.toggle('hidden',location.hostname!=='solar-clean-testes-crm.pages.dev');
 $('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
 document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
