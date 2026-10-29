@@ -124,7 +124,7 @@ async function testConditionalRevisionUpdate(){
       if(opts?.method==='PATCH'){
         patched++;
         assert.ok(url.includes('revision=eq.4'),'Atualização deve exigir revisão 4');
-        return {ok:true,json:async()=>[{client_uuid:'record-4',revision:5}]};
+        return {ok:true,json:async()=>[{client_uuid:'record-4',revision:5,updated_at:'2026-10-28T21:00:00Z'}]};
       }
       if(opts?.method==='POST')posting++;
       return {ok:true,json:async()=>[{client_uuid:'record-4',updated_at:'2026-10-28T12:00:00Z'}]};
@@ -136,6 +136,7 @@ async function testConditionalRevisionUpdate(){
   assert.equal(patched,1);
   assert.equal(posting,0);
   assert.equal(rec.baseRevision,5);
+  assert.equal(rec.updatedAt,'2026-10-28T21:00:00Z','Horário confirmado pelo servidor deve ser preservado');
   assert.equal(rec.syncStatus,'synced');
 }
 async function testConditionalRevisionConflict(){
