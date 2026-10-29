@@ -1238,7 +1238,7 @@ function fromCloud(c){
     name:p.name||'',type:p.type||'image/jpeg',category:p.category||'Foto',storagePath:p.storagePath||'',data:''
   })):[];
   return {
-    cloudId:c.client_uuid, createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
+    cloudId:c.client_uuid, baseRevision:Number(c.revision||0), createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
     cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,pagamentoStatus:c.pagamento_status||'Pendente',
 pagamentoForma:c.pagamento_forma||'',
 valorCobrado:Number(c.valor_cobrado||0),
@@ -1267,6 +1267,8 @@ async function testCloud(){
   // não é acessível com a chave pública. O upload real valida o Storage.
   return true;
 }
+// O protocolo transacional só pode ser habilitado após migração e testes no banco.
+function revisionProtocolEnabled(){return cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co' && localStorage.getItem('solarCleanStagingRevisionProtocol')==='enabled'}
 const pendingRecordUploads=new Map();
 async function pushRecord(local){
   // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
@@ -1310,8 +1312,19 @@ async function pushRecord(local){
   local.photos=uploaded;
   local.updatedAt=new Date().toISOString();
   const payload=toCloud(local);
-  const res=await fetch(`${c.url}/rest/v1/vistorias?on_conflict=client_uuid`,{
-    method:'POST',headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(payload)
+  const useRevision=revisionProtocolEnabled();
+  if(useRevision && hadCloudId && (!Number.isSafeInteger(local.baseRevision)||local.baseRevision<1)){
+    throw new Error('Revisão-base ausente: importe a vistoria no dispositivo antes de editar. Cópia local preservada.');
+  }
+  const endpoint=useRevision
+    ? hadCloudId
+      ? `${c.url}/rest/v1/vistorias?client_uuid=eq.${encodeURIComponent(local.cloudId)}&revision=eq.${local.baseRevision}&select=client_uuid,revision,updated_at`
+      : `${c.url}/rest/v1/vistorias?select=client_uuid,revision,updated_at`
+    : `${c.url}/rest/v1/vistorias?on_conflict=client_uuid`;
+  const res=await fetch(endpoint,{
+    method:useRevision&&hadCloudId?'PATCH':'POST',
+    headers:cloudHeaders({'Prefer':useRevision?'return=representation':'resolution=merge-duplicates,return=representation'}),
+    body:JSON.stringify(payload)
   });
   if(!res.ok){
     const msg=await res.text().catch(()=>'');
@@ -1321,8 +1334,10 @@ async function pushRecord(local){
   // O PostgREST pode responder 2xx e retornar [] quando RLS impede a gravação.
   // Somente marcar como sincronizado após confirmar o registro retornado.
   if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==payload.client_uuid){
-    throw new Error('Vistoria não confirmada na nuvem. O registro local permanece pendente.');
+    throw new Error(useRevision?'Conflito de revisão ou falta de permissão. Vistoria preservada neste aparelho.':'Vistoria não confirmada na nuvem. O registro local permanece pendente.');
   }
+  if(useRevision && (!Number.isSafeInteger(Number(rows[0].revision))||Number(rows[0].revision)<1||(hadCloudId&&Number(rows[0].revision)<=local.baseRevision)))throw new Error('Revisão não confirmada na nuvem; edição local preservada.');
+  if(useRevision)local.baseRevision=Number(rows[0].revision);
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
   await dbPut(local); return rows[0];
   })();
