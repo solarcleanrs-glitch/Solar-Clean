@@ -1308,7 +1308,7 @@ async function pushRecord(local){
   const upload=(async()=>{
   await ensureVistoriaSession();
   const c=cloudConfig();
-  const hadCloudId=Boolean(local.cloudId);
+  const hadCloudId=Boolean(local.cloudId) && (local.baseRevision>0 || local.syncStatus==='synced');
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
   local.updatedAt=new Date().toISOString();
@@ -2603,6 +2603,7 @@ async function generateAndSave(){
   if(editingRecord){
     r.id=editingRecord.id;
     r.cloudId=editingRecord.cloudId||null;
+    r.baseRevision=editingRecord.baseRevision||0;
     r.createdAt=editingRecord.createdAt;
     r.dateLabel=editingRecord.dateLabel||new Date(editingRecord.createdAt).toLocaleDateString('pt-BR');
     r.updatedAt=new Date().toISOString();
