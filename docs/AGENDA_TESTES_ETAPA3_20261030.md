@@ -92,3 +92,28 @@ evento Google e importação histórica continuam fora desta entrega.
 - Validar também agenda e novos cadastros usando outra sessão com JWT real.
 - Técnicos/parceiros continuam bloqueados. Não liberar esses perfis sem projeções
   de dados e isolamento de cache por conta, além das políticas por unidade/parceiro.
+
+## Publicação e correção de reenvio
+
+Versão inicial publicada após autorização específica: commit remoto 5bfc753,
+Cloudflare Pages e três verificações GitHub concluídos com sucesso. Conferência
+visual do aviso de versão e dos controles de vistoria no site de testes.
+
+Usuário reportou falha de sincronização. Foto da tela identificou HTTP 409,
+código 23505 e constraint vistorias_client_uuid_key, com revisões ativadas.
+Isso demonstra tentativa de POST para UUID já existente, sem revisão-base local
+confirmada. Não é evidência de duplicação de linha no banco ou de perda de dados.
+
+Correção preparada: somente nesse conflito específico, criação em modo de revisão
+consulta o registro remoto pelo mesmo UUID. Compara o payload, fotos, assinaturas,
+valores e escopo, ignorando apenas updated_at do servidor e normalizando formatos
+equivalentes (timestamp, números e ordem de chaves JSON). Fotos locais sem caminho
+confirmado impedem reconciliação automática. Ausência de dados ou divergência mantém
+a cópia local pendente; não ocorre PATCH, exclusão, troca de UUID ou aceitação cega
+da revisão remota. Conteúdo idêntico confirma a gravação anterior e sua revisão.
+Falha automática também passa a exibir a mensagem detalhada em Dados da empresa.
+
+Testes executam o envio real com API simulada para POST 409 seguido de leitura,
+confirmando retomada idêntica e bloqueio de diferenças, revisão inválida, RLS vazia,
+UUID divergente e constraint não relacionada. A correção não foi testada com os
+dados do aparelho do usuário: essa confirmação depende de novo envio por ele.

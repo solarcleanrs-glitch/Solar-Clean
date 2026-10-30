@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-1" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-2" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 2</small></div>
 
 <main>
 <section id="home">
@@ -1330,6 +1330,43 @@ async function toggleStagingRevisionProtocol(){
   }
 }
 
+function vistoriaCreationDifferences(local,remote,payload){
+  const differences=[];
+  function canonical(value){
+    if(Array.isArray(value))return value.map(canonical);
+    if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
+    return value;
+  }
+  if((local.photos||[]).some(photo=>!photo.storagePath))differences.push('media_manifest');
+  if((remote.sc_escopo_id||null)!==(payload.sc_escopo_id||null))differences.push('sc_escopo_id');
+  for(const [field,value] of Object.entries(payload)){
+    if(field==='updated_at'||value===undefined)continue;
+    const other=remote[field];
+    let equal;
+    if(field==='created_at')equal=Number.isFinite(Date.parse(value))&&Date.parse(value)===Date.parse(other);
+    else if(typeof value==='number')equal=other!==null&&other!==undefined&&Number.isFinite(Number(other))&&value===Number(other);
+    else if(value==='')equal=other===''||other===null;
+    else equal=JSON.stringify(canonical(value))===JSON.stringify(canonical(other));
+    if(!equal)differences.push(field);
+  }
+  return [...new Set(differences)];
+}
+async function confirmExistingVistoriaCreation(local,payload){
+  const c=cloudConfig();
+  if(c.url!=='https://zzphucuiqhzrilrddxnf.supabase.co')throw new Error('Reconciliação disponível apenas no projeto de testes.');
+  const response=await fetch(`${c.url}/rest/v1/vistorias?client_uuid=eq.${encodeURIComponent(payload.client_uuid)}&select=*&limit=2`,{headers:cloudHeaders({'Prefer':''})});
+  if(!response.ok)throw new Error('A vistoria já existe, mas não foi possível conferir os dados. Cópia local preservada.');
+  const rows=await response.json();
+  if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==payload.client_uuid||!Number.isSafeInteger(Number(rows[0].revision))||Number(rows[0].revision)<1)
+    throw new Error('Não foi possível confirmar a vistoria existente. Cópia local preservada.');
+  const differences=vistoriaCreationDifferences(local,rows[0],payload);
+  if(differences.length){
+    const labels={cliente:'cliente',telefone:'telefone',cidade:'cidade',endereco:'endereço',media_manifest:'fotos',client_signature:'assinatura do cliente',tech_signature:'assinatura do técnico',sc_escopo_id:'unidade/parceiro',obs:'observações',created_at:'data original',valor_cobrado:'valor cobrado',valor_recebido:'valor recebido'};
+    const categories=[...new Set(differences.map(field=>labels[field]||'dados da vistoria'))];
+    throw new Error('A vistoria já existe na nuvem com diferenças em '+categories.slice(0,4).join(', ')+'. Nenhum dado remoto foi sobrescrito; cópia local preservada para revisão.');
+  }
+  return rows;
+}
 const pendingRecordUploads=new Map();
 async function pushRecord(local){
   // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
@@ -1393,11 +1430,15 @@ async function pushRecord(local){
     headers:cloudHeaders({'Prefer':useRevision?'return=representation':'resolution=merge-duplicates,return=representation'}),
     body:JSON.stringify(payload)
   });
+  let rows;
   if(!res.ok){
     const msg=await res.text().catch(()=>'');
-    throw new Error(`Envio falhou (${res.status})${msg?': '+msg.slice(0,160):''}`);
-  }
-  const rows=await res.json();
+    let errorBody=null;
+    try{errorBody=JSON.parse(msg);}catch(e){}
+    if(useRevision&&!hadCloudId&&res.status===409&&errorBody?.code==='23505'&&String(errorBody.message||'').includes('vistorias_client_uuid_key'))
+      rows=await confirmExistingVistoriaCreation(local,payload);
+    else throw new Error(`Envio falhou (${res.status})${msg?': '+msg.slice(0,160):''}`);
+  }else rows=await res.json();
   // O PostgREST pode responder 2xx e retornar [] quando RLS impede a gravação.
   // Somente marcar como sincronizado após confirmar o registro retornado.
   if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==payload.client_uuid){
@@ -1567,6 +1608,7 @@ async function autoSync(reason='automática'){
     return true;
   }catch(e){
     console.warn(`Falha na sincronização ${reason}:`,e);
+    $('#cloudStatus').textContent=e.message||'Falha na sincronização. Registros locais preservados.';
     updateSyncBadge('Pendente de sincronizar');
     return false;
   }finally{
