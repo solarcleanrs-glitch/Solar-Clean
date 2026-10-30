@@ -117,3 +117,15 @@ Testes executam o envio real com API simulada para POST 409 seguido de leitura,
 confirmando retomada idêntica e bloqueio de diferenças, revisão inválida, RLS vazia,
 UUID divergente e constraint não relacionada. A correção não foi testada com os
 dados do aparelho do usuário: essa confirmação depende de novo envio por ele.
+
+O usuário confirmou em seguida divergência real em observações e outros dados.
+Revisão 3 adiciona comparação explícita nas configurações, com prévia dos dois
+relatórios e escolha local/nuvem após confirmação. A escolha preserva snapshots
+completos no registro IndexedDB, incluídos no export de backup e nunca enviados
+no payload remoto. Leitura/conferência local/backup/escolha usam a mesma transação;
+revisão remota precisa permanecer igual à comparada. Envio local exige protocolo
+de revisões ativo, usa PATCH condicionado e preserva snapshot remoto anterior.
+Importação da nuvem não realiza escrita remota. Snapshots são mantidos em edições
+e pulls posteriores. Nenhuma escolha foi feita pelo agente em dados do usuário.
+Testes simulados cobrem as escolhas, confirmação cancelada, alterações concorrentes,
+preservação de fotos locais no snapshot e escape dos valores apresentados em HTML.

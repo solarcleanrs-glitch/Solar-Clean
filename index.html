@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-2" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 2</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-3" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 3</small></div>
 
 <main>
 <section id="home">
@@ -635,6 +635,18 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
         <button id="syncNow">Sincronizar agora</button>
       </div>
       <p id="cloudStatus" class="muted"></p>
+      <div id="conflictReviewPanel" class="section hidden" style="border-top:1px solid var(--line);padding-top:16px">
+        <h3>Revisar vistoria pendente</h3>
+        <p class="small">Compare as versões antes de escolher. A cópia anterior ficará preservada no backup deste aparelho.</p>
+        <button type="button" id="comparePendingVistoria">Comparar com a nuvem</button>
+        <label><span>Vistoria pendente</span><select id="conflictRecordSelect"><option value="">Selecione</option></select></label>
+        <p id="conflictReviewStatus" class="small" role="status"></p>
+        <div id="conflictReviewDetails" class="hidden">
+          <div class="grid grid2 section"><button type="button" id="previewLocalConflict">Ver relatório deste aparelho</button><button type="button" id="previewRemoteConflict">Ver relatório da nuvem</button></div>
+          <div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Campo</th><th>Neste aparelho</th><th>Na nuvem</th></tr></thead><tbody id="conflictReviewRows"></tbody></table></div>
+          <div class="grid grid2 section"><button type="button" id="useLocalVistoria">Usar cópia deste aparelho</button><button type="button" id="useRemoteVistoria">Usar cópia da nuvem</button></div>
+        </div>
+      </div>
       <div id="revisionLabControls" class="section hidden"><button type="button" id="revisionLabToggle">Ativar revisões no ambiente de testes</button><p id="revisionLabStatus" class="muted small">Somente homologação.</p></div>
     </div>
 
@@ -774,7 +786,7 @@ async function dbDelete(id){
 }
 
 /* ---------- UI helpers ---------- */
-function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls()}
+function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}
 function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
 function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
 function stepView(){
@@ -1490,6 +1502,131 @@ async function inspectPendingStagingLink(){
   }catch(e){out.textContent=e.message||String(e)}
   finally{btn.disabled=false}
 }
+/* ---------- Revisão explícita de conflito, somente homologação ---------- */
+let currentVistoriaReview=null;
+let vistoriaReviewGeneration=0;
+let vistoriaReviewBusy=false;
+function vistoriaReviewFingerprint(record){
+  const payload=toCloud(record);
+  delete payload.updated_at;
+  return JSON.stringify({payload,photos:record.photos||[]});
+}
+function buildVistoriaConflictSnapshot(local,remote){
+  const source={...local};delete source.conflictSnapshots;
+  return {savedAt:new Date().toISOString(),local:structuredClone(source),remote:structuredClone(remote)};
+}
+function makeVistoriaConflictChoice(local,remote,review,choice){
+  if(!local||local.cloudId!==review.cloudId||vistoriaReviewFingerprint(local)!==review.fingerprint)
+    throw new Error('A cópia local mudou. Compare novamente antes de escolher.');
+  const snapshots=[...(local.conflictSnapshots||[]),buildVistoriaConflictSnapshot(local,remote)];
+  return choice==='remote'?{...fromCloud(remote),id:local.id,conflictSnapshots:snapshots}:{...local,baseRevision:Number(remote.revision),syncStatus:'pending',conflictSnapshots:snapshots};
+}
+async function writeVistoriaConflictChoice(review,remote,choice){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const transaction=db.transaction(STORE,'readwrite'),store=transaction.objectStore(STORE);
+    let chosen,error;
+    const request=store.get(review.localId);
+    request.onsuccess=()=>{
+      try{chosen=makeVistoriaConflictChoice(request.result,remote,review,choice);store.put(chosen);}
+      catch(reason){error=reason;transaction.abort();}
+    };
+    transaction.oncomplete=()=>resolve(chosen);
+    transaction.onerror=()=>reject(error||transaction.error||new Error('Não foi possível preservar o backup local.'));
+    transaction.onabort=()=>reject(error||transaction.error||new Error('Operação local cancelada; cópia anterior preservada.'));
+  });
+}
+function vistoriaReviewCell(field,value){
+  if(value===null||value===undefined||value==='')return 'Não informado';
+  if(field==='client_signature'||field==='tech_signature'){
+    const data=String(value);
+    if(/^data:image\/(png|jpeg);base64,[a-z0-9+/=\r\n]+$/i.test(data))return `<img src="${escapeHtml(data)}" alt="Assinatura" style="max-width:180px;max-height:100px">`;
+    return 'Assinatura cadastrada';
+  }
+  if(field==='media_manifest')return escapeHtml(Array.isArray(value)?value.map(photo=>[photo.category,photo.name].filter(Boolean).join(' — ')).join('\n')||'Nenhuma foto':'Fotos indisponíveis');
+  if(field==='sc_escopo_id')return 'Classificação cadastrada';
+  if(Array.isArray(value))return escapeHtml(value.join(', '));
+  if(typeof value==='object')return escapeHtml(JSON.stringify(value));
+  return escapeHtml(String(value));
+}
+async function readVistoriaForReview(uuid){
+  await ensureVistoriaSession();
+  const c=cloudConfig();
+  if(c.url!=='https://zzphucuiqhzrilrddxnf.supabase.co')throw new Error('Revisão disponível somente no projeto de testes.');
+  const response=await fetch(`${c.url}/rest/v1/vistorias?client_uuid=eq.${encodeURIComponent(uuid)}&select=*&limit=2`,{headers:cloudHeaders({'Prefer':''})});
+  if(!response.ok)throw new Error('Não foi possível consultar a cópia da nuvem.');
+  const rows=await response.json();
+  if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==uuid||!Number.isSafeInteger(Number(rows[0].revision))||Number(rows[0].revision)<1)
+    throw new Error('Vistoria remota não confirmada. Nenhuma cópia foi alterada.');
+  return rows[0];
+}
+async function loadVistoriaConflictReview(){
+  const generation=++vistoriaReviewGeneration,status=$('#conflictReviewStatus');
+  currentVistoriaReview=null;$('#conflictReviewDetails').classList.add('hidden');
+  $('#comparePendingVistoria').disabled=true;status.textContent='Consultando as duas versões, sem alterar dados...';
+  try{
+    const selected=$('#conflictRecordSelect').value;
+    const pending=(await dbAll()).filter(record=>record.syncStatus!=='synced'&&record.cloudId);
+    $('#conflictRecordSelect').innerHTML=pending.map(record=>`<option value="${escapeHtml(record.id)}">${escapeHtml(record.cliente||'Cliente')} — ${escapeHtml(record.dateLabel||'')}</option>`).join('');
+    const local=pending.find(record=>String(record.id)===selected)||pending[0];
+    if(!local){status.textContent='Nenhuma vistoria pendente com vínculo de nuvem foi encontrada.';return;}
+    $('#conflictRecordSelect').value=String(local.id);
+    const remote=await readVistoriaForReview(local.cloudId);
+    if(generation!==vistoriaReviewGeneration)return;
+    const payload=toCloud(local),fields=vistoriaCreationDifferences(local,remote,payload);
+    const labels={cliente:'Cliente',telefone:'Telefone',cidade:'Cidade',endereco:'Endereço',placas:'Placas',pot_placa:'Potência por placa',marca_placa:'Marca das placas',marca_inv:'Marca do inversor',modelo_inv:'Modelo do inversor',ano_inst:'Ano de instalação',telhado:'Instalação',sujeira:'Sujeira',sujidades:'Sujidades',estrutura:'Estrutura',dps:'DPS',qtd_dps:'Quantidade DPS',modelo_dps:'Modelo DPS',inv_status:'Inversor',inv_internet:'Internet do inversor',erro_inv:'Erro do inversor',show_generation:'Exibir geração',antes:'Geração antes',depois:'Geração depois',limpeza:'Limpeza',retorno:'Retorno',obs:'Observações',pct:'Variação de geração',tecnico:'Técnico',tecnico_email:'E-mail do técnico',pagamento_status:'Situação do pagamento',pagamento_forma:'Forma de pagamento',valor_cobrado:'Valor cobrado',valor_recebido:'Valor recebido',media_manifest:'Fotos',client_signature:'Assinatura do cliente',tech_signature:'Assinatura do técnico',signature_at:'Data da assinatura',sc_escopo_id:'Unidade/parceiro',created_at:'Data original'};
+    $('#conflictReviewRows').innerHTML=fields.map(field=>`<tr><th style="padding:8px;text-align:left;vertical-align:top">${escapeHtml(labels[field]||'Informação técnica')}</th><td style="padding:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:280px">${vistoriaReviewCell(field,field==='media_manifest'?local.photos:payload[field])}</td><td style="padding:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:280px">${vistoriaReviewCell(field,remote[field])}</td></tr>`).join('');
+    currentVistoriaReview={localId:local.id,cloudId:local.cloudId,revision:Number(remote.revision),fingerprint:vistoriaReviewFingerprint(local),fields};
+    $('#useLocalVistoria').disabled=fields.includes('sc_escopo_id')||!revisionProtocolEnabled();
+    $('#useRemoteVistoria').disabled=false;$('#conflictReviewDetails').classList.remove('hidden');
+    status.textContent=fields.length?'Confira as diferenças. Usar a cópia deste aparelho atualizará a nuvem; usar a da nuvem substituirá a cópia de trabalho local, preservando a anterior no backup.':'Os dados coincidem. Você pode sincronizar novamente ou usar a cópia da nuvem.';
+    if(fields.includes('sc_escopo_id'))status.textContent+=' A classificação diferente exige revisão própria; envio da cópia local bloqueado.';
+    if(!revisionProtocolEnabled())status.textContent+=' Envio da cópia local requer controle de revisões ativo.';
+  }catch(error){status.textContent=error.message||String(error);}
+  finally{if(generation===vistoriaReviewGeneration)$('#comparePendingVistoria').disabled=false;}
+}
+async function resolveVistoriaConflict(choice){
+  const review=currentVistoriaReview,status=$('#conflictReviewStatus');
+  if(!review||!['local','remote'].includes(choice))return;
+  if(choice==='local'&&!revisionProtocolEnabled()){status.textContent='Envio bloqueado: o controle de revisões precisa estar ativo.';return;}
+  if(choice==='local'&&review.fields.includes('sc_escopo_id')){status.textContent='Revise a classificação antes de enviar a cópia local.';return;}
+  const question=choice==='local'?'Usar a cópia deste aparelho para atualizar a vistoria na nuvem? As duas versões serão preservadas no backup local.':'Usar a cópia da nuvem neste aparelho? A cópia local anterior ficará preservada no backup.';
+  if(!confirm(question))return;
+  $('#useLocalVistoria').disabled=true;$('#useRemoteVistoria').disabled=true;
+  try{
+    if(syncAllRunning||pendingRecordUploads.has(review.localId))throw new Error('Aguarde a sincronização em andamento e compare novamente.');
+    vistoriaReviewBusy=true;
+    const local=(await dbAll()).find(record=>record.id===review.localId);
+    if(!local||local.cloudId!==review.cloudId||vistoriaReviewFingerprint(local)!==review.fingerprint)throw new Error('A cópia local mudou. Compare novamente antes de escolher.');
+    const remote=await readVistoriaForReview(review.cloudId);
+    if(Number(remote.revision)!==review.revision)throw new Error('A cópia da nuvem mudou. Compare novamente antes de escolher.');
+    // Leitura, conferência da cópia local, backup e escolha na mesma transação.
+    const chosen=await writeVistoriaConflictChoice(review,remote,choice);
+    currentVistoriaReview=null;$('#conflictReviewDetails').classList.add('hidden');
+    if(choice==='local')await pushRecord(chosen);
+    await updateDashboard();await renderHistory();
+    status.textContent=choice==='local'?'Cópia deste aparelho enviada e confirmada. As duas versões anteriores estão preservadas no backup.':'Cópia da nuvem adotada. A cópia anterior deste aparelho está preservada no backup.';
+    $('#cloudStatus').textContent='Conflito revisado. Clique em Sincronizar agora para conferir as demais pendências.';
+  }catch(error){status.textContent=error.message||String(error);}
+  finally{vistoriaReviewBusy=false;if(currentVistoriaReview){$('#useLocalVistoria').disabled=currentVistoriaReview.fields.includes('sc_escopo_id')||!revisionProtocolEnabled();$('#useRemoteVistoria').disabled=false;}}
+}
+async function previewVistoriaConflict(choice){
+  const review=currentVistoriaReview;
+  if(!review)return;
+  try{
+    let record;
+    if(choice==='remote'){
+      const remote=await readVistoriaForReview(review.cloudId);
+      if(Number(remote.revision)!==review.revision)throw new Error('A versão da nuvem mudou. Compare novamente.');
+      record=fromCloud(remote);
+    }else{
+      record=(await dbAll()).find(row=>row.id===review.localId);
+      if(!record||vistoriaReviewFingerprint(record)!==review.fingerprint)throw new Error('A cópia local mudou. Compare novamente.');
+      record=structuredClone(record);delete record.id;
+    }
+    await hydrateRecordMedia(record);renderReport(record);
+  }catch(error){$('#conflictReviewStatus').textContent=error.message||String(error);}
+}
 async function pullCloud(){
   await ensureVistoriaSession();
   const c=cloudConfig();
@@ -1516,6 +1653,7 @@ async function pullCloud(){
       // O conflito será resolvido no envio; enquanto isso, preservar fotos e dados locais.
       if(existing.syncStatus==='synced' && ((incoming.updatedAt||'')>(existing.updatedAt||'') || Number(incoming.baseRevision||0)>Number(existing.baseRevision||0))){
         incoming.id=existing.id;
+        if(existing.conflictSnapshots)incoming.conflictSnapshots=existing.conflictSnapshots;
         const photoCache=new Map((existing.photos||[]).filter(p=>p.storagePath&&p.data).map(p=>[p.storagePath,p.data]));
         incoming.photos=(incoming.photos||[]).map(p=>({...p,data:photoCache.get(p.storagePath)||p.data||''}));
         await dbPut(incoming);
@@ -1560,7 +1698,7 @@ async function ensureVistoriaSession(){
   try{await pendingVistoriaSessionRefresh}finally{pendingVistoriaSessionRefresh=null}
 }
 async function syncAll(){
-  if(syncAllRunning) return false;
+  if(syncAllRunning||vistoriaReviewBusy) return false;
   syncAllRunning=true;
 
   try{
@@ -3034,6 +3172,7 @@ async function generateAndSave(){
     r.id=editingRecord.id;
     r.cloudId=editingRecord.cloudId||null;
     r.baseRevision=editingRecord.baseRevision||0;
+    if(editingRecord.conflictSnapshots)r.conflictSnapshots=editingRecord.conflictSnapshots;
     if(editingRecord.scopeId!=null)r.scopeId=editingRecord.scopeId;
     r.createdAt=editingRecord.createdAt;
     r.dateLabel=editingRecord.dateLabel||new Date(editingRecord.createdAt).toLocaleDateString('pt-BR');
@@ -3143,6 +3282,12 @@ $('#loginBtn').onclick=()=>{
 };
 $('#settingsBtn').onclick=()=>show('settingsScreen');
 if($('#inspectPendingLink'))$('#inspectPendingLink').onclick=inspectPendingStagingLink;
+$('#comparePendingVistoria').onclick=loadVistoriaConflictReview;
+$('#conflictRecordSelect').onchange=loadVistoriaConflictReview;
+$('#useLocalVistoria').onclick=()=>resolveVistoriaConflict('local');
+$('#useRemoteVistoria').onclick=()=>resolveVistoriaConflict('remote');
+$('#previewLocalConflict').onclick=()=>previewVistoriaConflict('local');
+$('#previewRemoteConflict').onclick=()=>previewVistoriaConflict('remote');
 if($('#historyDiagnostics'))$('#historyDiagnostics').classList.toggle('hidden',location.hostname!=='solar-clean-testes-crm.pages.dev');
 $('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
