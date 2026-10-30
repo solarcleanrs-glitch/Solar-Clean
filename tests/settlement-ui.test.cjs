@@ -46,6 +46,10 @@ vm.createContext(ctx);vm.runInContext(fs.readFileSync('lib/settlement-browser.js
  // Changing filters clears sensitive in-memory results and prepared operations.
  ctx.SCSettlementUI.clear();assert.equal(element('ledgerList').innerHTML,'');assert.equal(element('ledgerSave').disabled,true);
  element('agendaOriginFilter').value='particular';const count=requests.length;await element('ledgerLoad').onclick();assert.equal(requests.length,count);
+ element('agendaOriginFilter').value=partner;headers.length=0;receipts.length=0;ids.clear();
+ element('ledgerMessage').textContent='Fechamento confirmado antigo';await element('ledgerPrepare').onclick();assert.match(element('ledgerMessage').textContent,/Nenhum fechamento foi salvo/);
+ reject=true;await element('ledgerSave').onclick();assert.match(element('ledgerMessage').textContent,/Nenhum novo fechamento foi criado/);assert.doesNotMatch(element('ledgerMessage').textContent,/confirmado antigo/);assert.equal(headers.length,0);reject=false;
+ accept=false;await element('ledgerSave').onclick();assert.match(element('ledgerMessage').textContent,/Ação cancelada/);assert.doesNotMatch(element('ledgerMessage').textContent,/Processando/);
  assert.match(html,/lib\/settlement-browser.js/);assert.match(html,/lib\/settlement-ui.js/);
  console.log('PASS: ledger UI server preparation, confirmation, committed-response retry, partial receipt, overpayment guard, filters and cleared state');
 })().catch(e=>{console.error(e);process.exitCode=1});

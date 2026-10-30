@@ -162,3 +162,20 @@ revisão recém-lida; não remove CAS nem escreve valores. Nova concorrência ma
 pendente. Não permite retrocesso, salto de etapas, cancelamento ou mescla de outros
 campos. Testes simulados exercitam conclusão a partir de Em atendimento, bloqueiam
 alteração financeira/unidade/cliente/arquivo e conflito na segunda confirmação.
+
+## Validação de cancelamento e revisão 10
+
+Gestor confirmou sincronização concluída com revisão 9. Enviou telas mostrando
+cancelamento de fechamento de R$50 sem recebimentos, manutenção no histórico e
+retorno do mesmo serviço à prévia. No teste com duas abas relatou sucesso nas duas.
+Consulta SQL enviada pelo gestor mostrou um único fechamento Fechado/ativo e um
+Cancelado/inativo para o mesmo agenda_id: sem duplicação ativa no banco. Isso não
+comprova duas requisições concorrentes rejeitadas; comprova o estado final consultado.
+
+Revisão 10 limpa mensagem antiga no início de cada ação; preparação informa que
+não gravou fechamento, consulta se identifica como consulta, confirmações incluem
+ID do fechamento e tipo de operação. Rejeição SQL confirmada informa que não houve
+nova gravação naquela tentativa. Cancelar diálogo remove Processando em vez de
+manter sucesso antigo. Filtro sem parceiro específico orienta a selecionar Origem,
+em vez de UUID inválido. Nenhuma alteração de banco ou registro financeiro.
+Testes simulados cobrem mensagem antiga, preparo, rejeição e diálogo cancelado.
