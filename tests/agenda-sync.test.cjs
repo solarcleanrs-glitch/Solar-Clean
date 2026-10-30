@@ -97,6 +97,15 @@ async function run(){
   const conflict=harness({responses:[[]]});
   await assert.rejects(()=>conflict.api.saveAgendaEvent({...event,baseRevision:3}),/não confirmado/);
   assert.equal(conflict.rows()[0].syncStatus,'pending');
+  const recovered=harness({responses:[[],[{...payload,revision:4,hora:'10:00:00'}]]});
+  const recoveredEvent=await recovered.api.saveAgendaEvent({...event,baseRevision:3});
+  assert.equal(recoveredEvent.baseRevision,4);assert.equal(recoveredEvent.syncStatus,'synced');
+  assert.equal(recovered.calls.length,2);assert.equal(recovered.calls[0].method,'PATCH');assert.equal(recovered.calls[1].method,undefined);
+  for(const changed of [{status:'Concluído'},{valor_cobrado:500},{arquivado_em:'2026-10-30T12:00:00Z'},{revision:3}]){
+    const divergent=harness({responses:[[],[{...payload,revision:4,...changed}]]});
+    await assert.rejects(()=>divergent.api.saveAgendaEvent({...event,baseRevision:3}),/Conflito de revisão/);
+    assert.equal(divergent.rows()[0].syncStatus,'pending');assert.equal(divergent.calls.filter(call=>call.method==='PATCH').length,1);
+  }
   const archiveEvent={...event,baseRevision:3,syncStatus:'synced'};
   const archived=harness({initial:[archiveEvent],responses:[[{id:event.id,revision:4,arquivado_em:'2026-10-30T13:00:00Z'}]]});
   await archived.api.archiveStagingAgenda(archiveEvent);

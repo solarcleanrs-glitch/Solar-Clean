@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-7" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 7</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-8" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 8</small></div>
 
 <main>
 <section id="home">
@@ -2199,9 +2199,32 @@ async function writeStagingAgenda(event,payload){
   const c=cloudConfig(),base=`${c.url}/rest/v1/agenda_eventos`;
   const headers=cloudHeaders({'Prefer':'return=representation'});
   if(Number.isSafeInteger(event.baseRevision)&&event.baseRevision>0){
-    return fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
+    const response=await fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
       method:'PATCH',headers,body:JSON.stringify(payload)
     });
+    if(!response.ok)return response;
+    const updated=await response.json();
+    if(!Array.isArray(updated)||updated.length)return {ok:true,json:async()=>updated};
+    // A mesma alteração pode ter sido confirmada por outro envio antes da resposta.
+    // Apenas leitura após CAS vazio: nunca remover a condição de revisão ou sobrescrever.
+    let check;
+    try{check=await fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&select=*&limit=2`,{headers});}
+    catch(error){throw new Error('Agendamento não confirmado. Não foi possível conferir a revisão remota; cópia local preservada.');}
+    if(!check.ok)throw new Error('Agendamento não confirmado. Consulta da revisão recusada; cópia local preservada.');
+    const remote=await check.json();
+    if(!Array.isArray(remote)||remote.length!==1||remote[0].id!==event.id)
+      throw new Error('Agendamento não confirmado. Registro remoto ausente ou inacessível; cópia local preservada.');
+    const revision=Number(remote[0].revision);
+    if(Number.isSafeInteger(revision)&&revision>event.baseRevision&&agendaPayloadMatches(remote[0],payload))
+      return {ok:true,json:async()=>remote};
+    const fields=Object.keys(payload).filter(key=>{
+      if(key==='updated_at')return false;
+      if(key==='hora')return String(remote[0][key]||'').slice(0,5)!==String(payload[key]||'').slice(0,5);
+      if(typeof payload[key]==='number')return Number(remote[0][key])!==payload[key];
+      return remote[0][key]!==payload[key];
+    });
+    if(remote[0].arquivado_em)fields.push('arquivamento');
+    throw new Error('Conflito de revisão na agenda. Nuvem: revisão '+revision+', status '+(remote[0].status||'não informado')+'. Diferenças: '+(fields.join(', ')||'revisão não confirmada')+'. Cópia local preservada; nenhum dado remoto foi sobrescrito.');
   }
   // Um envio pode ter sido gravado antes da perda de conexão. Confirmar conteúdo
   // idêntico pelo UUID estável; uma divergência jamais vira UPSERT/sobrescrita.

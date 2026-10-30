@@ -138,3 +138,16 @@ pela interface. O servidor continua sendo a proteção definitiva contra mutaç�
 Testes cobrem saldo inteiro/parcial, anterior já quitado, cancelamento, paginação,
 resposta inválida/duplicada, falha de rede e troca de conta durante leitura.
 Falta conferir visualmente na sessão real do gestor o novo indicador.
+
+## Revisão 8 — confirmação de edição da agenda
+
+Usuário confirmou indicador Quitado no fechamento. Ao preparar novo serviço para
+ensaio de cancelamento, enviou tela com Agendamento não confirmado na nuvem e cópia
+local pendente ao avançar status. Mensagem corresponde a resposta sem linha após
+escrita; não identifica por si só a causa da divergência de revisão.
+Após PATCH condicionado com resposta vazia, revisão 8 consulta UUID exato. Só aceita
+revisão maior com payload inteiro idêntico e não arquivado, confirmando reenvio já
+gravado. Diferença mantém pendente, sem novo PATCH, e exibe revisão/status remoto e
+nomes dos campos divergentes. Falha de leitura ou acesso não confirma envio. Testes
+simulados cobrem confirmação idêntica, divergência de status/valor, arquivo e revisão
+igual; nenhuma escolha de versão é feita automaticamente para conteúdos diferentes.
