@@ -151,3 +151,14 @@ gravado. Diferença mantém pendente, sem novo PATCH, e exibe revisão/status re
 nomes dos campos divergentes. Falha de leitura ou acesso não confirma envio. Testes
 simulados cobrem confirmação idêntica, divergência de status/valor, arquivo e revisão
 igual; nenhuma escolha de versão é feita automaticamente para conteúdos diferentes.
+
+## Revisão 9 — avanço de status preservando concorrência
+
+Nova tela do usuário identificou somente status divergente e remoto Em atendimento,
+revisão 4. Adicionado rebase estrito da intenção de avanço: todos os demais campos
+precisam coincidir, vínculo/arquivo preservados, revisão remota maior e destino deve
+ser exatamente a próxima etapa operacional. Envia somente status em PATCH com a
+revisão recém-lida; não remove CAS nem escreve valores. Nova concorrência mantém
+pendente. Não permite retrocesso, salto de etapas, cancelamento ou mescla de outros
+campos. Testes simulados exercitam conclusão a partir de Em atendimento, bloqueiam
+alteração financeira/unidade/cliente/arquivo e conflito na segunda confirmação.

@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-8" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 8</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-9" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 9</small></div>
 
 <main>
 <section id="home">
@@ -2224,6 +2224,23 @@ async function writeStagingAgenda(event,payload){
       return remote[0][key]!==payload[key];
     });
     if(remote[0].arquivado_em)fields.push('arquivamento');
+    const sequence=['Agendado','Em deslocamento','Em atendimento','Concluído'];
+    const remoteStep=sequence.indexOf(remote[0].status),desiredStep=sequence.indexOf(payload.status);
+    // Intenção explícita de avançar exatamente uma etapa; todos os demais campos
+    // precisam coincidir. Rebase limitado a status com nova condição de revisão.
+    if(fields.length===1&&fields[0]==='status'&&remoteStep>=0&&desiredStep===remoteStep+1&&
+       !remote[0].arquivado_em&&Number.isSafeInteger(revision)&&revision>event.baseRevision&&
+       (remote[0].sc_escopo_id||null)===(payload.sc_escopo_id||null)){
+      const advanced=await fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&revision=eq.${revision}&arquivado_em=is.null&select=*`,{
+        method:'PATCH',headers,body:JSON.stringify({status:payload.status})
+      });
+      if(!advanced.ok)return advanced;
+      const confirmed=await advanced.json();
+      if(Array.isArray(confirmed)&&confirmed.length===1&&confirmed[0].id===event.id&&
+         Number.isSafeInteger(Number(confirmed[0].revision))&&Number(confirmed[0].revision)>revision&&
+         agendaPayloadMatches(confirmed[0],payload))return {ok:true,json:async()=>confirmed};
+      throw new Error('Status não confirmado: o registro mudou durante o avanço. Cópia local preservada; sincronize novamente.');
+    }
     throw new Error('Conflito de revisão na agenda. Nuvem: revisão '+revision+', status '+(remote[0].status||'não informado')+'. Diferenças: '+(fields.join(', ')||'revisão não confirmada')+'. Cópia local preservada; nenhum dado remoto foi sobrescrito.');
   }
   // Um envio pode ter sido gravado antes da perda de conexão. Confirmar conteúdo

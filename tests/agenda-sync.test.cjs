@@ -106,6 +106,19 @@ async function run(){
     await assert.rejects(()=>divergent.api.saveAgendaEvent({...event,baseRevision:3}),/Conflito de revisão/);
     assert.equal(divergent.rows()[0].syncStatus,'pending');assert.equal(divergent.calls.filter(call=>call.method==='PATCH').length,1);
   }
+  const forwardPayload={...payload,status:'Concluído'};
+  const forward=harness({responses:[[],[{...payload,status:'Em atendimento',revision:4}],[{...forwardPayload,revision:5}]]});
+  const forwarded=await forward.api.saveAgendaEvent({...event,status:'Concluído',baseRevision:3});
+  assert.equal(forwarded.syncStatus,'synced');assert.equal(forwarded.baseRevision,5);
+  assert.match(forward.calls[2].url,/revision=eq\.4/);assert.deepEqual(JSON.parse(forward.calls[2].body),{status:'Concluído'});
+  for(const difference of [{valor_cobrado:500},{unidade:'SC'},{cliente:'Changed'},{status:'Agendado'},{arquivado_em:'2026-10-30'}]){
+    const blocked=harness({responses:[[],[{...payload,status:'Em atendimento',revision:4,...difference}]]});
+    await assert.rejects(()=>blocked.api.saveAgendaEvent({...event,status:'Concluído',baseRevision:3}),/Conflito de revisão/);
+    assert.equal(blocked.calls.length,2);assert.equal(blocked.rows()[0].syncStatus,'pending');
+  }
+  const changedAgain=harness({responses:[[],[{...payload,status:'Em atendimento',revision:4}],[]]});
+  await assert.rejects(()=>changedAgain.api.saveAgendaEvent({...event,status:'Concluído',baseRevision:3}),/mudou durante/);
+  assert.equal(changedAgain.rows()[0].syncStatus,'pending');
   const archiveEvent={...event,baseRevision:3,syncStatus:'synced'};
   const archived=harness({initial:[archiveEvent],responses:[[{id:event.id,revision:4,arquivado_em:'2026-10-30T13:00:00Z'}]]});
   await archived.api.archiveStagingAgenda(archiveEvent);
