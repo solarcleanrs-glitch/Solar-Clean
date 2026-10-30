@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-6" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 6</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-7" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 7</small></div>
 
 <main>
 <section id="home">
@@ -856,6 +856,7 @@ function currentTech(){
 }
 function setTech(t){
   window.SCSettlementUI?.clear();
+  window.AgendaLedgerStatus?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
   updateLoggedUser();
 }
@@ -2618,6 +2619,7 @@ $('#agendaSettlementCsv').onclick=()=>{
 $('#agendaMonthlyMonth').onchange=()=>{$('#agendaMonthlyResult').innerHTML='';clearAgendaPartnerPreview();};
 $('#agendaMonthlyRun').onclick=renderAgendaMonthly;
 async function renderAgenda(){
+  window.AgendaLedgerStatus?.clear();
   clearAgendaPartnerPreview();
   $('#agendaMonthly').classList.toggle('hidden',!serviceContextEnabled()||!canSeeAgendaFinance());
   if(!$('#agendaMonthlyMonth').value)$('#agendaMonthlyMonth').value=formatAgendaDate(new Date()).slice(0,7);
@@ -2701,7 +2703,7 @@ if (tituloData && df) {
         ${canSeeAgendaFinance() && ev.pagamentoStatus ? `
 <div>
   <span class="muted">Pagamento</span><br>
-  <span class="finance-value">${escapeHtml(ev.pagamentoStatus)}
+  <span class="finance-value" ${serviceContextEnabled()?`data-agenda-payment-id="${escapeHtml(ev.id)}" data-agenda-payment-base="${escapeHtml(ev.pagamentoStatus+(ev.pagamentoForma?' • '+ev.pagamentoForma:'')+(ev.valorCobrado?' • R$ '+Number(ev.valorCobrado).toFixed(2).replace('.',','):''))}"`: ''}>${escapeHtml(ev.pagamentoStatus)}
   ${ev.pagamentoForma ? ` • ${escapeHtml(ev.pagamentoForma)}` : ''}
   ${ev.valorCobrado ? ` • R$ ${Number(ev.valorCobrado).toFixed(2).replace('.',',')}` : ''}
   </span>
@@ -2803,6 +2805,7 @@ $("#valorRecebido").value=ev.valorRecebido||'';
     
     const ev=filtered[Number(b.dataset.agendaFinance)];
     if(!ev)return;
+    if(serviceContextEnabled()&&window.AgendaLedgerStatus?.isLinked(ev.id)){alert('Valores vinculados a fechamento. Consulte o saldo e registre recebimentos em Fechamentos salvos.');return;}
     window.__agendaFinanceEventId=ev.id;
     $('#agendaFinanceTitle').textContent=`Valores — ${ev.cliente||'Cliente'}`;
     $('#agendaServiceValue').value=ev.serviceValue||'';
@@ -2825,6 +2828,7 @@ $("#agendaValorRecebido").value=ev.valorRecebido||'';
   }
 };
   });
+  if(serviceContextEnabled()&&canSeeAgendaFinance())await window.AgendaLedgerStatus?.refresh(filtered);
 }
 
 /* ---------- CRM / recorrência ---------- */
@@ -3797,5 +3801,6 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
 </script>
 <script src="lib/settlement-ui.js"></script>
+<script src="lib/agenda-ledger-status.js"></script>
 </body>
 </html>

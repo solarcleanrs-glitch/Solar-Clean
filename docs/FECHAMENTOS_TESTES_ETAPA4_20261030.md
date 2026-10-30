@@ -117,3 +117,24 @@ excesso e limpeza de filtros. Testes PostgreSQL continuam passando. Falta valida
 visual/autenticada pelo gestor no site e concorrência com duas conexões reais.
 Os parágrafos anteriores sobre estado não integrado descrevem o preparo anterior;
 a instalação foi reportada agora e a revisão 6 é a primeira integração da interface.
+
+## Validação do gestor e revisão 7
+
+Gestor enviou telas confirmando fechamento de teste SC/YES de R$350, recebimento
+parcial de R$100, quitação com mais R$250, dois registros no histórico, persistência
+após recarregar e exclusão do serviço da preparação seguinte (um já fechado).
+Não houve execução desses recebimentos pelo agente.
+
+Revisão 7 acrescenta projeção somente de leitura na agenda: consulta vínculos ativos
+por IDs visíveis, confere unidade/parceiro e soma recebimentos paginados do fechamento.
+Mostra Quitado no fechamento com saldo zero; parcial/pendente mostram expressamente
+o saldo do fechamento inteiro, sem atribuir recebimento a um serviço específico.
+Não modifica pagamento_status/valor_recebido nem soma valores duas vezes. Cancelamento
+sem vínculo ativo volta ao status original da agenda. Offline/erro não afirma quitação.
+Dados ficam somente em memória, limpos por conta/filtros e respostas antigas descartadas.
+Após gravar/cancelar/receber, atualiza os indicadores. Editor antigo é fechado quando
+seu serviço é vinculado; Valores orienta a consultar o fechamento sem permitir edição
+pela interface. O servidor continua sendo a proteção definitiva contra mutação.
+Testes cobrem saldo inteiro/parcial, anterior já quitado, cancelamento, paginação,
+resposta inválida/duplicada, falha de rede e troca de conta durante leitura.
+Falta conferir visualmente na sessão real do gestor o novo indicador.
