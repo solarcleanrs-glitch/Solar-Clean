@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-3" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 3</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-4" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 4</small></div>
 
 <main>
 <section id="home">
@@ -216,6 +216,15 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <label class="section"><span>Observação operacional</span><textarea id="agendaNote" rows="3"></textarea></label>
       <button class="primary section" id="agendaSave">Salvar agendamento</button>
       <p id="agendaStatusMsg" class="muted"></p>
+    </div>
+
+    <div id="agendaMonthly" class="section hidden" style="border-top:1px solid var(--line);padding-top:16px">
+      <h3>Relatório mensal interno</h3>
+      <p class="muted">Consulta por data do agendamento. Inclui apenas concluídos, sincronizados e não arquivados. Não gera cobrança nem confirma pagamento. Gastos extras são custos, não acréscimos ao preço.</p>
+      <label><span>Mês</span><input id="agendaMonthlyMonth" type="month"></label>
+      <button id="agendaMonthlyRun" type="button">Consultar mês</button>
+      <p class="small">Usa os filtros Unidade e Origem acima; ignora os filtros de dia e status. Valores refletem a cópia disponível neste aparelho.</p>
+      <div id="agendaMonthlyResult" aria-live="polite"></div>
     </div>
 
     <div id="agendaFinanceEditor" class="finance-editor hidden">
@@ -2484,7 +2493,41 @@ async function populateAgendaClients(){
   ).join('');
   window.__agendaClientMap=Object.fromEntries(clients);
 }
+function buildAgendaMonthly(rows,month,unit,origin){
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!['RS','SC'].includes(unit))throw new Error('Selecione mês e unidade válidos.');
+  const ids=new Set(),items=[];let excluded=0;
+  const money=value=>{const n=Number(value??0);if(!Number.isFinite(n)||n<0||!Number.isSafeInteger(Math.round(n*100)))throw new Error('Valor inválido no agendamento. Revise os valores antes de consultar.');return Math.round(n*100)};
+  const totals={service:0,cost:0,charged:0,received:0};
+  for(const row of rows){
+    if(row.unit!==unit||String(row.date||'').slice(0,7)!==month||!agendaMatchesOrigin(row,origin)||row.archivedAt)continue;
+    if(!row.id||ids.has(row.id))throw new Error('Identificador ausente ou duplicado. Sincronize e revise a agenda.');
+    ids.add(row.id);
+    if(row.status!=='Concluído'||row.syncStatus!=='synced'){excluded++;continue}
+    const item={...row,amounts:{service:money(row.serviceValue),cost:money(row.extraExpense),charged:money(row.valorCobrado),received:money(row.valorRecebido)}};
+    for(const key of Object.keys(totals)){totals[key]+=item.amounts[key];if(!Number.isSafeInteger(totals[key]))throw new Error('Total fora do limite.');}
+    items.push(item);
+  }
+  items.sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
+  return {items,totals,excluded};
+}
+function renderAgendaMonthly(){
+  const target=$('#agendaMonthlyResult');
+  target.innerHTML='';
+  if(!serviceContextEnabled()||!canSeeAgendaFinance())return;
+  try{
+    const report=buildAgendaMonthly(agendaLocal(),$('#agendaMonthlyMonth').value,$('#agendaUnitFilter').value,$('#agendaOriginFilter').value);
+    const brl=cents=>(cents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    target.innerHTML=`<p><b>${report.items.length} serviço(s) concluído(s)</b> · ${report.excluded} agendamento(s) fora dos totais por status ou sincronização.</p>
+      <p>Serviços: <b>${brl(report.totals.service)}</b> · Gastos extras: <b>${brl(report.totals.cost)}</b><br>Cobrado registrado: <b>${brl(report.totals.charged)}</b> · Recebido registrado: <b>${brl(report.totals.received)}</b></p>
+      <p class="small">Valor zero pode significar valor não informado. O mês é o do agendamento, não o mês do recebimento. Não é um fechamento definitivo.</p>
+      <div style="overflow:auto"><table><thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Serviço</th><th>Gasto extra</th><th>Cobrado</th><th>Recebido</th></tr></thead><tbody>${report.items.map(row=>`<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.cliente)}</td><td>${escapeHtml(agendaOriginLabel(row))}</td>${['service','cost','charged','received'].map(key=>`<td>${brl(row.amounts[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }catch(error){target.textContent=error.message;}
+}
+$('#agendaMonthlyRun').onclick=renderAgendaMonthly;
 async function renderAgenda(){
+  $('#agendaMonthly').classList.toggle('hidden',!serviceContextEnabled()||!canSeeAgendaFinance());
+  if(!$('#agendaMonthlyMonth').value)$('#agendaMonthlyMonth').value=formatAgendaDate(new Date()).slice(0,7);
+  $('#agendaMonthlyResult').innerHTML='';
   const editingKey=window.__agendaEditingId?$('#agendaClient').value:'';
   await populateAgendaClients();
   if(editingKey)$('#agendaClient').value=editingKey;

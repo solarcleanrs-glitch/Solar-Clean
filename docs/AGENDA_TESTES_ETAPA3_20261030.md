@@ -129,3 +129,16 @@ Importação da nuvem não realiza escrita remota. Snapshots são mantidos em ed
 e pulls posteriores. Nenhuma escolha foi feita pelo agente em dados do usuário.
 Testes simulados cobrem as escolhas, confirmação cancelada, alterações concorrentes,
 preservação de fotos locais no snapshot e escape dos valores apresentados em HTML.
+
+## Validação recebida e relatório mensal — revisão 4
+
+Usuário confirmou recuperação da sincronização de vistoria, relatório e fotos;
+agenda SC/YES e RS/Elysia e Particular; filtros, herança para vistoria, persistência
+sem duplicação, edição de horário, valores e arquivamento após recarregar.
+
+Adicionada consulta mensal interna na agenda de testes. Usa mês da data agendada,
+unidade e origem; somente concluídos/sincronizados/não arquivados entram nos totais.
+Separa serviço, custo extra, cobrado e recebido, sem presumir preço ou quitação.
+Não cria cobrança/fechamento, não exporta dados nem grava banco. Cópia local pode
+estar desatualizada; mensagem explicita a fonte. Totais em centavos e testes de
+isolamento, exclusões, duplicidade e valores inválidos. Validação real pendente.
