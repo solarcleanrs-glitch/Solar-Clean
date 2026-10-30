@@ -158,3 +158,9 @@ parceiro ou conciliação. Próxima etapa persistente precisa de tabelas de fech
 itens e recebimentos com transação no servidor, unicidade por serviço e proteção
 contra dupla baixa. Não simular esse registro usando pagamento_status em lote.
 Testes sintéticos cobrem parcial, isolamento, custos excluídos, impedimentos e CSV.
+
+## Preparação seguinte
+
+Prévia por parceiro confirmada pelo usuário. Migração, adaptador, journal e testes
+PostgreSQL preparados conforme docs/FECHAMENTOS_TESTES_ETAPA4_20261030.md.
+Não aplicados no Supabase nem integrados à UI. Site segue na revisão 5.

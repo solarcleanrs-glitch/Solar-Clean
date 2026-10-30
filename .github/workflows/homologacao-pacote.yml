@@ -11,6 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/postgres/package-lock.json
+      - name: Instalar dependencia de teste PostgreSQL
+        run: npm ci --prefix tests/postgres --ignore-scripts --no-audit --no-fund
+      - name: Validar banco local isolado
+        run: npm --prefix tests/postgres run test:ledger
       - name: Validar codigo
         run: |
           node tests/crm-whatsapp.test.cjs
@@ -26,6 +35,10 @@ jobs:
           node tests/agenda-sync.test.cjs
           node tests/agenda-context.test.cjs
           node tests/partner-settlement.test.cjs
+          node tests/agenda-monthly.test.cjs
+          node tests/agenda-partner-preview.test.cjs
+          node tests/settlement-api.test.cjs
+          node tests/settlement-journal.test.cjs
       - name: Montar pacote da versao de testes
         run: |
           mkdir -p homologacao

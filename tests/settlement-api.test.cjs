@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {createIntent,receiptIntent,cancelIntent,sendIntent}=require('../lib/settlement-api.cjs');
+const id='11111111-1111-4111-8111-111111111111',partnerId='22222222-2222-4222-8222-222222222222',serviceId='33333333-3333-4333-8333-333333333333';
+(async()=>{
+const intent=createIntent({id,partnerId,unit:'RS',month:'2026-10',items:[{id:serviceId,revision:2,price:999}]});
+assert.equal(intent.body.p_itens[0].price,undefined);
+assert.throws(()=>createIntent({id,partnerId,unit:'RS',month:'2026-10',items:[{id:serviceId,revision:0}]}),/revisão/);
+assert.throws(()=>receiptIntent({id,settlementId:partnerId,amountCents:1.2,receivedOn:'2026-10-30',method:'Pix'}),/Centavos/);
+assert.throws(()=>receiptIntent({id,settlementId:partnerId,amountCents:100,receivedOn:'2026-02-30',method:'Pix'}),/Data/);
+assert.throws(()=>cancelIntent({id,reason:' '}),/Motivo/);
+const result={id,status:'Fechado',total_centavos:35000,anterior_centavos:10000,recebimentos_centavos:0,saldo_centavos:25000};
+const calls=[];const opts={url:'https://zzphucuiqhzrilrddxnf.supabase.co',key:'synthetic-key',accessToken:'synthetic-token',intent,fetchImpl:async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>result}}};
+assert.equal((await sendIntent(opts)).balanceCents,25000);await sendIntent(opts);assert.equal(calls[0].options.body,calls[1].options.body);
+await assert.rejects(sendIntent({...opts,url:'https://production.invalid'}),/somente/);assert.equal(calls.length,2);
+await assert.rejects(sendIntent({...opts,fetchImpl:async()=>{throw Error('network')}}),/mesmo ID/);
+await assert.rejects(sendIntent({...opts,fetchImpl:async()=>({ok:true,json:async()=>({...result,id:partnerId})})}),/não confirma/);
+await assert.rejects(sendIntent({...opts,fetchImpl:async()=>({ok:true,json:async()=>({...result,saldo_centavos:1})})}),/inconsistentes/);
+await assert.rejects(sendIntent({...opts,fetchImpl:async()=>({ok:false,status:409,json:async()=>({message:'Revisão mudou'})})}),/Revisão mudou/);
+console.log('PASS: staging-only ledger adapter, stable intent IDs, wire projection, input/result guards and ambiguous responses');
+})().catch(e=>{console.error(e);process.exitCode=1});
