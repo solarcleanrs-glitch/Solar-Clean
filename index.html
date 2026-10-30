@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.</div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-1" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10</small></div>
 
 <main>
 <section id="home">
@@ -161,6 +161,9 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
           <option value="Cancelado">Cancelado</option>
         </select>
       </label>
+      <label id="agendaOriginFilterWrap" class="hidden"><span>Origem</span>
+        <select id="agendaOriginFilter"><option value="">Todas</option><option value="particular">Particular Solar Clean</option><option value="unclassified">Não informada</option></select>
+      </label>
     </div>
 
     <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
@@ -179,6 +182,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
           </select>
         </label>
         <label><span>Data</span><input id="agendaDate" type="date"></label>
+        <label id="agendaOriginWrap" class="hidden"><span>Origem do serviço</span><select id="agendaOrigin"><option value="">Selecione</option><option value="particular">Particular Solar Clean</option></select></label>
         <label><span>Horário</span><input id="agendaTime" type="time"></label>
         <label><span>Duração prevista (min)</span><input id="agendaDuration" type="number" min="15" step="15" value="90"></label>
         <label><span>Técnico / equipe</span><input id="agendaTech" placeholder="Nome do técnico"></label>
@@ -448,6 +452,16 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <input id="valorRecebido" type="number" step="0.01" min="0">
 </label>
       </div>
+    </div>
+
+    <div id="serviceContextPanel" class="section hidden">
+      <h3>Identificação do serviço</h3>
+      <div class="grid grid2">
+        <label><span>Unidade do serviço</span><select id="serviceUnit"><option value="">Selecione</option><option value="RS">RS</option><option value="SC">SC</option></select></label>
+        <label><span>Origem do serviço</span><select id="serviceOrigin"><option value="">Selecione</option><option value="particular">Particular Solar Clean</option></select></label>
+      </div>
+      <button type="button" id="serviceContextRefresh">Atualizar parceiros</button>
+      <p id="serviceContextStatus" class="small" role="status"></p>
     </div>
 
     <div class="step hidden" data-step="2">
@@ -760,7 +774,7 @@ async function dbDelete(id){
 }
 
 /* ---------- UI helpers ---------- */
-function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id))}
+function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls()}
 function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
 function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
 function stepView(){
@@ -806,6 +820,7 @@ function collectForm(){
   const showGeneration=generationEnabled();
   const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
+    ...collectServiceContext(),
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
     cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'', mapsUrl:$('#mapsUrl').value||'',pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
 pagamentoForma:$("#pagamentoForma").value||'',
@@ -821,6 +836,8 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
+  window.__agendaSourceId=null;
+  resetServiceContext();
   // Uma nova vistoria libera um novo salvamento; a anterior não pode ser criada de novo.
   savedCurrentFormRecordId=null;
  ['cliente','telefone','cidade','endereco','mapsUrl','placas','potPlaca','marcaPlaca','marcaInv','modeloInv','anoInst','qtdDps','modeloDps','erroInv','antes','depois','obs','photoBefore','photoAfter','photoRoof','photoDps','photoInverter','photoIssues','photoInternal','pagamentoForma','valorCobrado','valorRecebido'].forEach(id=>$('#'+id).value='');
@@ -831,7 +848,9 @@ $("#pagamentoStatus").value='Pendente';
   $('#dpsExtra').classList.add('hidden'); updateGenerationVisibility();
   window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
 }
-function loadRecordToForm(r){
+function loadRecordToForm(r,preserveScope=false){
+  window.__agendaSourceId=null;
+  resetServiceContext(r,preserveScope);
   $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';$('#mapsUrl').value=r.mapsUrl||'';$("#pagamentoStatus").value=r.pagamentoStatus||'Pendente';
 $("#pagamentoForma").value=r.pagamentoForma||'';
 $("#valorCobrado").value=r.valorCobrado||'';
@@ -1211,11 +1230,21 @@ async function hydrateRecordMedia(record){
   }
   return record;
 }
+function cloudScopePayload(r){
+  // NULL/ausência no legado não pode apagar um vínculo atribuído no servidor.
+  if(r.scopeId==null)return {};
+  if(typeof r.scopeId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.scopeId))
+    throw new Error('Vínculo de unidade/parceiro inválido. Cópia local preservada.');
+  if(cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')
+    throw new Error('Vistoria vinculada ao projeto de testes não pode ser enviada a outro projeto.');
+  return {sc_escopo_id:r.scopeId};
+}
 function toCloud(r){
   const mediaManifest=(r.photos||[]).map(p=>({
     name:p.name||'',type:p.type||'image/jpeg',category:p.category||'Foto',storagePath:p.storagePath||''
   })).filter(p=>p.storagePath);
   return {
+    ...cloudScopePayload(r),
     client_uuid:String(r.cloudId||crypto.randomUUID()),
     created_at:r.createdAt,
     updated_at:r.updatedAt||r.createdAt,
@@ -1239,6 +1268,7 @@ function fromCloud(c){
     name:p.name||'',type:p.type||'image/jpeg',category:p.category||'Foto',storagePath:p.storagePath||'',data:''
   })):[];
   return {
+    ...(c.sc_escopo_id!=null?{scopeId:c.sc_escopo_id}:{}),
     cloudId:c.client_uuid, baseRevision:Number(c.revision||0), createdAt:c.created_at, updatedAt:c.updated_at, dateLabel:new Date(c.created_at).toLocaleDateString('pt-BR'),
     cliente:c.cliente||'', telefone:c.telefone||'', cidade:c.cidade||'', endereco:c.endereco||'', placas:c.placas||0, potPlaca:c.pot_placa||0,pagamentoStatus:c.pagamento_status||'Pendente',
 pagamentoForma:c.pagamento_forma||'',
@@ -1308,6 +1338,8 @@ async function pushRecord(local){
   const upload=(async()=>{
   await ensureVistoriaSession();
   const c=cloudConfig();
+  // Validar antes de qualquer envio de foto ou consulta da vistoria.
+  if(local.scopeId!=null){cloudScopePayload(local);await ensureRecordScope(local);}
   // No modo antigo, UUID indica registro remoto; no modo revisionado,
   // somente uma revisão-base confirmada prova que já existe na nuvem.
   const hadCloudId=Boolean(local.cloudId) && (!revisionProtocolEnabled() || Number(local.baseRevision)>0 || local.syncStatus==='synced');
@@ -1505,6 +1537,8 @@ async function syncAll(){
       await pushRecord(r);
     }
 
+    if(cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co')await syncPendingAgenda();
+
     await pullCloud();
 
     updateSyncBadge('Nuvem sincronizada',true);
@@ -1586,7 +1620,7 @@ async function renderHistory(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));if(r){await hydrateRecordMedia(r);renderReport(r)}});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
-    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
+    if(r){await hydrateRecordMedia(r);savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r,true);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
     const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
@@ -1674,6 +1708,104 @@ async function saveStandaloneClient(client){
 }
 
 /* ---------- Agenda operacional ---------- */
+/* Classificação explícita de vistorias de testes. Autorização continua no banco. */
+let serviceContextDraft=null, serviceContextScopeId=null, serviceContextGeneration=0;
+function serviceContextEnabled(){return cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co'}
+function resetServiceContext(record={},preserveScope=false){
+  serviceContextGeneration++;
+  serviceContextScopeId=preserveScope?(record.scopeId||null):null;
+  serviceContextDraft=record.serviceContext?{...record.serviceContext}:null;
+  if($('#serviceUnit'))$('#serviceUnit').value=serviceContextDraft?.unit||'';
+  if($('#serviceOrigin'))$('#serviceOrigin').value='';
+}
+function validateServiceContext(context){
+  if(!context||!['RS','SC'].includes(context.unit))throw new Error('Selecione a unidade do serviço.');
+  if(context.partnerId!==null&&(typeof context.partnerId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(context.partnerId)))
+    throw new Error('Selecione Particular ou um parceiro cadastrado.');
+  return {unit:context.unit,partnerId:context.partnerId};
+}
+function collectServiceContext(){
+  if(!serviceContextEnabled())return {};
+  if(serviceContextScopeId)return {scopeId:serviceContextScopeId,...(serviceContextDraft?{serviceContext:{...serviceContextDraft}}:{})};
+  const unit=$('#serviceUnit').value, origin=$('#serviceOrigin').value;
+  // A edição de um registro antigo continua possível sem inventar uma origem.
+  if(editingRecord&&!unit&&!origin)return {};
+  const context=validateServiceContext({unit,partnerId:origin==='particular'?null:origin});
+  return {scopeId:crypto.randomUUID(),serviceContext:context};
+}
+async function renderServiceContextControls(){
+  const panel=$('#serviceContextPanel');
+  if(!panel)return;
+  panel.classList.toggle('hidden',!serviceContextEnabled());
+  if(!serviceContextEnabled())return;
+  const generation=++serviceContextGeneration;
+  const scopeId=serviceContextScopeId;
+  const unitInput=$('#serviceUnit'),originInput=$('#serviceOrigin'),status=$('#serviceContextStatus');
+  unitInput.disabled=Boolean(scopeId);originInput.disabled=Boolean(scopeId);
+  const selectedOrigin=originInput.value;
+  status.textContent=scopeId?'Carregando a classificação cadastrada...':'Selecione a unidade e a origem antes de salvar a nova vistoria.';
+  try{
+    if(!navigator.onLine)throw new Error('Sem conexão. Particular continua disponível; parceiros precisam ser carregados com internet.');
+    await ensureVistoriaSession();
+    const c=cloudConfig(), headers=crmHistoryCloudHeaders();
+    const requests=[fetch(`${c.url}/rest/v1/sc_parceiros?select=id,nome,ativo&order=nome.asc`,{headers})];
+    if(scopeId)requests.push(fetch(`${c.url}/rest/v1/sc_clientes_escopos?id=eq.${encodeURIComponent(scopeId)}&select=id,unidade,parceiro_id`,{headers}));
+    const responses=await Promise.all(requests);
+    if(responses.some(r=>!r.ok))throw new Error('Não foi possível carregar a classificação. Verifique o login na nuvem.');
+    const [partners,scopes]=await Promise.all(responses.map(r=>r.json()));
+    if(!Array.isArray(partners))throw new Error('Lista de parceiros inválida.');
+    if(generation!==serviceContextGeneration)return;
+    if(scopeId){
+      if(!Array.isArray(scopes)||scopes.length!==1||scopes[0].id!==scopeId)throw new Error('Classificação não disponível nesta conta. O vínculo será preservado.');
+      serviceContextDraft=validateServiceContext({unit:scopes[0].unidade,partnerId:scopes[0].parceiro_id});
+    }
+    const desired=scopeId?(serviceContextDraft.partnerId||'particular'):(originInput.value||selectedOrigin|| (serviceContextDraft?(serviceContextDraft.partnerId||'particular'):''));
+    const choices=partners.filter(p=>p.ativo===true||(scopeId&&p.id===desired));
+    originInput.innerHTML='<option value="">Selecione</option><option value="particular">Particular Solar Clean</option>'+choices.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)}${p.ativo?'':' (inativo)'}</option>`).join('');
+    if(scopeId&&desired!=='particular'&&!choices.some(p=>p.id===desired))originInput.innerHTML+=`<option value="${escapeHtml(desired)}">Parceiro cadastrado</option>`;
+    originInput.value=desired;
+    if(scopeId||(!unitInput.value&&serviceContextDraft))unitInput.value=serviceContextDraft?.unit||'';
+    status.textContent=scopeId?'Classificação mantida ao editar este serviço.':(choices.length?'Selecione a unidade e a origem do novo serviço.':'Nenhum parceiro cadastrado. Particular está disponível.');
+  }catch(error){
+    if(generation!==serviceContextGeneration)return;
+    status.textContent=scopeId?'Não foi possível carregar a classificação. O vínculo existente será preservado.':error.message;
+  }
+}
+async function ensureRecordScope(record){
+  if(record.scopeId==null)return;
+  cloudScopePayload(record);
+  const c=cloudConfig(), headers=crmHistoryCloudHeaders();
+  const endpoint=`${c.url}/rest/v1/sc_clientes_escopos?id=eq.${encodeURIComponent(record.scopeId)}&select=id,unidade,parceiro_id`;
+  async function read(){
+    const response=await fetch(endpoint,{headers});
+    if(!response.ok)throw new Error('Não foi possível verificar a classificação do serviço. Cópia local preservada.');
+    const rows=await response.json();
+    if(!Array.isArray(rows)||rows.length>1)throw new Error('Resposta de classificação inválida.');
+    return rows;
+  }
+  function confirm(row){
+    if(row.id!==record.scopeId)throw new Error('Vínculo de classificação divergente.');
+    if(record.serviceContext){
+      const expected=validateServiceContext(record.serviceContext);
+      if(row.unidade!==expected.unit||row.parceiro_id!==expected.partnerId)throw new Error('A classificação remota é diferente. Cópia local preservada para revisão.');
+    }
+  }
+  let rows=await read();
+  if(rows.length){confirm(rows[0]);return;}
+  // Sem contexto explícito, jamais recriar um vínculo ausente ou inacessível.
+  const context=validateServiceContext(record.serviceContext);
+  const payload={id:record.scopeId,unidade:context.unit,parceiro_id:context.partnerId,legacy_client_key:crmKey(record)};
+  const response=await fetch(`${c.url}/rest/v1/sc_clientes_escopos?on_conflict=id`,{
+    method:'POST',headers:crmHistoryCloudHeaders({'Prefer':'resolution=ignore-duplicates,return=representation'}),body:JSON.stringify(payload)
+  });
+  if(!response.ok)throw new Error('Não foi possível cadastrar a classificação. Vistoria mantida pendente.');
+  // Conferir após POST inclusive em repetição, queda de rede ou resposta vazia.
+  rows=await read();
+  if(rows.length!==1)throw new Error('Classificação não confirmada na nuvem. Vistoria mantida pendente.');
+  confirm(rows[0]);
+}
+$('#serviceContextRefresh').onclick=()=>void renderServiceContextControls();
+
 let agendaCache=[];
 
 function normText(s){
@@ -1817,20 +1949,166 @@ function agendaGoogleUrl(ev){
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+function agendaPayloadMatches(remote,payload){
+  if(remote.arquivado_em||(remote.sc_escopo_id||null)!==(payload.sc_escopo_id||null))return false;
+  return Object.entries(payload).every(([key,value])=>{
+    if(key==='updated_at')return true;
+    if(key==='hora')return String(remote[key]||'').slice(0,5)===String(value||'').slice(0,5);
+    if(typeof value==='number')return Number(remote[key])===value;
+    return remote[key]===value;
+  });
+}
+async function readStagingAgendaPages(selection){
+  const rows=[],seen=new Set(),c=cloudConfig();
+  let offset=0;
+  for(;;){
+    const response=await fetch(`${c.url}/rest/v1/agenda_eventos?select=${encodeURIComponent(selection)}&order=data.asc,hora.asc,id.asc&limit=500&offset=${offset}`,{headers:cloudHeaders({'Prefer':''})});
+    if(!response.ok)throw new Error('Não foi possível carregar a agenda da nuvem.');
+    const page=await response.json();
+    if(!Array.isArray(page))throw new Error('Resposta da agenda inválida.');
+    if(!page.length)return rows;
+    // Não depender do limite de linhas configurado no Supabase.
+    let added=0;
+    for(const row of page){
+      if(!row.id)throw new Error('Agendamento sem identificador na resposta.');
+      if(!seen.has(row.id)){seen.add(row.id);rows.push(row);added++;}
+    }
+    if(!added)throw new Error('Paginação da agenda repetida; cópia local preservada.');
+    offset+=page.length;
+  }
+}
+async function writeStagingAgenda(event,payload){
+  const c=cloudConfig(),base=`${c.url}/rest/v1/agenda_eventos`;
+  const headers=cloudHeaders({'Prefer':'return=representation'});
+  if(Number.isSafeInteger(event.baseRevision)&&event.baseRevision>0){
+    return fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
+      method:'PATCH',headers,body:JSON.stringify(payload)
+    });
+  }
+  // Um envio pode ter sido gravado antes da perda de conexão. Confirmar conteúdo
+  // idêntico pelo UUID estável; uma divergência jamais vira UPSERT/sobrescrita.
+  const check=await fetch(`${base}?id=eq.${encodeURIComponent(event.id)}&select=*`,{headers});
+  if(!check.ok)throw new Error('Não foi possível verificar o agendamento antes do envio.');
+  const rows=await check.json();
+  if(!Array.isArray(rows)||rows.length>1)throw new Error('Resposta de verificação da agenda inválida.');
+  if(rows.length){
+    if(!agendaPayloadMatches(rows[0],payload))throw new Error('Conflito: existe uma versão diferente deste agendamento. Cópia local preservada.');
+    return {ok:true,json:async()=>rows};
+  }
+  return fetch(`${base}?select=*`,{method:'POST',headers,body:JSON.stringify(payload)});
+}
+async function archiveStagingAgenda(event){
+  if(!cloudReady()||!navigator.onLine)throw new Error('Conecte-se à nuvem para arquivar o agendamento.');
+  if(event.syncStatus==='pending'||!Number.isSafeInteger(event.baseRevision)||event.baseRevision<1)
+    throw new Error('Sincronize e confira o agendamento antes de arquivar.');
+  await ensureVistoriaSession();
+  const c=cloudConfig();
+  const response=await fetch(`${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
+    method:'PATCH',headers:cloudHeaders({'Prefer':'return=representation'}),body:JSON.stringify({arquivado_em:new Date().toISOString()})
+  });
+  if(!response.ok)throw new Error('Não foi possível arquivar o agendamento.');
+  const rows=await response.json();
+  if(!Array.isArray(rows)||rows.length!==1||rows[0].id!==event.id||!rows[0].arquivado_em||Number(rows[0].revision)<=event.baseRevision)
+    throw new Error('Arquivamento não confirmado ou conflito de edição. Cópia local preservada.');
+  const local=agendaLocal(),index=local.findIndex(row=>row.id===event.id);
+  if(index>=0){
+    if(local[index].syncStatus==='pending'||local[index].baseRevision!==event.baseRevision)
+      throw new Error('O agendamento foi arquivado na nuvem, mas há uma edição local para revisar.');
+    local[index]={...local[index],archivedAt:rows[0].arquivado_em,baseRevision:Number(rows[0].revision),updatedAt:rows[0].updated_at||local[index].updatedAt};
+    saveAgendaLocal(local);
+  }
+  return true;
+}
 function agendaLocal(){
   try{return JSON.parse(localStorage.getItem('solarCleanAgenda')||'[]')}catch(e){return []}
 }
+let agendaOriginGeneration=0;
+let agendaPartnerNames=new Map();
+function agendaOriginLabel(event){
+  if(!event.serviceContext)return 'Origem não informada';
+  return event.serviceContext.partnerId===null?'Particular Solar Clean':(agendaPartnerNames.get(event.serviceContext.partnerId)||'Parceiro cadastrado');
+}
+function agendaMatchesOrigin(event,origin){
+  if(!origin)return true;
+  if(origin==='unclassified')return !event.serviceContext;
+  if(!event.serviceContext)return false;
+  return origin==='particular'?event.serviceContext.partnerId===null:event.serviceContext.partnerId===origin;
+}
+function collectAgendaContext(previous,unit,origin){
+  if(!serviceContextEnabled())return {};
+  if(previous?.scopeId){
+    if(unit!==previous.unit)throw new Error('A unidade de um serviço classificado deve ser mantida.');
+    return {scopeId:previous.scopeId,...(previous.serviceContext?{serviceContext:{...previous.serviceContext}}:{})};
+  }
+  if(previous&&!origin)return {};
+  const context=validateServiceContext({unit,partnerId:origin==='particular'?null:origin});
+  return {scopeId:crypto.randomUUID(),serviceContext:context};
+}
+function applyAgendaServiceContext(event){
+  resetServiceContext(event,Boolean(event.scopeId));
+  $('#serviceUnit').value=['RS','SC'].includes(event.unit)?event.unit:'';
+  window.__agendaSourceId=event.id;
+}
+async function populateAgendaOrigins(event=null){
+  const enabled=serviceContextEnabled();
+  $('#agendaOriginWrap').classList.toggle('hidden',!enabled);
+  $('#agendaOriginFilterWrap').classList.toggle('hidden',!enabled);
+  if(!enabled)return;
+  const generation=++agendaOriginGeneration;
+  const origin=$('#agendaOrigin'),filter=$('#agendaOriginFilter');
+  const locked=Boolean(event?.scopeId);
+  origin.disabled=locked;$('#agendaUnit').disabled=locked;$('#agendaClient').disabled=locked;
+  try{
+    if(!navigator.onLine)return;
+    await ensureVistoriaSession();
+    const c=cloudConfig(),headers=cloudHeaders();
+    const requests=[fetch(`${c.url}/rest/v1/sc_parceiros?select=id,nome,ativo&order=nome.asc`,{headers})];
+    if(locked&&!event.serviceContext)requests.push(fetch(`${c.url}/rest/v1/sc_clientes_escopos?id=eq.${encodeURIComponent(event.scopeId)}&select=id,unidade,parceiro_id`,{headers}));
+    const responses=await Promise.all(requests);
+    if(responses.some(r=>!r.ok))throw new Error('Não foi possível carregar os parceiros. Verifique o login.');
+    const [partners,scopes]=await Promise.all(responses.map(r=>r.json()));
+    if(generation!==agendaOriginGeneration)return;
+    if(!Array.isArray(partners))throw new Error('Cadastro de parceiros inválido.');
+    if(locked&&!event.serviceContext){
+      if(!Array.isArray(scopes)||scopes.length!==1||scopes[0].id!==event.scopeId||scopes[0].unidade!==event.unit)throw new Error('Classificação do agendamento indisponível ou divergente.');
+      event.serviceContext=validateServiceContext({unit:scopes[0].unidade,partnerId:scopes[0].parceiro_id});
+    }
+    agendaPartnerNames=new Map(partners.map(p=>[p.id,p.nome]));
+    const chosen=event?.serviceContext?(event.serviceContext.partnerId||'particular'):origin.value;
+    const filtered=filter.value;
+    origin.innerHTML='<option value="">Selecione</option><option value="particular">Particular Solar Clean</option>'+partners.filter(p=>p.ativo||p.id===event?.serviceContext?.partnerId).map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)}${p.ativo?'':' (inativo)'}</option>`).join('');
+    if(locked&&chosen!=='particular'&&!partners.some(p=>p.id===chosen))origin.innerHTML+=`<option value="${escapeHtml(chosen)}">Parceiro cadastrado</option>`;
+    origin.value=chosen;
+    filter.innerHTML='<option value="">Todas</option><option value="particular">Particular Solar Clean</option><option value="unclassified">Não informada</option>'+partners.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)}</option>`).join('');
+    filter.value=filtered;
+  }catch(error){if(generation===agendaOriginGeneration)$('#agendaStatusMsg').textContent=error.message;}
+}
 function saveAgendaLocal(rows){
   localStorage.setItem('solarCleanAgenda',JSON.stringify(rows||[]));
+}
+function agendaExistingFinance(id){
+  const previous=id?agendaLocal().find(event=>event.id===id):null;
+  return {
+    serviceValue:previous?.serviceValue??0,extraExpense:previous?.extraExpense??0,
+    extraExpenseNote:previous?.extraExpenseNote||'',
+    pagamentoStatus:previous?.pagamentoStatus||'Pendente',pagamentoForma:previous?.pagamentoForma||'',
+    valorCobrado:previous?.valorCobrado??0,valorRecebido:previous?.valorRecebido??0
+  };
 }
 async function pullAgenda(){
   let rows=agendaLocal();
   if(cloudReady()&&navigator.onLine){
     try{
+      await ensureVistoriaSession();
       const c=cloudConfig();
-      const res=await fetch(`${c.url}/rest/v1/agenda_eventos?select=*&order=data.asc,hora.asc`,{headers:cloudHeaders({'Prefer':''})});
+      const selection=c.url==='https://zzphucuiqhzrilrddxnf.supabase.co'?'*,escopo:sc_clientes_escopos!agenda_eventos_escopo_unidade_fk(id,unidade,parceiro_id)':'*';
+      const res=c.url==='https://zzphucuiqhzrilrddxnf.supabase.co'
+        ?{ok:true,json:async()=>readStagingAgendaPages(selection)}
+        :await fetch(`${c.url}/rest/v1/agenda_eventos?select=${encodeURIComponent(selection)}&order=data.asc,hora.asc,id.asc`,{headers:cloudHeaders({'Prefer':''})});
       if(res.ok){
-        rows=(await res.json()).map(x=>({
+        const incoming=await res.json();
+        if(!Array.isArray(incoming))throw new Error('Resposta da agenda inválida.');
+        const remoteRows=incoming.map(x=>({
           id:x.id,clientKey:x.client_key,cliente:x.cliente||'',telefone:x.telefone||'',cidade:x.cidade||'',endereco:x.endereco||'',
           placas:x.placas||0,unit:x.unidade||'RS',date:x.data,time:x.hora||'',duration:x.duracao_min||90,tech:x.tecnico||'',
           status:x.status||'Agendado',note:x.observacao||'',
@@ -1839,9 +2117,19 @@ async function pullAgenda(){
 pagamentoForma:x.pagamento_forma||'',
 valorCobrado:Number(x.valor_cobrado||0),
 valorRecebido:Number(x.valor_recebido||0),
-          updatedAt:x.updated_at||'', 
+          updatedAt:x.updated_at||'', syncStatus:'synced',
+          ...(x.sc_escopo_id?{scopeId:x.sc_escopo_id}:{}),
+          ...(x.escopo&&x.escopo.id===x.sc_escopo_id?{serviceContext:validateServiceContext({unit:x.escopo.unidade,partnerId:x.escopo.parceiro_id})}:{}),
+          baseRevision:Number(x.revision||0),mapsUrl:x.maps_url||'',
+          archivedAt:x.arquivado_em||null,
           googleEventId:x.google_event_id||''
         }));
+        // Não substituir edição pendente nem apagar um evento por ausência remota.
+        const merged=new Map(rows.map(ev=>[ev.id,ev]));
+        for(const remote of remoteRows){
+          if(merged.get(remote.id)?.syncStatus!=='pending')merged.set(remote.id,remote);
+        }
+        rows=[...merged.values()];
         saveAgendaLocal(rows);
       }
     }catch(e){console.warn('Agenda nuvem indisponível',e)}
@@ -1851,15 +2139,28 @@ valorRecebido:Number(x.valor_recebido||0),
 }
 async function saveAgendaEvent(ev){
   let rows=agendaLocal();
+  if(cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co'&&ev.serviceContext){
+    const context=validateServiceContext(ev.serviceContext);
+    if(context.unit!==ev.unit)throw new Error('Unidade do agendamento diverge da classificação.');
+    if(!ev.scopeId)ev.scopeId=crypto.randomUUID();
+  }
   if(!ev.id) ev.id=crypto.randomUUID();
   ev.updatedAt=new Date().toISOString();
+  ev.syncStatus='pending';
+  ev.syncAttemptId=crypto.randomUUID();
+  const attemptStamp=ev.updatedAt;
+  const attemptId=ev.syncAttemptId;
   const idx=rows.findIndex(x=>x.id===ev.id);
   if(idx>=0) rows[idx]=ev; else rows.push(ev);
   saveAgendaLocal(rows);
 
   if(cloudReady()&&navigator.onLine){
+    await ensureVistoriaSession();
     const c=cloudConfig();
+    const staging=c.url==='https://zzphucuiqhzrilrddxnf.supabase.co';
+    if(ev.scopeId!=null){cloudScopePayload(ev);await ensureRecordScope({...ev,__crmKey:ev.clientKey});}
     const payload={
+      ...(staging?{maps_url:ev.mapsUrl||'',google_event_id:ev.googleEventId||'',...cloudScopePayload(ev)}:{}),
       id:ev.id,client_key:ev.clientKey||'',cliente:ev.cliente||'',telefone:ev.telefone||'',cidade:ev.cidade||'',endereco:ev.endereco||'',
       placas:Number(ev.placas||0),unidade:ev.unit||'RS',data:ev.date,hora:ev.time||null,duracao_min:Number(ev.duration||90),
       tecnico:ev.tech||'',status:ev.status||'Agendado',observacao:ev.note||'',
@@ -1874,7 +2175,7 @@ valor_recebido:Number(ev.valorRecebido||0),
 
       updated_at:ev.updatedAt
     };
-    const res=await fetch(`${c.url}/rest/v1/agenda_eventos?on_conflict=id`,{
+    const res=staging?await writeStagingAgenda(ev,payload):await fetch(`${c.url}/rest/v1/agenda_eventos?on_conflict=id`,{
       method:'POST',
       headers:cloudHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
       body:JSON.stringify(payload)
@@ -1883,11 +2184,39 @@ valor_recebido:Number(ev.valorRecebido||0),
       const msg=await res.text().catch(()=>'');
       throw new Error(`Falha ao salvar agenda na nuvem (${res.status})${msg?': '+msg.slice(0,140):''}`);
     }
+    const confirmed=await res.json();
+    if(!Array.isArray(confirmed)||confirmed.length!==1||confirmed[0].id!==ev.id)
+      throw new Error('Agendamento não confirmado na nuvem. Cópia local mantida pendente.');
+    if(staging&&(!Number.isSafeInteger(Number(confirmed[0].revision))||Number(confirmed[0].revision)<1||
+      (Number(ev.baseRevision)>0&&Number(confirmed[0].revision)<=ev.baseRevision)))
+      throw new Error('Revisão do agendamento não confirmada. Cópia local mantida pendente.');
+    const latest=agendaLocal();
+    const localIndex=latest.findIndex(row=>row.id===ev.id);
+    // Uma confirmação antiga não pode concluir uma nova edição local.
+    if(localIndex>=0&&latest[localIndex].updatedAt===attemptStamp&&latest[localIndex].syncAttemptId===attemptId){
+      ev.syncStatus='synced';
+      if(confirmed[0].updated_at)ev.updatedAt=confirmed[0].updated_at;
+      if(confirmed[0].revision)ev.baseRevision=Number(confirmed[0].revision);
+      latest[localIndex]={...ev};saveAgendaLocal(latest);
+    }else throw new Error('Há uma edição mais recente neste aparelho. Ela continua pendente.');
   }
   return ev;
 }
+async function syncPendingAgenda(){
+  const pending=agendaLocal().filter(event=>event.syncStatus==='pending');
+  if(!navigator.onLine||!cloudReady())return {synced:0,pending:pending.length};
+  const failures=[];
+  let synced=0;
+  for(const event of pending){
+    try{await saveAgendaEvent({...event});synced++;}
+    catch(error){failures.push(error.message||'Falha de sincronização');}
+  }
+  if(failures.length)throw new Error(`${failures.length} agendamento(s) continuam pendentes: ${failures[0]}`);
+  return {synced,pending:0};
+}
   async function deleteAgendaEvent(ev){
   if(!ev || !ev.id) throw new Error('Agendamento inválido.');
+  if(serviceContextEnabled())return archiveStagingAgenda(ev);
 
   // 1. Se existe evento vinculado ao Google, exclui primeiro no Google Agenda.
   if(ev.googleEventId){
@@ -1976,8 +2305,11 @@ async function populateAgendaClients(){
   window.__agendaClientMap=Object.fromEntries(clients);
 }
 async function renderAgenda(){
+  const editingKey=window.__agendaEditingId?$('#agendaClient').value:'';
   await populateAgendaClients();
+  if(editingKey)$('#agendaClient').value=editingKey;
   const rows=await pullAgenda();
+  await populateAgendaOrigins(rows.find(event=>event.id===window.__agendaEditingId)||null);
   const dateInput = $('#agendaDateFilter');
 
 if (!dateInput.value) {
@@ -2028,8 +2360,10 @@ if (tituloData && df) {
 
  const filtered = rows
   .filter(x =>
+    !x.archivedAt &&
     x.date === df &&
     (!uf || x.unit === uf) &&
+    (!serviceContextEnabled()||agendaMatchesOrigin(x,$('#agendaOriginFilter').value)) &&
     (!sf || x.status === sf)
   )
   .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -2044,6 +2378,7 @@ if (tituloData && df) {
       <div class="agenda-meta">
         <div><span class="muted">Data</span><br>${escapeHtml(new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR'))}</div>
         <div><span class="muted">Técnico</span><br>${escapeHtml(ev.tech||'Não definido')}</div>
+        ${serviceContextEnabled()?`<div><span class="muted">Origem</span><br>${escapeHtml(agendaOriginLabel(ev))}</div>`:''}
         <div><span class="muted">Telefone</span><br>${escapeHtml(ev.telefone||'')}</div>
         <div><span class="muted">Endereço</span><br>${escapeHtml(ev.endereco||ev.cidade||'')}</div>
         ${canSeeAgendaFinance() && ev.pagamentoStatus ? `
@@ -2062,7 +2397,7 @@ if (tituloData && df) {
         <button data-agenda-google="${i}">Google Agenda</button>
         <button data-agenda-edit="${i}">Editar</button>
         <button data-agenda-status="${i}">Avançar status</button>
-        <button data-agenda-delete="${i}">Excluir</button>
+        <button data-agenda-delete="${i}">${serviceContextEnabled()?'Arquivar no app':'Excluir'}</button>
         ${canSeeAgendaFinance()?`<button data-agenda-finance="${i}">Valores</button>`:''}
       </div>
     </div>`).join(''):'<p class="muted">Nenhum agendamento encontrado.</p>';
@@ -2075,15 +2410,17 @@ if (tituloData && df) {
   document.querySelectorAll('[data-agenda-start]').forEach(b=>b.onclick=async()=>{
     const ev=filtered[Number(b.dataset.agendaStart)];
     if(!ev)return;
-    window.__agendaSourceId=ev.id;
     const all=await dbAll();
     const r=all.find(x=>crmKey(x)===ev.clientKey)||null;
     editingRecord=null; resetForm(); window.__pendingPhotos=[]; renderPhotoPreview();
     if(r)loadRecordToForm(r);
+    // Um atendimento anterior do cliente não determina o parceiro deste agendamento.
+    applyAgendaServiceContext(ev);
     $('#cliente').value=ev.cliente||$('#cliente').value;
     $('#telefone').value=ev.telefone||$('#telefone').value;
     $('#cidade').value=ev.cidade||$('#cidade').value;
     $('#endereco').value=ev.endereco||$('#endereco').value;
+    $('#mapsUrl').value=ev.mapsUrl||'';
     $('#placas').value=ev.placas||$('#placas').value;
     $("#pagamentoStatus").value=ev.pagamentoStatus||'Pendente';
 $("#pagamentoForma").value=ev.pagamentoForma||'';
@@ -2108,6 +2445,7 @@ $("#valorRecebido").value=ev.valorRecebido||'';
   $('#agendaTech').value=ev.tech||'';
   $('#agendaStatus').value=ev.status||'Agendado';
   $('#agendaNote').value=ev.note||'';
+  void populateAgendaOrigins(ev);
 
   $('#agendaStatusMsg').textContent='Editando agendamento de '+(ev.cliente||'Cliente');
 
@@ -2131,7 +2469,7 @@ $("#valorRecebido").value=ev.valorRecebido||'';
   const nome=ev.cliente||'este cliente';
 
   const confirmar=confirm(
-    `Excluir o agendamento de ${nome}?\n\nEsta ação não pode ser desfeita.`
+    serviceContextEnabled()?`Arquivar o agendamento de ${nome} no app?\n\nO registro será mantido no banco. Se houver evento Google, ele continuará ativo.`:`Excluir o agendamento de ${nome}?\n\nEsta ação não pode ser desfeita.`
   );
 
   if(!confirmar)return;
@@ -2139,7 +2477,7 @@ $("#valorRecebido").value=ev.valorRecebido||'';
   try{
     await deleteAgendaEvent(ev);
     await renderAgenda();
-    alert('Agendamento excluído com sucesso.');
+    alert(serviceContextEnabled()?'Agendamento arquivado no app.':'Agendamento excluído com sucesso.');
   }catch(e){
     alert(e.message||'Não foi possível excluir o agendamento.');
   }
@@ -2654,6 +2992,7 @@ async function generateAndSave(){
     r.id=editingRecord.id;
     r.cloudId=editingRecord.cloudId||null;
     r.baseRevision=editingRecord.baseRevision||0;
+    if(editingRecord.scopeId!=null)r.scopeId=editingRecord.scopeId;
     r.createdAt=editingRecord.createdAt;
     r.dateLabel=editingRecord.dateLabel||new Date(editingRecord.createdAt).toLocaleDateString('pt-BR');
     r.updatedAt=new Date().toISOString();
@@ -2676,6 +3015,13 @@ if(window.__agendaSourceId){
     const agendaEv=agendaRows.find(x=>x.id===window.__agendaSourceId);
 
     if(agendaEv){
+      if(r.scopeId&&serviceContextEnabled()){
+        if(agendaEv.scopeId&&agendaEv.scopeId!==r.scopeId)throw new Error('Vistoria e agenda têm classificações diferentes.');
+        if(!agendaEv.scopeId){
+          if(!r.serviceContext||r.serviceContext.unit!==agendaEv.unit)throw new Error('Confira a unidade do agendamento antes de vinculá-lo à vistoria.');
+          agendaEv.scopeId=r.scopeId;agendaEv.serviceContext={...r.serviceContext};
+        }
+      }
       agendaEv.pagamentoStatus=r.pagamentoStatus||'Pendente';
       agendaEv.pagamentoForma=r.pagamentoForma||'';
       agendaEv.valorCobrado=Number(r.valorCobrado||0);
@@ -2799,6 +3145,7 @@ $('#agendaUnitFilter').onchange=()=>{
   renderAgenda();
 };
 $('#agendaStatusFilter').onchange=renderAgenda;
+$('#agendaOriginFilter').onchange=renderAgenda;
   function formatAgendaDate(date){
   const ano = date.getFullYear();
   const mes = String(date.getMonth() + 1).padStart(2, '0');
@@ -2855,19 +3202,26 @@ $('#agendaSave').onclick=async()=>{
   const unit=$('#agendaUnit').value;
   if(unit==='SC'&&!isRegisTech()){$('#agendaStatusMsg').textContent='Agenda SC disponível somente para Regis.';return}
   if(!$('#agendaDate').value||!$('#agendaTime').value){$('#agendaStatusMsg').textContent='Informe data e horário.';return}
+  const previousEvent=window.__agendaEditingId?agendaLocal().find(event=>event.id===window.__agendaEditingId):null;
+  let classification={};
+  try{classification=collectAgendaContext(previousEvent,unit,$('#agendaOrigin').value);}
+  catch(error){$('#agendaStatusMsg').textContent=error.message;return;}
   const ev={
+    ...(previousEvent||{}),
+    ...classification,
     id: window.__agendaEditingId || undefined,
 googleEventId: window.__agendaEditingGoogleEventId || '',
     clientKey:key,cliente:r.cliente||'',telefone:r.telefone||'',cidade:r.cidade||'',endereco:r.endereco||'',placas:r.placas||0,
     unit,date:$('#agendaDate').value,time:$('#agendaTime').value,duration:Number($('#agendaDuration').value||90),
     tech:$('#agendaTech').value.trim()||(currentTech()?.name||''),status:$('#agendaStatus').value,note:$('#agendaNote').value.trim(),
-    serviceValue:0,extraExpense:0,extraExpenseNote:''
+    ...agendaExistingFinance(window.__agendaEditingId),
+    mapsUrl:r.mapsUrl||previousEvent?.mapsUrl||''
   };
   $('#agendaStatusMsg').textContent='Salvando...';
   try{
     
     await saveAgendaEvent(ev);
-    if(googleAccessToken){
+    if(googleAccessToken&&ev.syncStatus==='synced'){
   try{
     const inicio = new Date(`${ev.date}T${String(ev.time || '08:00').slice(0,5)}:00`);
     const fim = new Date(inicio.getTime() + Number(ev.duration || 90) * 60000);
@@ -2935,7 +3289,7 @@ if(localIndex>=0){
 
   const c = cloudConfig();
 
-  const patchRes = await fetch(
+  const patchRes = serviceContextEnabled()?null:await fetch(
     `${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(ev.id)}`,
     {
       method: 'PATCH',
@@ -2950,7 +3304,13 @@ if(localIndex>=0){
   );
  
 
-if(!patchRes.ok){
+if(serviceContextEnabled()){
+  const linked=agendaLocal().find(event=>event.id===ev.id);
+  if(!linked)throw new Error('Agendamento local não encontrado para vincular ao Google.');
+  linked.googleEventId=googleData.id;
+  await saveAgendaEvent(linked);
+  Object.assign(ev,linked);
+}else if(!patchRes.ok){
   const patchErro = await patchRes.text();
   throw new Error(
     'Google criou o evento, mas o ID não foi salvo no Supabase (' +
@@ -2963,11 +3323,12 @@ if(!patchRes.ok){
     alert('Agendamento salvo no app, mas não foi enviado ao Google: ' + googleErr.message);
   }
 }
-    $('#agendaStatusMsg').textContent='Agendamento salvo e sincronizado.';
+    $('#agendaStatusMsg').textContent=ev.syncStatus==='synced'?'Agendamento salvo e sincronizado.':'Agendamento salvo neste aparelho; pendente de nuvem.';
     $('#agendaNote').value='';
     $('#agendaNewName').value='';$('#agendaNewPhone').value='';$('#agendaNewCity').value='';$('#agendaNewAddress').value='';$('#agendaNewPanels').value='';
     $('#agendaNewClientFields').classList.add('hidden');
     window.__agendaEditingId = '';
+    $('#agendaOrigin').value='';
 window.__agendaEditingGoogleEventId = '';
     await renderAgenda();
     await renderCrm();
@@ -2999,7 +3360,7 @@ ev.valorRecebido=Number($("#agendaValorRecebido").value||0);
   $('#agendaFinanceStatus').textContent='Salvando...';
   try{
     await saveAgendaEvent(ev);
-    $('#agendaFinanceStatus').textContent='Valores salvos e sincronizados.';
+    $('#agendaFinanceStatus').textContent=ev.syncStatus==='synced'?'Valores salvos e sincronizados.':'Valores salvos neste aparelho; pendentes de nuvem.';
     await renderAgenda();
   }catch(e){
     $('#agendaFinanceStatus').textContent='Salvo neste aparelho, mas pendente de nuvem: '+e.message;

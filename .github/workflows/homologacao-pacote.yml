@@ -19,6 +19,11 @@ jobs:
           node tests/staging-rls-risk-audit.test.cjs
           node tests/homologation-isolation.test.cjs
           node tests/duplicate-protection.test.cjs
+          node tests/vistoria-scope.test.cjs
+          node tests/service-context.test.cjs
+          node tests/agenda-sync.test.cjs
+          node tests/agenda-context.test.cjs
+          node tests/partner-settlement.test.cjs
       - name: Montar pacote da versao de testes
         run: |
           mkdir -p homologacao

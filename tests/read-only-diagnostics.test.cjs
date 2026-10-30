@@ -7,6 +7,7 @@ const path = require('node:path');
 const files = [
   'supabase/diagnostics/inspecionar_acesso_rs_sc_parceiros_somente_leitura.sql',
   'supabase/diagnostics/inspecionar_storage_vistoria_media_somente_leitura.sql',
+  'supabase/diagnostics/inspecionar_agenda_eventos_somente_leitura.sql',
 ];
 const forbidden = /\b(insert|update|delete|truncate|alter|drop|create|grant|revoke|execute|call|do|copy|vacuum|refresh|set\s+role|into|for\s+update|for\s+share)\b/i;
 const approvedSources = [
