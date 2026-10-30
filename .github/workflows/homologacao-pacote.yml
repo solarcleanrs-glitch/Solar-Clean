@@ -17,6 +17,7 @@ jobs:
           node tests/access-boundaries.test.cjs
           node tests/read-only-diagnostics.test.cjs
           node tests/staging-rls-risk-audit.test.cjs
+          node tests/homologation-isolation.test.cjs
           node tests/duplicate-protection.test.cjs
       - name: Montar pacote da versao de testes
         run: |
