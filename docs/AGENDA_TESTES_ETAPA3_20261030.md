@@ -142,3 +142,19 @@ Separa serviço, custo extra, cobrado e recebido, sem presumir preço ou quitaç
 Não cria cobrança/fechamento, não exporta dados nem grava banco. Cópia local pode
 estar desatualizada; mensagem explicita a fonte. Totais em centavos e testes de
 isolamento, exclusões, duplicidade e valores inválidos. Validação real pendente.
+
+## Prévia por parceiro — revisão 5
+
+Usuário confirmou funcionamento da consulta mensal. Nova etapa acrescenta conferência
+por parceiro/mês/unidade e CSV com projeção de ID, data agendada, cliente, cobrado,
+recebido e saldo. Não inclui custos, contatos nem observações internas no CSV.
+Utiliza cobrado explícito, sem inferir preço pelo serviço ou somar custo extra.
+Concluídos pendentes, valor zero, recebido excedente, vínculo/revisão ausentes e
+histórico importado geram impedimentos para exportação. Arquivados/cancelados e
+outras unidades/origens não entram. Alteração nos filtros/dados invalida exportação.
+
+Esta é apenas prévia pela cópia local, sem gravação de fechamento, baixa, envio ao
+parceiro ou conciliação. Próxima etapa persistente precisa de tabelas de fechamentos,
+itens e recebimentos com transação no servidor, unicidade por serviço e proteção
+contra dupla baixa. Não simular esse registro usando pagamento_status em lote.
+Testes sintéticos cobrem parcial, isolamento, custos excluídos, impedimentos e CSV.

@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261030-agenda4";
+const CACHE_NAME = "solar-clean-staging-20261030-agenda5";
 
 const FILES_TO_CACHE = [
   "./",

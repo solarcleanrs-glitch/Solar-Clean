@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-4" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 4</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-5" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 5</small></div>
 
 <main>
 <section id="home">
@@ -225,6 +225,11 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="agendaMonthlyRun" type="button">Consultar mês</button>
       <p class="small">Usa os filtros Unidade e Origem acima; ignora os filtros de dia e status. Valores refletem a cópia disponível neste aparelho.</p>
       <div id="agendaMonthlyResult" aria-live="polite"></div>
+      <h3>Prévia de fechamento por parceiro</h3>
+      <p class="muted">Escolha YES ou Elysia no filtro Origem e o mês acima. Conferência interna pela data agendada, sem registrar fechamento ou pagamento. O valor cobrado deve ser informado em cada serviço; gastos extras não são somados à cobrança.</p>
+      <button id="agendaSettlementRun" type="button">Conferir parceiro no mês</button>
+      <button id="agendaSettlementCsv" type="button" disabled>Baixar prévia CSV</button>
+      <div id="agendaSettlementResult" aria-live="polite"></div>
     </div>
 
     <div id="agendaFinanceEditor" class="finance-editor hidden">
@@ -2523,8 +2528,73 @@ function renderAgendaMonthly(){
       <div style="overflow:auto"><table><thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Serviço</th><th>Gasto extra</th><th>Cobrado</th><th>Recebido</th></tr></thead><tbody>${report.items.map(row=>`<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.cliente)}</td><td>${escapeHtml(agendaOriginLabel(row))}</td>${['service','cost','charged','received'].map(key=>`<td>${brl(row.amounts[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   }catch(error){target.textContent=error.message;}
 }
+function buildAgendaPartnerPreview(rows,month,unit,partnerId){
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(partnerId||''))throw new Error('Selecione um parceiro no filtro Origem.');
+  const report=buildAgendaMonthly(rows,month,unit,partnerId);
+  const items=[],issues=[];let charged=0,received=0,balance=0;
+  for(const row of rows){
+    if(row.unit===unit&&String(row.date||'').slice(0,7)===month&&agendaMatchesOrigin(row,partnerId)&&!row.archivedAt&&row.status==='Concluído'&&row.syncStatus!=='synced')issues.push('Serviço concluído ainda não sincronizado: '+(row.cliente||row.id));
+  }
+  for(const row of report.items){
+    if(row.source==='historico_google_agenda'||row.importedGoogle){issues.push('Histórico importado exige conferência: '+(row.cliente||row.id));continue;}
+    if(!row.scopeId||row.serviceContext?.unit!==unit||!Number.isSafeInteger(row.baseRevision)||row.baseRevision<1){issues.push('Vínculo ou revisão não confirmado: '+(row.cliente||row.id));continue;}
+    const amount=row.amounts.charged,paid=row.amounts.received;
+    if(amount===0)issues.push('Valor cobrado não informado ou zero: '+(row.cliente||row.id));
+    if(paid>amount)issues.push('Recebido maior que cobrado: '+(row.cliente||row.id));
+    const outstanding=Math.max(0,amount-paid);
+    charged+=amount;received+=paid;balance+=outstanding;
+    if(![charged,received,balance].every(Number.isSafeInteger))throw new Error('Total fora do limite.');
+    items.push({id:row.id,date:row.date,cliente:row.cliente||'Cliente',charged:amount,received:paid,balance:outstanding});
+  }
+  return {month,unit,partnerId,items,issues,excluded:report.excluded,charged,received,balance};
+}
+function agendaPartnerPreviewCsv(report,partnerName){
+  if(report.issues.length||!report.items.length)throw new Error('Revise as pendências antes de baixar a prévia.');
+  const cell=value=>'"'+String(value??'').replace(/^[=+@\-\t\r\n]/,' $&').replace(/"/g,'""')+'"';
+  const money=value=>(value/100).toFixed(2).replace('.',',');
+  return '\ufeff'+[
+    ['PRÉVIA PARA CONFERÊNCIA — NÃO É COBRANÇA'],['Mês',report.month,'Unidade',report.unit,'Parceiro',partnerName],
+    ['ID do serviço','Data agendada','Cliente','Cobrado (R$)','Recebido registrado (R$)','Saldo registrado (R$)'],
+    ...report.items.map(row=>[row.id,row.date,row.cliente,money(row.charged),money(row.received),money(row.balance)]),
+    ['Total','','',money(report.charged),money(report.received),money(report.balance)]
+  ].map(row=>row.map(cell).join(';')).join('\r\n');
+}
+let agendaPartnerPreviewCurrent=null;
+function clearAgendaPartnerPreview(){
+  agendaPartnerPreviewCurrent=null;$('#agendaSettlementCsv').disabled=true;$('#agendaSettlementResult').innerHTML='';
+}
+function renderAgendaPartnerPreview(){
+  clearAgendaPartnerPreview();
+  if(!serviceContextEnabled()||!canSeeAgendaFinance())return;
+  const target=$('#agendaSettlementResult');
+  try{
+    const report=buildAgendaPartnerPreview(agendaLocal(),$('#agendaMonthlyMonth').value,$('#agendaUnitFilter').value,$('#agendaOriginFilter').value);
+    const brl=value=>(value/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    target.innerHTML=`<p><b>${escapeHtml(agendaPartnerNames.get(report.partnerId)||'Parceiro')} · ${escapeHtml(report.unit)} · ${escapeHtml(report.month)}</b></p>
+      <p>${report.items.length} serviço(s) em conferência. ${report.excluded} agendamento(s) fora dos totais por status ou sincronização.</p>
+      ${report.issues.length?`<p><b>Prévia incompleta: corrija as pendências para exportar.</b></p><ul>${report.issues.map(issue=>`<li>${escapeHtml(issue)}</li>`).join('')}</ul>`:''}
+      <p>Cobrado informado: <b>${brl(report.charged)}</b> · Recebido registrado: <b>${brl(report.received)}</b> · Saldo informado: <b>${brl(report.balance)}</b></p>
+      <p class="small">Fonte: cópia disponível neste aparelho. Sincronize antes da conferência. Recebimentos são os valores atuais por serviço; não há conciliação bancária nem fechamento definitivo.</p>
+      <div style="overflow:auto"><table><thead><tr><th>Data agendada</th><th>Cliente</th><th>Cobrado</th><th>Recebido</th><th>Saldo</th></tr></thead><tbody>${report.items.map(row=>`<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.cliente)}</td><td>${brl(row.charged)}</td><td>${brl(row.received)}</td><td>${brl(row.balance)}</td></tr>`).join('')}</tbody></table></div>`;
+    agendaPartnerPreviewCurrent={report,fingerprint:JSON.stringify(agendaLocal()),month:report.month,unit:report.unit,partnerId:report.partnerId};
+    $('#agendaSettlementCsv').disabled=!!report.issues.length||!report.items.length;
+  }catch(error){target.textContent=error.message;}
+}
+$('#agendaSettlementRun').onclick=renderAgendaPartnerPreview;
+$('#agendaSettlementCsv').onclick=()=>{
+  if(!serviceContextEnabled()||!canSeeAgendaFinance())return;
+  const current=agendaPartnerPreviewCurrent;
+  if(!current||current.fingerprint!==JSON.stringify(agendaLocal())||current.month!==$('#agendaMonthlyMonth').value||current.unit!==$('#agendaUnitFilter').value||current.partnerId!==$('#agendaOriginFilter').value){
+    clearAgendaPartnerPreview();$('#agendaSettlementResult').textContent='Dados ou filtros alterados. Confira novamente antes de baixar.';return;
+  }
+  const csv=agendaPartnerPreviewCsv(current.report,agendaPartnerNames.get(current.partnerId)||'Parceiro');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
+  link.href=url;link.download=`previa-parceiro-${current.month}-${current.unit}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$('#agendaMonthlyMonth').onchange=()=>{$('#agendaMonthlyResult').innerHTML='';clearAgendaPartnerPreview();};
 $('#agendaMonthlyRun').onclick=renderAgendaMonthly;
 async function renderAgenda(){
+  clearAgendaPartnerPreview();
   $('#agendaMonthly').classList.toggle('hidden',!serviceContextEnabled()||!canSeeAgendaFinance());
   if(!$('#agendaMonthlyMonth').value)$('#agendaMonthlyMonth').value=formatAgendaDate(new Date()).slice(0,7);
   $('#agendaMonthlyResult').innerHTML='';
