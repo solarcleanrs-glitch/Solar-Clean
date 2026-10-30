@@ -1,9 +1,11 @@
-const CACHE_NAME = "solar-clean-staging-20261030-agenda5";
+const CACHE_NAME = "solar-clean-staging-20261030-agenda6";
 
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./lib/settlement-browser.js",
+  "./lib/settlement-ui.js"
 ];
 
 self.addEventListener("install", (event) => {

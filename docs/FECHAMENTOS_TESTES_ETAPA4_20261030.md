@@ -90,3 +90,30 @@ Não há acesso SQL disponível ao agente nesta sessão. Por isso nenhuma migra�
 aplicada e os botões de gravação ainda não foram publicados. Não apagar ou alterar
 vistorias antigas para executar os testes. Nenhuma ação pendente será iniciada
 sozinha depois do encerramento deste trabalho.
+
+## Atualização — instalação e integração da revisão 6
+
+Usuário confirmou ausência das três tabelas, executou a migração e reportou Success.
+Verificação retornou RLS ativo, anon sem acesso, authenticated apenas SELECT nas
+três tabelas. Conferiu três políticas SELECT com sc_is_manager, funções de escrita
+SECURITY DEFINER/anon negado/authenticated permitido e helper privado negado a ambos.
+Essas verificações são resultados enviados pelo usuário, não conexão do agente.
+
+Revisão 6 conecta a UI à API/journal por bundle estático reproduzível. Preparação
+busca a agenda no servidor, confere origem, exclui itens já fechados, exige revisão
+e bloqueia edição local pendente. Gravação exige confirmação e usa IDs estáveis.
+A consulta exibe totais, valor anterior da agenda, novos recebimentos e saldo; lê
+recebimentos por paginação independente. Há formulário explícito para data/forma/
+valor, cancelamento com motivo sem recebimento e retomada manual de operação ambígua.
+Mudança de conta/filtros limpa os dados em memória; não há cache persistente do
+histórico financeiro. Journal persiste só a operação por conta. Nenhuma baixa da
+agenda é realizada. Respostas SQL de rejeição confirmada liberam novo preparo;
+resposta ambígua exige mesmo ID. Falha da consulta após gravação informa que a
+gravação já foi confirmada. UI não iniciou qualquer operação no banco do usuário.
+
+Testes simulados da UI executam o bundle e os handlers reais: preparar, confirmação
+cancelada, commit com resposta perdida, retomada sem duplicação, recebimento parcial,
+excesso e limpeza de filtros. Testes PostgreSQL continuam passando. Falta validação
+visual/autenticada pelo gestor no site e concorrência com duas conexões reais.
+Os parágrafos anteriores sobre estado não integrado descrevem o preparo anterior;
+a instalação foi reportada agora e a revisão 6 é a primeira integração da interface.

@@ -39,10 +39,14 @@ jobs:
           node tests/agenda-partner-preview.test.cjs
           node tests/settlement-api.test.cjs
           node tests/settlement-journal.test.cjs
+          node tests/settlement-ui.test.cjs
+          node scripts/build-settlement-browser.cjs --check
       - name: Montar pacote da versao de testes
         run: |
           mkdir -p homologacao
           cp index.html manifest.json sw.js homologacao/
+          mkdir -p homologacao/lib
+          cp lib/settlement-browser.js lib/settlement-ui.js homologacao/lib/
           for file in logo.png icon-192.svg icon-512.svg; do
             if [ -f "$file" ]; then cp "$file" homologacao/; fi
           done

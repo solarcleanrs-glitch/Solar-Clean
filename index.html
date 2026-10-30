@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-5" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 5</small></div>
+<div id="homologNotice" data-app-release="20261030-agenda-parceiros-6" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 6</small></div>
 
 <main>
 <section id="home">
@@ -230,6 +230,27 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="agendaSettlementRun" type="button">Conferir parceiro no mês</button>
       <button id="agendaSettlementCsv" type="button" disabled>Baixar prévia CSV</button>
       <div id="agendaSettlementResult" aria-live="polite"></div>
+      <div class="section" style="border-top:1px solid var(--line);padding-top:16px">
+        <h3>Fechamentos salvos — testes</h3>
+        <p class="muted">Escolha unidade, parceiro e mês acima. A preparação consulta o banco e exclui serviços já fechados. O recebimento é um registro manual de testes; não movimenta dinheiro.</p>
+        <p class="small">Os recebimentos deste livro ficam separados dos valores anteriores da agenda. Consulte aqui o saldo atualizado dos fechamentos.</p>
+        <button id="ledgerLoad" type="button">Consultar fechamentos</button>
+        <button id="ledgerPrepare" type="button">Preparar fechamento no banco</button>
+        <button id="ledgerSave" type="button" disabled>Salvar fechamento de testes</button>
+        <button id="ledgerRetry" type="button">Conferir operação pendente</button>
+        <p id="ledgerMessage" aria-live="polite"></p>
+        <div id="ledgerPrepared"></div>
+        <div id="ledgerReceiptForm" class="hidden finance-editor">
+          <h3>Registrar recebimento de testes</h3>
+          <label><span>Fechamento</span><input id="ledgerReceiptId" readonly></label>
+          <p id="ledgerReceiptSummary"></p>
+          <label><span>Valor recebido (R$)</span><input id="ledgerReceiptAmount" inputmode="decimal" placeholder="0,00"></label>
+          <label><span>Data do recebimento</span><input id="ledgerReceiptDate" type="date"></label>
+          <label><span>Forma</span><select id="ledgerReceiptMethod"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label>
+          <button id="ledgerReceiptSave" type="button">Confirmar registro de testes</button>
+        </div>
+        <div id="ledgerList"></div>
+      </div>
     </div>
 
     <div id="agendaFinanceEditor" class="finance-editor hidden">
@@ -742,6 +763,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 </section>
 </main>
 
+<script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
@@ -833,6 +855,7 @@ function currentTech(){
   try{return JSON.parse(localStorage.getItem('solarCleanTech')||'null')}catch(e){return null}
 }
 function setTech(t){
+  window.SCSettlementUI?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
   updateLoggedUser();
 }
@@ -2561,6 +2584,7 @@ function agendaPartnerPreviewCsv(report,partnerName){
 }
 let agendaPartnerPreviewCurrent=null;
 function clearAgendaPartnerPreview(){
+  window.SCSettlementUI?.clear();
   agendaPartnerPreviewCurrent=null;$('#agendaSettlementCsv').disabled=true;$('#agendaSettlementResult').innerHTML='';
 }
 function renderAgendaPartnerPreview(){
@@ -3772,5 +3796,6 @@ $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();aw
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
 </script>
+<script src="lib/settlement-ui.js"></script>
 </body>
 </html>

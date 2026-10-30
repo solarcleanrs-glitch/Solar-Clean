@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
-const js = scripts.at(-1)?.[1];
+const js = scripts.filter(script=>script[1].trim()).at(-1)?.[1];
 assert.ok(js, 'Script principal encontrado');
 new vm.Script(js, { filename: 'index-inline.js' });
 

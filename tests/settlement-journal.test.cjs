@@ -12,6 +12,8 @@ await assert.rejects(executeJournaled({...opts,intent:{...intent,body:{p_id:'dif
 fail=false;const values=await Promise.all([executeJournaled(opts),executeJournaled(opts)]);assert.deepEqual(values,[result,result]);assert.equal(calls,2,'second tab uses confirmed request');assert.equal(pendingIntent(storage,actor),null);
 await assert.rejects(executeJournaled({...opts,withLock:null}),/Bloqueio/);
 await assert.rejects(executeJournaled({...opts,actor:other,storage:{getItem:()=>null,setItem:()=>{throw Error('quota')}}}),/quota/);assert.equal(calls,2);
+const rejection=new Error('rejected');rejection.rejected=true;
+await assert.rejects(executeJournaled({...opts,actor:other,send:async()=>{throw rejection}}),/rejected/);assert.equal(pendingIntent(storage,other),null);
 mem.set(journalKey(actor),'broken');await assert.rejects(executeJournaled(opts),/ilegível/);
 console.log('PASS: account-isolated durable intents, crash retry, same-ID replay, cross-tab locking and fail-closed storage');
 })().catch(e=>{console.error(e);process.exitCode=1});
