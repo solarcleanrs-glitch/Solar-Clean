@@ -1,0 +1,6 @@
+{
+  "name": "solar-clean-staging-checks",
+  "private": true,
+  "scripts": {"test:ledger": "NODE_PATH=./node_modules node ../settlement-db.integration.cjs", "test:clients": "NODE_PATH=./node_modules node ../client-history-db.integration.cjs"},
+  "devDependencies": {"@electric-sql/pglite": "0.5.13"}
+}

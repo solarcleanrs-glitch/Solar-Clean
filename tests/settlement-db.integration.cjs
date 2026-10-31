@@ -1,0 +1,71 @@
+'use strict';
+// Actual embedded PostgreSQL SQL/RLS execution, isolated synthetic data. No network DB.
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {PGlite}=require('@electric-sql/pglite');
+process.chdir(require('node:path').join(__dirname,'..'));
+(async()=>{
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+create function public.sc_is_manager() returns boolean language sql stable as $$select auth.uid()='11111111-1111-4111-8111-111111111111'::uuid$$;
+create table public.sc_parceiros(id uuid primary key default gen_random_uuid(),nome text unique not null,ativo boolean default true);
+create table public.sc_clientes_escopos(id uuid primary key,unidade text,parceiro_id uuid references sc_parceiros(id));
+insert into auth.users values('11111111-1111-4111-8111-111111111111'),('99999999-9999-4999-8999-999999999999');
+insert into sc_parceiros values('22222222-2222-4222-8222-222222222222','YES',true),('33333333-3333-4333-8333-333333333333','Elysia',true);
+insert into sc_clientes_escopos values('44444444-4444-4444-8444-444444444444','SC','22222222-2222-4222-8222-222222222222');`);
+await db.exec(fs.readFileSync('supabase/migrations/20261030_agenda_eventos_STAGING_NOT_APPLIED.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261030_fechamentos_STAGING_NOT_APPLIED.sql','utf8'));
+const manager='11111111-1111-4111-8111-111111111111',partner='22222222-2222-4222-8222-222222222222';
+const sid=n=>`55555555-5555-4555-8555-${String(n).padStart(12,'0')}`,fid=n=>`66666666-6666-4666-8666-${String(n).padStart(12,'0')}`,rid=n=>`77777777-7777-4777-8777-${String(n).padStart(12,'0')}`;
+for(let n=1;n<=8;n++)await db.query(`insert into agenda_eventos(id,client_key,cliente,unidade,sc_escopo_id,data,hora,status,valor_cobrado,valor_recebido) values($1,'test','Synthetic','SC','44444444-4444-4444-8444-444444444444','2026-10-31','10:00','Concluído',350.10,100)`,[sid(n)]);
+const asUser=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
+const create=(n,ids=[1],revision=1,p=partner)=>db.query(`select sc_criar_fechamento($1,$2,'SC','2026-10-01',$3::jsonb) as result`,[fid(n),p,JSON.stringify(ids.map(i=>({id:sid(i),revision})))]).then(r=>r.rows[0].result);
+const pay=(n,f,amount)=>db.query(`select sc_registrar_recebimento($1,$2,$3,'2026-11-01','Pix') as result`,[rid(n),fid(f),amount]).then(r=>r.rows[0].result);
+await asUser(manager);
+const first=await create(1);assert.equal(first.total_centavos,35010);assert.equal(first.anterior_centavos,10000);assert.equal(first.saldo_centavos,25010);
+assert.deepEqual(await create(1),first); // ambiguous network retry exactly once
+await assert.rejects(create(1,[2]),/outro conteúdo/);
+await assert.rejects(create(2),/fechamento ativo/);
+await assert.rejects(create(2,[2],2),/alterado/);
+await assert.rejects(create(2,[2],1,'33333333-3333-4333-8333-333333333333'),/parceiro/);
+await assert.rejects(create(2,[2,2]),/duplicados/);
+await assert.rejects(create(2,[2,99]),/não encontrado/);
+assert.equal((await db.query('select count(*)::int as n from sc_fechamentos')).rows[0].n,1,'atomic rollback of failed creates');
+await assert.rejects(db.query('update agenda_eventos set valor_cobrado=400 where id=$1',[sid(1)]),/bloqueados/);
+const partial=await pay(1,1,10000);assert.equal(partial.saldo_centavos,15010);assert.deepEqual(await pay(1,1,10000),partial);
+await assert.rejects(pay(1,1,12000),/outro conteúdo/);
+await assert.rejects(pay(2,1,15011),/excede/);
+assert.equal((await pay(2,1,15010)).saldo_centavos,0);
+await assert.rejects(pay(3,1,1),/excede/);
+await assert.rejects(db.query('select sc_cancelar_fechamento($1,$2)',[fid(1),'Teste cancelamento']),/estorno/);
+await create(3,[3]);await db.query('select sc_cancelar_fechamento($1,$2)',[fid(3),'Erro de conferência']);
+assert.equal((await db.query('select ativo from sc_fechamento_itens where fechamento_id=$1',[fid(3)])).rows[0].ativo,false);
+await assert.rejects(pay(3,3,1),/cancelado/);
+await create(4,[3]); // canceled claim released with history retained
+await assert.rejects(db.exec('delete from sc_fechamentos'),/permission denied/);
+await assert.rejects(db.exec('update sc_fechamento_recebimentos set valor_centavos=1'),/permission denied/);
+await assert.rejects(db.exec('insert into sc_fechamentos(id) values(gen_random_uuid())'),/permission denied/);
+await assert.rejects(db.query('select sc_fechamento_resultado($1)',[fid(1)]),/permission denied/);
+// Real role with a different sub cannot read or invoke mutations.
+await asUser('99999999-9999-4999-8999-999999999999');
+for(const table of ['sc_fechamentos','sc_fechamento_itens','sc_fechamento_recebimentos'])assert.equal((await db.query(`select count(*)::int as n from ${table}`)).rows[0].n,0);
+await assert.rejects(create(8,[8]),/gestor/);await assert.rejects(pay(8,1,1),/gestor/);
+await db.exec('reset role; set role anon');await assert.rejects(db.exec('select * from sc_fechamentos'),/permission denied/);await assert.rejects(create(8,[8]),/permission denied/);
+await db.exec('reset role');
+await assert.rejects(db.exec("update sc_clientes_escopos set parceiro_id='33333333-3333-4333-8333-333333333333' where id='44444444-4444-4444-8444-444444444444'"),/Origem vinculada/);
+assert.equal((await db.query('select count(*)::int as n from sc_fechamento_recebimentos')).rows[0].n,2);
+// Read-only diagnostic exercised against real SQL, including a rollback-only corruption fixture.
+const diagnostic=fs.readFileSync('supabase/diagnostics/conferir_integridade_fechamentos_STAGING.sql','utf8');
+const healthy=(await db.query(diagnostic)).rows[0].integridade;
+assert.equal(healthy.fechamentos,3);assert.equal(healthy.recebimentos,2);
+for(const key of ['totais_divergentes','recebimentos_acima_do_saldo','vinculos_com_status_incorreto','servicos_com_mais_de_um_vinculo_ativo'])assert.equal(healthy[key],0,key);
+await db.exec('begin');
+await db.query('update sc_fechamentos set total_centavos=total_centavos-1 where id=$1',[fid(1)]);
+const corrupt=(await db.query(diagnostic)).rows[0].integridade;
+assert.equal(corrupt.totais_divergentes,1);assert.equal(corrupt.recebimentos_acima_do_saldo,1);
+await db.exec('rollback');
+assert.deepEqual((await db.query(diagnostic)).rows[0].integridade,healthy);
+await db.close();console.log('PASS: embedded PostgreSQL migration, RLS, RPC rights, atomicity, revisions, unique claims, idempotent partial/full receipts and cancellation');
+})().catch(error=>{console.error(error.message);process.exit(1);});

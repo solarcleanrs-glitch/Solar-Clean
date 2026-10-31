@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {session,namespace}=require('../lib/scoped-vistoria-store.js');
+const project='https://zzphucuiqhzrilrddxnf.supabase.co',A={project,actor:'11111111-1111-4111-8111-111111111111'},B={project,actor:'22222222-2222-4222-8222-222222222222'};
+(async()=>{
+ let current=A,delay=null;const spaces=new Map(),map=n=>{if(!spaces.has(n))spaces.set(n,new Map());return spaces.get(n);};
+ const backend={async list(n){return structuredClone([...map(n).values()]);},async put(n,r,check){if(delay)await delay;check();map(n).set(r.id,structuredClone(r));},async add(n,r,check){check();if(map(n).has(r.id))throw Error('duplicate');map(n).set(r.id,structuredClone(r));},async copyMissing(n,source,check){check();const m=map(n);for(const r of source)if(m.has(r.id)&&JSON.stringify(m.get(r.id))!==JSON.stringify(r))throw Error('conflict');let copied=0;for(const r of source)if(!m.has(r.id)){m.set(r.id,structuredClone(r));copied++;}return {copied,alreadyPresent:source.length-copied};}};
+ const a=session({context:()=>current,backend});const legacy=[{id:1,photos:[{data:'data:image/jpeg;base64,cGhvdG8='}],syncStatus:'pending',revisionBackups:[{id:1,cliente:'old'}]}],before=structuredClone(legacy);
+ await assert.rejects(a.copyLegacy({sourceRecords:legacy,confirmedOwner:B}),/Confirme/);assert.equal(spaces.size,0);
+ let result=await a.copyLegacy({sourceRecords:legacy,confirmedOwner:A});assert.equal(result.verified,1);assert.deepEqual(legacy,before);assert.deepEqual(await a.list(),legacy);
+ result=await a.copyLegacy({sourceRecords:legacy,confirmedOwner:A});assert.equal(result.copied,0);
+ current=B;const b=session({context:()=>current,backend});assert.deepEqual(await b.list(),[]);await assert.rejects(a.list(),/Conta mudou/);await b.add({id:1,cliente:'B'});assert.equal((await b.list())[0].cliente,'B');
+ current=A;assert.deepEqual(await a.list(),legacy);
+ let release;delay=new Promise(r=>release=r);const pending=a.put({id:1,cliente:'changed'});current=B;release();await assert.rejects(pending,/Conta mudou/);current=A;assert.deepEqual(await a.list(),legacy);
+ await assert.rejects(a.copyLegacy({sourceRecords:[{id:2},{id:1,cliente:'conflict'}],confirmedOwner:A}),/conflict/);assert.equal((await a.list()).length,1);
+ const corrupt={...backend,list:async()=>[]};await assert.rejects(session({context:()=>A,backend:corrupt}).copyLegacy({sourceRecords:legacy,confirmedOwner:A}),/não conferiu/);
+ await assert.rejects(a.add({id:3,photo:new Blob(['photo'])}),/binário/);
+ assert.throws(()=>namespace({...A,project:'https://production.invalid'}));assert.throws(()=>namespace({...A,actor:'nome do técnico'}));
+ const source=fs.readFileSync('lib/scoped-vistoria-store.js','utf8');assert.doesNotMatch(source,/deleteDatabase|\.clear\(|fetch\(|localStorage/);
+ assert.match(fs.readFileSync('index.html','utf8'),/const DB_NAME='solarCleanDB'/,'Live database remains legacy until migration is completed');
+ console.log('PASS: namespaces A/B/A, foto/fila exatas, cópia explícita verificada, repetição sem duplicar, conflito sem sobrescrita e operação atrasada bloqueada (backend simulado; engine inativa)');
+})().catch(e=>{console.error(e);process.exitCode=1;});

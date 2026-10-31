@@ -1,0 +1,86 @@
+name: Preparar pacote de homologacao
+on:
+  push:
+    branches:
+      - feature/crm-whatsapp-recorrencia-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pacote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/postgres/package-lock.json
+      - name: Instalar dependencia de teste PostgreSQL
+        run: npm ci --prefix tests/postgres --ignore-scripts --no-audit --no-fund
+      - name: Validar banco local isolado
+        run: |
+          npm --prefix tests/postgres run test:ledger
+          npm --prefix tests/postgres run test:clients
+      - name: Validar codigo
+        run: |
+          node tests/crm-whatsapp.test.cjs
+          node tests/access-boundaries.test.cjs
+          node tests/auth-session-race.test.cjs
+          node tests/vistoria-storage-commit.test.cjs
+          node tests/vistoria-operation-context.test.cjs
+          node tests/scoped-vistoria-store.test.cjs
+          node tests/scoped-migration-ui.test.cjs
+          node tests/read-only-diagnostics.test.cjs
+          node tests/staging-rls-risk-audit.test.cjs
+          node tests/homologation-isolation.test.cjs
+          node tests/duplicate-protection.test.cjs
+          node tests/vistoria-scope.test.cjs
+          node tests/vistoria-retry.test.cjs
+          node tests/vistoria-review.test.cjs
+          node tests/service-context.test.cjs
+          node tests/agenda-sync.test.cjs
+          node tests/agenda-context.test.cjs
+          node tests/agenda-crm-context-race.test.cjs
+          node tests/partner-settlement.test.cjs
+          node tests/agenda-monthly.test.cjs
+          node tests/agenda-partner-preview.test.cjs
+          node tests/settlement-api.test.cjs
+          node tests/settlement-journal.test.cjs
+          node tests/settlement-ui.test.cjs
+          node tests/backup-local.test.cjs
+          node tests/backup-recovery.test.cjs
+          node tests/google-history-review.test.cjs
+          node tests/client-history-import-plan.test.cjs
+          node tests/client-history-import-api.test.cjs
+          node tests/client-history-batch.test.cjs
+          node tests/client-history-ui.test.cjs
+          node tests/imported-clients-crm.test.cjs
+          node scripts/build-client-history-browser.cjs --check
+          node tests/agenda-ledger-status.test.cjs
+          node scripts/build-settlement-browser.cjs --check
+      - name: Montar pacote da versao de testes
+        run: |
+          mkdir -p homologacao
+          cp index.html manifest.json sw.js homologacao/
+          mkdir -p homologacao/lib
+          cp lib/settlement-browser.js lib/settlement-ui.js lib/agenda-ledger-status.js lib/backup-recovery.js homologacao/lib/
+          cp lib/google-history-review.js lib/client-history-import-plan.js lib/client-history-import-api.js lib/client-history-ui.js homologacao/lib/
+          cp lib/imported-clients-crm.js lib/client-history-batch.js lib/scoped-vistoria-store.js lib/scoped-vistoria-migration-ui.js homologacao/lib/
+          for file in logo.png icon-192.svg icon-512.svg; do
+            if [ -f "$file" ]; then cp "$file" homologacao/; fi
+          done
+          test -s homologacao/index.html
+          test -s homologacao/sw.js
+          grep -q 'homologNotice' homologacao/index.html
+          grep -q 'solarCleanStagingStrictVistoriaAuth' homologacao/index.html
+          if grep -R -E 'service_role|SUPABASE_SERVICE_ROLE_KEY' homologacao; then
+            echo "Credencial privilegiada detectada. Interrompendo."
+            exit 1
+          fi
+      - name: Publicar artefato para homologacao (sem deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: solar-clean-homologacao
+          path: homologacao/
+          retention-days: 14

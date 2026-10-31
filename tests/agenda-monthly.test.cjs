@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const html=fs.readFileSync('index.html','utf8');
+const match=html.slice(html.indexOf('function agendaMatchesOrigin('),html.indexOf('function collectAgendaContext('));
+const code=html.slice(html.indexOf('function buildAgendaMonthly('),html.indexOf('function renderAgendaMonthly('));
+const build=new Function(match+code+'return buildAgendaMonthly')();
+const row={id:'1',unit:'SC',date:'2026-10-31',status:'Concluído',syncStatus:'synced',serviceContext:{partnerId:'yes'},serviceValue:350.10,extraExpense:20,valorCobrado:350.10,valorRecebido:100};
+const rows=[row,{...row,id:'2',unit:'RS'},{...row,id:'3',serviceContext:{partnerId:'elysia'}},{...row,id:'4',status:'Agendado'},{...row,id:'5',syncStatus:'pending'},{...row,id:'6',archivedAt:'now'},{...row,id:'7',date:'2026-11-01'}];
+const before=JSON.stringify(rows),r=build(rows,'2026-10','SC','yes');
+assert.equal(r.items.length,1);assert.equal(r.excluded,2);assert.deepEqual(r.totals,{service:35010,cost:2000,charged:35010,received:10000});assert.equal(JSON.stringify(rows),before);
+assert.throws(()=>build([row,row],'2026-10','SC','yes'),/duplicado/);
+assert.throws(()=>build([{...row,serviceValue:-1}],'2026-10','SC','yes'),/inválido/);
+assert.throws(()=>build(rows,'2026-13','SC',''),/válidos/);
+assert.equal(build([{...row,serviceContext:{partnerId:null}}],'2026-10','SC','particular').items.length,1);
+assert.equal(build([{...row,serviceContext:undefined}],'2026-10','SC','particular').items.length,0);
+console.log('PASS: monthly isolation, cents, pending/archive exclusions, duplicate and invalid money guards');

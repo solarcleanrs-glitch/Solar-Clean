@@ -1,0 +1,6 @@
+node_modules/
+*.dump
+estrutura-*.sql
+solar-clean-historico-google-*.json
+solar-clean-clientes-antigos-*.json
+solar-clean-conferencia-clientes-*.html

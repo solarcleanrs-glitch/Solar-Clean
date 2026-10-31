@@ -1,9 +1,21 @@
-const CACHE_NAME = "solar-clean-v2";
+const CACHE_NAME = "solar-clean-staging-20261031-contexto23";
 
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./lib/settlement-browser.js",
+  "./lib/settlement-ui.js",
+  "./lib/agenda-ledger-status.js",
+  "./lib/backup-recovery.js",
+  "./lib/scoped-vistoria-store.js",
+  "./lib/scoped-vistoria-migration-ui.js",
+  "./lib/google-history-review.js",
+  "./lib/client-history-import-plan.js",
+  "./lib/client-history-import-api.js",
+  "./lib/client-history-ui.js",
+  "./lib/client-history-batch.js",
+  "./lib/imported-clients-crm.js"
 ];
 
 self.addEventListener("install", (event) => {
