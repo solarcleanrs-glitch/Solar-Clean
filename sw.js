@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261031-gravacao20";
+const CACHE_NAME = "solar-clean-staging-20261031-copia21";
 
 const FILES_TO_CACHE = [
   "./",
@@ -8,6 +8,8 @@ const FILES_TO_CACHE = [
   "./lib/settlement-ui.js",
   "./lib/agenda-ledger-status.js",
   "./lib/backup-recovery.js",
+  "./lib/scoped-vistoria-store.js",
+  "./lib/scoped-vistoria-migration-ui.js",
   "./lib/google-history-review.js",
   "./lib/client-history-import-plan.js",
   "./lib/client-history-import-api.js",

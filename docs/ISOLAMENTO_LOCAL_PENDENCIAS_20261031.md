@@ -56,3 +56,9 @@ Teste controlado simula sucesso da requisição seguido por abort, erro de requi
 Testes com backend simulado passaram: A→B→A, mesma chave local em duas contas, cópia verificada e idempotente, foto/fila preservadas, conflito prévio sem cópia parcial, destino corrompido e resposta atrasada. Isto não é validação real do adaptador IndexedDB no navegador.
 
 Não há `<script>` no aplicativo nem ativação de namespace: os dados antigos continuam no armazenamento atual. Antes de ativar, falta interface de conferência/exportação/cópia do legado, contexto capturado em todos os caminhos assíncronos e teste real com fotos e duas contas. Não alegar isolamento completo instalado.
+
+## Revisão 21 — conferência/cópia sem ativação
+
+Painel em Dados da empresa, exclusivo do hostname de staging. Valida sessão em `/auth/v1/user`, confronta UUID com a sessão atual, captura geração/tokens/projeto e consulta o banco legado por dbAll. Exibe conta, vistorias, fotos e pendentes. Exige declaração explícita da conta responsável; copia somente após confirmar que o legado não mudou, relê destino e origem. Nenhum botão ativa namespace operacional. Conta/arquivo alterado invalida a conferência. Dados originais não são apagados. Objetos não JSON (por exemplo Blob), IDs inválidos e conflitos bloqueiam a cópia para revisão própria, sem descarte.
+
+`tests/scoped-vistoria-browser.html` é um ensaio independente: cria namespaces novos com UUIDs aleatórios e dados sintéticos; não acessa banco legado, Supabase ou dados reais. Confere IndexedDB, cópia, releitura, foto/pendência, repetição, A/B/A e transação com conflito. O painel real ainda exige homologação com a conta e dados do gestor; não confundir esse ensaio com migração operacional concluída.

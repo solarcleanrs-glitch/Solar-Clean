@@ -17,6 +17,6 @@ const project='https://zzphucuiqhzrilrddxnf.supabase.co',A={project,actor:'11111
  await assert.rejects(a.add({id:3,photo:new Blob(['photo'])}),/binário/);
  assert.throws(()=>namespace({...A,project:'https://production.invalid'}));assert.throws(()=>namespace({...A,actor:'nome do técnico'}));
  const source=fs.readFileSync('lib/scoped-vistoria-store.js','utf8');assert.doesNotMatch(source,/deleteDatabase|\.clear\(|fetch\(|localStorage/);
- assert.ok(!fs.readFileSync('index.html','utf8').includes('src="lib/scoped-vistoria-store.js"'),'Engine must not silently activate before legacy migration UI and async operation scoping');
+ assert.match(fs.readFileSync('index.html','utf8'),/const DB_NAME='solarCleanDB'/,'Live database remains legacy until migration is completed');
  console.log('PASS: namespaces A/B/A, foto/fila exatas, cópia explícita verificada, repetição sem duplicar, conflito sem sobrescrita e operação atrasada bloqueada (backend simulado; engine inativa)');
 })().catch(e=>{console.error(e);process.exitCode=1;});

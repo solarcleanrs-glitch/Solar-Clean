@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-gravacao-20" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: gravação local — 31/10 · revisão 20</small></div>
+<div id="homologNotice" data-app-release="20261031-copia-conta-21" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: conferência por conta — 31/10 · revisão 21</small></div>
 
 <main>
 <section id="home">
@@ -696,6 +696,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <div id="revisionLabControls" class="section hidden"><button type="button" id="revisionLabToggle">Ativar revisões no ambiente de testes</button><p id="revisionLabStatus" class="muted small">Somente homologação.</p></div>
     </div>
 
+    <div id="scopedMigrationPanel" class="section hidden"></div>
     <button class="primary section" id="saveCompany">Salvar configurações</button>
     <button class="section" id="homeFromSettings">Voltar ao início</button>
   </div>
@@ -875,6 +876,7 @@ function setTech(t){
   authSessionGeneration++;
   clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
+  window.SCScopedMigrationUI?.clear();
   window.SCSettlementUI?.clear();
   window.AgendaLedgerStatus?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
@@ -3947,6 +3949,8 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/settlement-ui.js"></script>
 <script src="lib/agenda-ledger-status.js"></script>
 <script src="lib/backup-recovery.js"></script>
+<script src="lib/scoped-vistoria-store.js"></script>
+<script src="lib/scoped-vistoria-migration-ui.js"></script>
 <script src="lib/google-history-review.js"></script>
 <script src="lib/client-history-import-plan.js"></script>
 <script src="lib/client-history-import-api.js"></script>
