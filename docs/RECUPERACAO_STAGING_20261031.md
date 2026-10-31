@@ -61,3 +61,28 @@ entre IndexedDB e localStorage e não garante consistência com gravações remo
 Não inclui bytes de mídia remota nem livro financeiro completo. Importação e
 restauração continuam indisponíveis; validar recuperação antes de produção.
 A tabela anterior descreve a cobertura antes desta revisão.
+
+## Revisão 12 — ensaio de recuperação isolada
+
+Histórico agora oferece seleção de JSON, prévia de contagens e aceite explícito
+para cópia isolada. Aceita somente stagingLocal v1 do projeto de testes com actor
+igual à conta conectada; backups antigos ou anônimos ficam preservados, mas não
+são importados neste fluxo. Limite de arquivo: 100 MB. Valida formato, data, IDs
+locais únicos, chaves permitidas, vínculo do journal à conta. Conteúdo local
+ilegível permanece como texto com aviso, sem ativação.
+
+O ensaio adiciona arquivo original no IndexedDB separado solarCleanRecoveryLab,
+store archives, com ID novo; aguarda commit e abre uma leitura independente para
+comparar texto integral e prévia. Não usa os stores de trabalho, não escreve em
+localStorage, não executa conteúdo do JSON nem chama API. Conta/contexto mudados
+interrompem confirmação; cópia já gravada continua isolada. Falta de espaço ou
+corrupção na releitura não produzem mensagem de sucesso. Cópias anteriores não são
+substituídas. O espaço isolado é local, sujeito a limpeza do navegador, e não
+substitui guardar o JSON fora dele.
+
+Testes automatizados usam backend sintético e cobrem preservação exata, foto,
+journal, projeto/conta/versão incompatíveis, IDs repetidos, erro na releitura e
+mudança de contexto. Não equivalem a restauração do PostgreSQL/Storage nem teste
+real no aparelho do usuário. Promoção dos arquivos para os stores operacionais e
+validação de restauração do banco/mídia continuam pendentes; não declarar sistema
+recuperável em produção com base neste ensaio.

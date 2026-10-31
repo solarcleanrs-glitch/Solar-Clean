@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-agenda-parceiros-11" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 31/10 · revisão 11</small></div>
+<div id="homologNotice" data-app-release="20261031-agenda-parceiros-12" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 31/10 · revisão 12</small></div>
 
 <main>
 <section id="home">
@@ -640,6 +640,14 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="clearSearch">Limpar busca</button>
     </div>
     <div id="historyDiagnostics" class="section hidden"><button type="button" id="inspectPendingLink">Verificar vínculo da vistoria pendente (testes)</button><p id="pendingLinkResult" class="muted small"></p></div>
+    <div id="backupRecovery" class="section hidden">
+      <h3>Conferir recuperação de backup — testes</h3>
+      <p class="muted small">Selecione o JSON exportado pela mesma conta. O teste usa um espaço separado neste navegador; não substitui vistorias, agenda ou CRM de trabalho e não envia nada à nuvem. O arquivo pode conter dados antigos de outras contas deste aparelho.</p>
+      <label>Arquivo de backup<input id="backupRecoveryFile" type="file" accept=".json,application/json"></label>
+      <p id="backupRecoveryPreview" class="small" style="white-space:pre-wrap"></p>
+      <label><input id="backupRecoveryAck" type="checkbox"> Entendo que esta é uma cópia isolada para conferência, sem restauração para uso no app.</label>
+      <button id="backupRecoverySave" type="button" disabled>Testar cópia e releitura isoladas</button>
+    </div>
     <div id="historyList" class="section"><p class="muted">Carregando histórico...</p></div>
     <button class="section" id="homeFromHistory">Voltar ao início</button>
   </div>
@@ -3865,5 +3873,6 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 </script>
 <script src="lib/settlement-ui.js"></script>
 <script src="lib/agenda-ledger-status.js"></script>
+<script src="lib/backup-recovery.js"></script>
 </body>
 </html>
