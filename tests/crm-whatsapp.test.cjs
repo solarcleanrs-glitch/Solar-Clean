@@ -79,8 +79,10 @@ assert.ok(js.includes("function updateHomologNotice()"),'Interface identifica am
 assert.ok(html.includes('id="homologNotice"'),'Aviso visual de testes está presente');
 assert.ok(js.includes("const rows=[],pageSize=500;"),'Histórico remoto usa paginação');
 assert.ok(js.includes("order=created_at.desc,id.desc&limit="),'Histórico remoto tem ordenação estável');
-assert.ok(js.includes("async function pullCrmSharedProfiles(){\n  if(!cloudReady()||!navigator.onLine||!crmHistoryCloudHeaders())return [];\n  await ensureVistoriaSession();"),'Leitura de perfis renova sessão');
-assert.ok(js.includes("async function syncCrmContactHistory(clientKey){\n  if(!cloudReady()||!navigator.onLine)return false;\n  await ensureVistoriaSession();"),'Histórico renova sessão');
+for(const [name,next] of [['pullCrmSharedProfiles','saveCrmSharedProfile'],['syncCrmContactHistory','renderCrmContactHistory']]){
+ const body=js.slice(js.indexOf('async function '+name+'('),js.indexOf('function '+next+'('));
+ assert.ok(body.includes('await ensureVistoriaSession();'),'Operação CRM renova sessão: '+name);
+}
 assert.ok(js.includes("/rest/v1/crm_metadados?on_conflict=client_key"),'Observações usam tabela dedicada');
 assert.ok(js.includes("if(res.status!==404)throw new Error"),'Falhas diferentes de tabela ausente não são ocultadas');
 assert.ok(js.includes("return {...value,cloudSynced:false}"),'Notas locais são preservadas sem migração');

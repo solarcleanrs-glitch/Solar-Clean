@@ -177,3 +177,8 @@ Validação: testes de interface e lote com dados sintéticos (falha intermediá
 Régis forneceu fotos de sucesso de lotes com 1 e 3 cadastros no staging; na primeira o CRM exibia 4 clientes totais (não inferir todos como importados). Uso básico em lote validado pelo usuário. Não é necessário importar todo o histórico para concluir esse teste. Associação de vários eventos à mesma pessoa continua sem validação real demonstrada; testes sintéticos passaram.
 
 Acompanhamento: contagem dos marcados atualiza imediatamente e aparece também no botão, inclusive seleção em outras páginas; mensagem identifica o último lote; cartões já confirmados ficam bloqueados para edição nessa sessão. Não há persistência das seleções entre recargas. Produção não alterada.
+
+
+## Confirmação real de vários eventos (31/10)
+
+Foto do histórico vinculado do Gaston mostra 2 eventos, 19/09/2024 e 29/10/2026, sob um único cadastro. O usuário confirmou que realizou a associação. Fluxo básico de vários eventos validado no staging; não pedir repetição. Isto não confirma serviços realizados ou pagamentos.

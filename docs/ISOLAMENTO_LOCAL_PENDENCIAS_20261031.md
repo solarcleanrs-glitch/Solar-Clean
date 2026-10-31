@@ -74,3 +74,10 @@ Régis enviou a confirmação da revisão 21: 2 vistorias copiadas, 2 novas, 0 j
 Revisão 22: guardas capturam geração de identificação, projeto/chave, técnico local e UUID do JWT antes da primeira espera. Renovação do token da mesma conta é tolerada; saída/troca de conta/projeto interrompe pushRecord, pullCloud, upload/download de fotos, hidratação e coordenação syncAll nos pontos protegidos. Uploads em andamento passam a distinguir geração/projeto/ID local. Testes controlados trocaram conta durante leitura do corpo remoto e consulta local: não houve escrita de vistoria nem confirmação como sincronizada na nova conta.
 
 Limite: não desfaz requisição já enviada; um envio pode ter sido confirmado no servidor e continuar pendente no aparelho, exigindo a reconciliação pelo mesmo UUID já implementada. Não há namespace operacional ativo. Ainda revisar helpers internos de vínculo, agenda/CRM, todos os escritores assíncronos, formulários/renderizações/backup e transações antes da ativação. Isto reduz corridas em caminhos centrais, não comprova isolamento completo.
+
+
+## Revisão 23 — agenda, CRM e atualização de tela
+
+Guardas por contexto também nos helpers de escopo e agenda paginada, escrita/arquivamento de agenda, fila de pendentes, contatos/metadados/perfis CRM, dashboard e histórico de vistorias. Catch de indisponibilidade mantém o tratamento de rede da mesma conta, mas propaga troca de contexto para impedir fallback e gravação de dados antigos na sessão nova. Fila interrompe antes do próximo registro se a identidade mudar. Cache CRM em memória é esvaziado ao limpar a visão da sessão.
+
+Testes de respostas controladas: pullAgenda e pullCrmMeta não gravam após troca; histórico não renderiza; fila não envia o segundo registro na conta nova. Suíte rápida passou. Banco operacional permanece legado; o roteiro PILOTO_OFICIAL_PREPARACAO_20261031.md registra bloqueios remanescentes e sequência para decisão sobre produção.
