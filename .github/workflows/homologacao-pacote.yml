@@ -19,7 +19,9 @@ jobs:
       - name: Instalar dependencia de teste PostgreSQL
         run: npm ci --prefix tests/postgres --ignore-scripts --no-audit --no-fund
       - name: Validar banco local isolado
-        run: npm --prefix tests/postgres run test:ledger
+        run: |
+          npm --prefix tests/postgres run test:ledger
+          npm --prefix tests/postgres run test:clients
       - name: Validar codigo
         run: |
           node tests/crm-whatsapp.test.cjs
@@ -43,6 +45,7 @@ jobs:
           node tests/backup-local.test.cjs
           node tests/backup-recovery.test.cjs
           node tests/google-history-review.test.cjs
+          node tests/client-history-import-plan.test.cjs
           node tests/agenda-ledger-status.test.cjs
           node scripts/build-settlement-browser.cjs --check
       - name: Montar pacote da versao de testes

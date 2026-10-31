@@ -1,0 +1,44 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require('@electric-sql/pglite');
+(async()=>{
+ const db=new PGlite();
+ const manager='11111111-1111-4111-8111-111111111111',other='99999999-9999-4999-8999-999999999999';
+ const id=n=>`22222222-2222-4222-8222-${String(n).padStart(12,'0')}`;
+ try{
+  await db.exec(`create role anon;create role authenticated;create schema auth;
+  create table auth.users(id uuid primary key);insert into auth.users values('${manager}'),('${other}');
+  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+  grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+  create function public.sc_is_manager() returns boolean language sql stable as $$select auth.uid()='${manager}'::uuid$$;
+  create table public.sc_parceiros(id uuid primary key,ativo boolean);`);
+  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261031_clientes_historico_STAGING_NOT_APPLIED.sql'),'utf8'));
+  const asUser=async uid=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);await db.exec('set role authenticated');};
+  const client={cliente:'Cliente sintético',telefone:'+5551999991234',cidade:'Canoas',endereco:'Endereço sintético',unidade:'RS',origem:'nao_informada',parceiro_id:null};
+  const importRow=(cid,n,c=client,original={id:n,status:'confirmed',description:'Registro sintético'},reviewed=true)=>db.query('select public.sc_importar_cliente_google($1,$2,$3,$4::jsonb,$5::jsonb,$6) as result',[cid,'test@example.invalid',n,JSON.stringify(c),JSON.stringify(original),reviewed]).then(r=>r.rows[0].result);
+  await asUser(other);await assert.rejects(importRow(id(1),'a'),/gestor/);assert.equal((await db.query('select * from sc_clientes')).rows.length,0);
+  await asUser(manager);await assert.rejects(importRow(id(1),'a',client,undefined,false),/revisão/);
+  await assert.rejects(importRow(id(1),'a',{...client,unidade:'XX'}),/check constraint/);
+  assert.equal((await db.query('select * from sc_clientes')).rows.length,0);
+  await assert.rejects(importRow(id(1),'a',client,{id:'a',status:'cancelled'}),/incompatível/);
+  await assert.rejects(importRow(id(1),'a',{...client,valor_cobrado:999}),/não permitido/);
+  await assert.rejects(importRow(id(1),'a',{...client,cliente:{x:1}}),/textos/);
+  assert.equal((await importRow(id(1),'a')).repetido,false);
+  assert.equal((await importRow(id(1),'a')).repetido,true);
+  await assert.rejects(importRow(id(2),'a'),/outro conteúdo/);
+  await assert.rejects(importRow(id(1),'a',{...client,cliente:'Outro'}),/outro conteúdo/);
+  await assert.rejects(importRow(id(1),'b',{...client,endereco:'Diferente'}),/outro conteúdo/);
+  assert.equal((await importRow(id(1),'b')).repetido,false,'Outro evento revisado pode apontar ao mesmo cliente explícito');
+  await importRow(id(2),'c',{...client,cliente:'Pessoa distinta com telefone compartilhado'});
+  assert.equal((await db.query('select * from sc_clientes')).rows.length,2,'Telefone sozinho não funde pessoas');
+  assert.equal((await db.query('select * from sc_cliente_origens_google')).rows.length,3);
+  await assert.rejects(db.exec('delete from sc_clientes'),/permission denied/);
+  await assert.rejects(db.exec("update sc_clientes set cliente='Outra pessoa'"),/permission denied/);
+  await assert.rejects(db.exec('insert into sc_clientes(id) values(gen_random_uuid())'),/permission denied/);
+  await asUser(other);assert.equal((await db.query('select * from sc_clientes')).rows.length,0);assert.equal((await db.query('select * from sc_cliente_origens_google')).rows.length,0);
+  await db.exec('reset role;set role anon');await assert.rejects(importRow(id(3),'d'),/permission denied/);
+  await db.exec('reset role');
+  assert.equal((await db.query("select count(*)::int n from pg_tables where schemaname='public' and tablename in ('agenda_eventos','sc_fechamentos','sc_fechamento_recebimentos')")).rows[0].n,0);
+  console.log('PASS: importação SQL isolada, gestor obrigatório, origem única, repetição idempotente, validações e nenhuma agenda/cobrança');
+ }finally{await db.close();}
+})().catch(e=>{console.error(e.message);process.exitCode=1;});

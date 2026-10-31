@@ -51,3 +51,30 @@ aos artefatos públicos de CI ou ao pacote hospedado do aplicativo.
    `public.clientes`, ausente na estrutura exportada recebida nesta sessão.
 4. Integrar importação idempotente por agenda+evento, com trilha de origem, revisão
    e isolamento por conta. Somente então validar o fluxo no CRM de testes.
+
+## Base SQL preparada — ainda não instalada
+
+`20261031_clientes_historico_STAGING_NOT_APPLIED.sql` cria sc_clientes e
+sc_cliente_origens_google. Não reutiliza silenciosamente o contrato legado
+public.clientes: é necessário adaptar explicitamente o leitor e o editor do CRM.
+Somente gestor lê; escrita direta é revogada. RPC exige revisão explícita, campos
+sem valores financeiros, unidade RS/SC e origem definida (inclusive não informada).
+Parceiro cadastrado e ativo é obrigatório quando a origem for parceiro.
+
+Origem composta agenda+evento é única. Repetição com mesmo ID de cliente, cadastro
+e evento devolve a confirmação anterior; conteúdo diferente falha sem sobrescrever.
+Lock transacional serializa identidade de origem e depois de cliente. Dois eventos
+podem apontar ao mesmo cliente somente com ID/cadastro explicitamente iguais.
+Telefone compartilhado não une pessoas automaticamente. O evento original fica
+preservado com ator e data da confirmação. Nenhuma agenda ou cobrança é criada.
+
+PGlite executou a migração e verificou RLS, bloqueio de não gestor, escrita direta
+negada, dados inválidos sem gravação parcial, replay, conflito de conteúdo e duas
+pessoas com mesmo telefone. Esses testes são sequenciais em banco embarcado; não
+substituem teste concorrente em conexões Supabase nem JWT real.
+
+`lib/client-history-import-plan.cjs` prepara o contrato RPC de eventos aprovados,
+valida agenda de origem, confirmação/campos explícitos, preserva IDs para replay e
+não faz I/O. Falta interface que grave aprovações e fila durável por conta, adaptação
+do cadastro legado e instalação da migração no projeto de testes. Não está liberado
+no aplicativo nem há importação real executada.
