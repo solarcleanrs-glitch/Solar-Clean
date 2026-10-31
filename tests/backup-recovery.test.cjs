@@ -6,6 +6,9 @@ const intent={rpc:'sc_criar_fechamento',body:{p_id:'stable-id'},expectedId:'stab
 const journal={actor,phase:'pending',fingerprint:JSON.stringify(intent),intent};
 const data={app:'Solar Clean Vistorias v4',exportedAt:'2026-10-31T03:00:00Z',company:{empresa:'synthetic'},vistorias:[{id:1,syncStatus:'pending',photo:'data:image/png;base64,dGVzdA==',revisionBackups:[{id:1}]}],stagingLocal:{version:1,project:'https://zzphucuiqhzrilrddxnf.supabase.co',actor,raw:{solarCleanAgenda:'[{"id":"synthetic","syncStatus":"pending"}]',solarCleanClients:'[]',solarCleanCrmMeta:'{}',solarCleanCrmContactHistory:'{}'},financialIntent:{key:'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor,raw:JSON.stringify(journal)}}};
 const text=JSON.stringify(data);assert.equal(inspect(text,actor).financialPhase,'pending');
+const withImport=structuredClone(data);withImport.stagingLocal.clientImportIntents=[{key:'solarCleanClientImport:v1:zzphucuiqhzrilrddxnf:'+actor+':calendar:event',raw:'raw pending preserved'}];
+assert.equal(inspect(JSON.stringify(withImport),actor).clientImportIntents,1);
+const wrongImport=structuredClone(withImport);wrongImport.stagingLocal.clientImportIntents[0].key='other';assert.throws(()=>inspect(JSON.stringify(wrongImport),actor),/outra conta/);
 assert.throws(()=>inspect(text,'22222222-2222-4222-8222-222222222222'),/mesma conta/);
 for(const mutate of [d=>delete d.stagingLocal,d=>d.stagingLocal.project='https://production.example',d=>d.stagingLocal.version=2,d=>d.vistorias.push(d.vistorias[0]),d=>d.stagingLocal.raw.secret='token',d=>d.stagingLocal.financialIntent.key+='other']){
  const changed=JSON.parse(text);mutate(changed);assert.throws(()=>inspect(JSON.stringify(changed),actor));

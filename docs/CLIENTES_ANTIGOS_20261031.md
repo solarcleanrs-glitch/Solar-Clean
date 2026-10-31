@@ -78,3 +78,31 @@ valida agenda de origem, confirmação/campos explícitos, preserva IDs para rep
 não faz I/O. Falta interface que grave aprovações e fila durável por conta, adaptação
 do cadastro legado e instalação da migração no projeto de testes. Não está liberado
 no aplicativo nem há importação real executada.
+
+## Revisão 14 — tela conectada, instalação do banco pendente
+
+Painel Clientes antigos no CRM de staging lê o JSON original exportado e permite
+buscar, selecionar e revisar um evento. Nome/telefone/endereço são sugestões;
+unidade e origem exigem escolha explícita. Parceiros vêm do servidor. A conta
+precisa passar no sc_is_manager real e na leitura da nova tabela; estrutura
+ausente bloqueia o envio com mensagem, sem fallback à tabela legada.
+
+O adaptador grava a intenção exata em chave por projeto+actor+agenda+evento antes
+do POST. Exige Web Locks entre abas, conserva UUID em replay e falhas ambíguas,
+interrompe troca de contexto e valida o resultado retornado. Escrita local negada
+impede envio. Journal confirmado evita novo POST; conflitos exigem revisão, sem
+limpar automaticamente operações anteriores. A tela não permite edição durante o
+envio e limpa o conteúdo ao mudar sessão/conta em outra aba. Isto não corrige os
+caches globais legados de vistorias/agenda/CRM, que permanecem bloqueio de produção.
+
+Backup staging inclui textos exatos dessas intenções somente da conta atual.
+Ensaio isolado os preserva e valida prefixo/conta, sem comparação nem ativação.
+Não inclui tokens. A base importada ainda é separada da lista CRM legada; não
+atribui uma data de serviço à data de criação de cliente nem produz recorrência
+automática. Unir à lista geral exige adaptar identidade/perfis sem fusão por
+telefone e validar a migração de cache.
+
+Testes locais cobrem montagem da tela com DOM simulado, schema ausente, revisão
+explícita, limpeza de sessão, storage negado, replay com ID anterior, erro de rede,
+resposta incompatível e troca de conta. Não são testes de importação real no
+Supabase: a migração ainda não foi instalada, e nenhum cliente real foi importado.

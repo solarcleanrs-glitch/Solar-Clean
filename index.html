@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-agenda-parceiros-13" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 31/10 · revisão 13</small></div>
+<div id="homologNotice" data-app-release="20261031-clientes-antigos-14" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: clientes antigos — 31/10 · revisão 14</small></div>
 
 <main>
 <section id="home">
@@ -302,6 +302,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="crmScreen" class="hidden">
   <div class="card">
     <h2>CRM / Recorrência</h2>
+    <section id="clientHistoryImport" class="card hidden"></section>
     <p class="muted">Clientes organizados automaticamente pela última vistoria e pelo prazo recomendado de nova limpeza. O WhatsApp abre uma mensagem para sua revisão; nenhum envio é automático.</p>
 
     <div class="grid grid3 section">
@@ -863,6 +864,7 @@ function currentTech(){
   try{return JSON.parse(localStorage.getItem('solarCleanTech')||'null')}catch(e){return null}
 }
 function setTech(t){
+  window.SCClientHistoryUI?.clear();
   window.SCSettlementUI?.clear();
   window.AgendaLedgerStatus?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
@@ -3328,7 +3330,13 @@ function captureStagingBackupLocal(){
   for(const key of keys)raw[key]=localStorage.getItem(key);
   // Mantém o texto original mesmo se um registro estiver ilegível, para recuperação.
   const journalKey=actor?'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor:null;
+  const clientImportIntents=[];
+  if(actor){const prefix='solarCleanClientImport:v1:zzphucuiqhzrilrddxnf:'+actor+':';
+    for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))clientImportIntents.push({key,raw:localStorage.getItem(key)});}
+    clientImportIntents.sort((a,b)=>a.key.localeCompare(b.key));
+  }
   return {version:1,project,actor,legacyDataScope:'device-unscoped',raw,
+    clientImportIntents,
     financialIntent:journalKey?{key:journalKey,raw:localStorage.getItem(journalKey)}:null,
     limitations:['Sem cópia do banco ou dos arquivos remotos.','Dados locais legados pertencem ao aparelho e podem conter histórico de outras contas.','Sem importação automática; não reenviar intenções com novos IDs.']};
 }
@@ -3874,5 +3882,9 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/settlement-ui.js"></script>
 <script src="lib/agenda-ledger-status.js"></script>
 <script src="lib/backup-recovery.js"></script>
+<script src="lib/google-history-review.js"></script>
+<script src="lib/client-history-import-plan.js"></script>
+<script src="lib/client-history-import-api.js"></script>
+<script src="lib/client-history-ui.js"></script>
 </body>
 </html>
