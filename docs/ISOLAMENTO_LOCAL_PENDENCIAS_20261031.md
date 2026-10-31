@@ -47,3 +47,12 @@ Teste de corridas com respostas controladas: saída durante login/refresh, alter
 Durante a preparação da migração, foi identificado que dbAdd/dbPut/dbDelete confirmavam no sucesso da requisição IndexedDB, antes da conclusão da transação. A transação ainda poderia abortar, por exemplo por falta de espaço. Agora os quatro acessores aguardam tx.oncomplete, rejeitam aborts inclusive após request.onsuccess e fecham a conexão ao finalizar. A consulta tolera datas legadas ausentes. Nenhum banco ou registro foi renomeado, apagado ou migrado.
 
 Teste controlado simula sucesso da requisição seguido por abort, erro de requisição, erro de abertura, conclusão normal e ordenação legada. Validação sintética não substitui testes reais de falha de disco no navegador. Isolamento por conta permanece pendente; não ativar namespace novo antes da cópia preservada e verificada do legado.
+
+
+## Base de armazenamento isolado — preparada, NÃO ativada
+
+`lib/scoped-vistoria-store.js` implementa namespaces por projeto exato de testes + UUID da conta; a identidade deve ser fornecida por contexto validado da aplicação, nunca por nome/e-mail. Sessão captura namespace imutável e compara o contexto antes/depois das operações. Cópia exige conta responsável explícita, mantém IDs locais, fotos, snapshots e fila; compara destino, rejeita conflitos sem substituir, aguarda commit e relê os registros para conferir o conteúdo. O adaptador IndexedDB copia o lote em uma transação. Não possui operação de apagar o legado, rede ou localStorage.
+
+Testes com backend simulado passaram: A→B→A, mesma chave local em duas contas, cópia verificada e idempotente, foto/fila preservadas, conflito prévio sem cópia parcial, destino corrompido e resposta atrasada. Isto não é validação real do adaptador IndexedDB no navegador.
+
+Não há `<script>` no aplicativo nem ativação de namespace: os dados antigos continuam no armazenamento atual. Antes de ativar, falta interface de conferência/exportação/cópia do legado, contexto capturado em todos os caminhos assíncronos e teste real com fotos e duas contas. Não alegar isolamento completo instalado.
