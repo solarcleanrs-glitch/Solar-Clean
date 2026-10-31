@@ -42,6 +42,7 @@ jobs:
           node tests/settlement-ui.test.cjs
           node tests/backup-local.test.cjs
           node tests/backup-recovery.test.cjs
+          node tests/google-history-review.test.cjs
           node tests/agenda-ledger-status.test.cjs
           node scripts/build-settlement-browser.cjs --check
       - name: Montar pacote da versao de testes

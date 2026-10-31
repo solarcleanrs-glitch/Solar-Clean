@@ -2,7 +2,7 @@
 
 Não executar restauração sobre produção nem sobre o aparelho de trabalho.
 
-## Cobertura atual observada no código
+## Cobertura histórica antes da revisão 11
 
 | Conteúdo | Persistência | Exportar backup atual |
 |---|---|---|
@@ -38,7 +38,7 @@ reinstalar app ou trocar conta no aparelho de trabalho enquanto houver filas.
 6. Validar recuperação de fila local sem repetir cobranças ou sobrescrever
    revisões. Preservar IDs de intenções financeiras; não recriar como nova ação.
 
-## Estado
+## Estado inicial (superado pelas validações abaixo)
 
 Roteiro e verificador preparados; restauração real não executada. Falta ampliar
 cobertura do backup local e definir importação segura com validação de projeto,
@@ -117,5 +117,78 @@ de backup nem substitui teste de restauração do PostgreSQL/Storage.
 
 Validada em PostgreSQL embarcado com fixtures sintéticas saudáveis e corrupção
 transacional revertida: detectou total divergente e recebimento acima do saldo.
-Resultado do banco Supabase real ainda não recebido. Não há conexão direta ao banco
-nesta sessão; execução pelo gestor no projeto de testes é necessária.
+O gestor posteriormente confirmou no banco de testes os três indicadores curtos
+em zero. O diagnóstico completo de quatro indicadores foi confirmado também na
+cópia local restaurada, conforme registro a seguir.
+
+## Restauração real em PostgreSQL local — concluída em 31/10
+
+Gestor executou no próprio Windows, sem modificar produção nem o projeto de
+testes. Binaries PostgreSQL 18.6 extraídos em `C:\SolarCleanTools\pgsql\bin`.
+Origem Supabase PostgreSQL 17.11, projeto de testes confirmado pelo ref
+`zzphucuiqhzrilrddxnf`. Dois dumps custom separados, schemas public e auth/storage,
+gerados com pg_dump e exit code 0. Decodificação completa com pg_restore --file=NUL
+também retornou 0 em ambos. São snapshots separados: não afirmar consistência
+transacional entre os dois arquivos.
+
+Cluster descartável criado em `%USERPROFILE%\SolarCleanRestoreLab-20261031`,
+autenticação SCRAM, senha local digitada pelo gestor, locale C/UTF8. Servidor
+escutando somente em 127.0.0.1, porta 55432; banco solar_clean_restore.
+Perfil authenticated NOLOGIN criado localmente; schema public vazio removido.
+
+Ordem que efetivamente passou, cada chamada com --no-owner --no-privileges,
+--single-transaction e --exit-on-error:
+
+1. auth/storage: pre-data.
+2. public: pre-data.
+3. auth/storage: data.
+4. public: data.
+5. auth: post-data, filtrado com --schema=auth.
+6. public: post-data.
+7. storage: post-data, filtrado com --schema=storage.
+
+A tentativa inicial de public post-data antes de auth post-data falhou por falta
+da chave única de auth.users(id). A transação dessa tentativa foi revertida.
+Não repetir essa ordem incompleta. Depois da correção, as três fases post-data
+retornaram 0. Uma tentativa Storage teve senha local incorreta; a repetição passou.
+
+Contagens consultadas no banco local, comprovadas por imagem:
+
+| Coleção | Registros |
+|---|---:|
+| auth.users | 2 |
+| public.vistorias | 2 |
+| public.agenda_eventos | 5 |
+| public.sc_fechamentos | 3 |
+| public.sc_fechamento_itens | 3 |
+| public.sc_fechamento_recebimentos | 2 |
+| storage.objects no bucket vistoria-media | 1 |
+
+Gestor confirmou os quatro indicadores em zero: totais cobrados/anteriores iguais
+aos itens, nenhum recebimento acima do saldo, vínculo ativo compatível com status,
+nenhum serviço com mais de um vínculo ativo. Foto da consulta parcialmente
+cortada comprova os dois primeiros; confirmação textual cobre o conjunto.
+Servidor local depois parado com pg_ctl -m fast -w stop, comprovado por imagem.
+Dados locais e backups preservados. Não houve comparação integral de hashes de
+linhas entre origem e destino; contagens e integridade não provam igualdade total.
+
+## Mídia preservada e limites restantes
+
+SQL de inventário do bucket retornou uma imagem. Gestor baixou, abriu normalmente
+e organizou mantendo a chave completa sob a pasta Backup Solar Clean:
+
+`vistoria-media/9b1ebd11-aad8-41f4-803f-8eed1a5b9344/antes/1793214275958-0-0f578d2e-03a0-45ea-af2d-22ad9faac972.jpg`
+
+Não houve upload para outro Storage, comparação de hash com o original remoto,
+abertura dessa foto pelo aplicativo restaurado ou verificação de assinaturas/PDF
+no ambiente reconstruído. A cópia local contém só PostgreSQL, sem os serviços de
+Auth/API/Storage do Supabase. Owners e grants foram deliberadamente omitidos no
+ensaio; logo, não valida permissões de uma recuperação completa do Supabase.
+Não inclui roles globais, extensões fora dos schemas, Vault/chaves/configurações
+Google/SMTP ou outros serviços. Senhas e dados dos dumps não foram recebidos aqui.
+
+Gestor não possui segundo dispositivo no momento. Cópias no mesmo computador
+ajudam contra exclusão acidental, mas não cobrem falha do disco. Cópia externa
+privada permanece pendente. Novos backups precisam de nova data e arquivos novos,
+sem sobrescrever este conjunto validado. A instalação e a preparação não precisam
+ser refeitas. Aprovação de produção continua pendente dos demais critérios.
