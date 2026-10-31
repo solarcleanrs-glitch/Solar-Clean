@@ -103,3 +103,19 @@ Conteúdo ilegível e identidades repetidas bloqueiam comparação da coleção;
 são tratados como listas vazias. Ordem de propriedades JSON não causa conflito.
 Journal somente é comparado, sem reenvio ou promoção; diferença exige conferência.
 A comparação não constitui comando de importação e não modifica stores de trabalho.
+
+
+## Próxima conferência no banco
+
+Preparada consulta conferir_integridade_fechamentos_STAGING.sql, somente SELECT,
+sem nomes de clientes e sem alterações. Conta fechamentos/recebimentos e procura
+divergência entre totais e itens, excesso de recebimento, vínculo incompatível com
+status e mais de um fechamento ativo por serviço. Indicadores de erro devem ser
+zero; contagens totais dependem dos testes mantidos pelo gestor. A consulta usa
+um único statement para visão consistente desses indicadores. Não prova cobertura
+de backup nem substitui teste de restauração do PostgreSQL/Storage.
+
+Validada em PostgreSQL embarcado com fixtures sintéticas saudáveis e corrupção
+transacional revertida: detectou total divergente e recebimento acima do saldo.
+Resultado do banco Supabase real ainda não recebido. Não há conexão direta ao banco
+nesta sessão; execução pelo gestor no projeto de testes é necessária.

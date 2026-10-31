@@ -56,5 +56,16 @@ await db.exec('reset role; set role anon');await assert.rejects(db.exec('select 
 await db.exec('reset role');
 await assert.rejects(db.exec("update sc_clientes_escopos set parceiro_id='33333333-3333-4333-8333-333333333333' where id='44444444-4444-4444-8444-444444444444'"),/Origem vinculada/);
 assert.equal((await db.query('select count(*)::int as n from sc_fechamento_recebimentos')).rows[0].n,2);
+// Read-only diagnostic exercised against real SQL, including a rollback-only corruption fixture.
+const diagnostic=fs.readFileSync('supabase/diagnostics/conferir_integridade_fechamentos_STAGING.sql','utf8');
+const healthy=(await db.query(diagnostic)).rows[0].integridade;
+assert.equal(healthy.fechamentos,3);assert.equal(healthy.recebimentos,2);
+for(const key of ['totais_divergentes','recebimentos_acima_do_saldo','vinculos_com_status_incorreto','servicos_com_mais_de_um_vinculo_ativo'])assert.equal(healthy[key],0,key);
+await db.exec('begin');
+await db.query('update sc_fechamentos set total_centavos=total_centavos-1 where id=$1',[fid(1)]);
+const corrupt=(await db.query(diagnostic)).rows[0].integridade;
+assert.equal(corrupt.totais_divergentes,1);assert.equal(corrupt.recebimentos_acima_do_saldo,1);
+await db.exec('rollback');
+assert.deepEqual((await db.query(diagnostic)).rows[0].integridade,healthy);
 await db.close();console.log('PASS: embedded PostgreSQL migration, RLS, RPC rights, atomicity, revisions, unique claims, idempotent partial/full receipts and cancellation');
 })().catch(error=>{console.error(error.message);process.exit(1);});
