@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-sessao-19" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: proteção de sessão — 31/10 · revisão 19</small></div>
+<div id="homologNotice" data-app-release="20261031-gravacao-20" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: gravação local — 31/10 · revisão 20</small></div>
 
 <main>
 <section id="home">
@@ -798,39 +798,32 @@ function openDB(){
     req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
   });
 }
-async function dbPut(record){
+// A request success is not a committed transaction. Resolve only on tx.complete.
+async function runVistoriaStore(mode,work){
   const db=await openDB();
   return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).put(record);
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+    let tx,result,requestError=null,settled=false;
+    const finish=(error)=>{if(settled)return;settled=true;db.close();if(error)reject(error);else resolve(result);};
+    try{
+      tx=db.transaction(STORE,mode);
+      tx.oncomplete=()=>finish(null);
+      tx.onabort=()=>finish(requestError||tx.error||new Error('Gravação local interrompida; não foi confirmada.'));
+      tx.onerror=()=>{requestError=tx.error||new Error('Falha no armazenamento local.');};
+      const req=work(tx.objectStore(STORE));
+      req.onsuccess=()=>{result=req.result;};
+      req.onerror=()=>{requestError=req.error||new Error('Falha no registro local.');};
+    }catch(error){
+      if(tx){requestError=error;try{tx.abort();}catch(e){finish(error);}}else finish(error);
+    }
   });
 }
-async function dbAdd(record){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).add(record);
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
-  });
-}
+async function dbPut(record){return runVistoriaStore('readwrite',store=>store.put(record));}
+async function dbAdd(record){return runVistoriaStore('readwrite',store=>store.add(record));}
 async function dbAll(){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,'readonly');
-    const req=tx.objectStore(STORE).getAll();
-    req.onsuccess=()=>resolve(req.result.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));
-    req.onerror=()=>reject(req.error);
-  });
+  const rows=await runVistoriaStore('readonly',store=>store.getAll());
+  return rows.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
 }
-async function dbDelete(id){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).delete(id);
-    req.onsuccess=()=>resolve(); req.onerror=()=>reject(req.error);
-  });
-}
+async function dbDelete(id){await runVistoriaStore('readwrite',store=>store.delete(id));}
 
 /* ---------- UI helpers ---------- */
 function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}

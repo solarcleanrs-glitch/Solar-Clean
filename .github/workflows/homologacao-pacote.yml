@@ -27,6 +27,7 @@ jobs:
           node tests/crm-whatsapp.test.cjs
           node tests/access-boundaries.test.cjs
           node tests/auth-session-race.test.cjs
+          node tests/vistoria-storage-commit.test.cjs
           node tests/read-only-diagnostics.test.cjs
           node tests/staging-rls-risk-audit.test.cjs
           node tests/homologation-isolation.test.cjs

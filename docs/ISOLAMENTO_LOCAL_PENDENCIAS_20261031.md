@@ -40,3 +40,10 @@ ser coordenada com a revisão de recuperação de backup ampliado e sua compara�
 Logout agora invalida a geração de autenticação, remove access e refresh tokens e limpa a senha do formulário. Login e renovação capturam geração, projeto, chave pública e valores da sessão antes da requisição; conferem após resposta e após leitura do corpo, antes de gravar tokens. Respostas antigas não podem reativar sessão encerrada ou sobrescrever conta/projeto alterado. Renovação simultânea da mesma sessão compartilha a operação; nova sessão não reutiliza a promessa antiga.
 
 Teste de corridas com respostas controladas: saída durante login/refresh, alteração de conta/token/projeto, renovação compartilhada e login normal. Nenhum cache de vistoria, foto ou fila offline foi apagado/migrado. Isto NÃO implementa isolamento completo de armazenamento e NÃO elimina os demais bloqueios deste documento.
+
+
+## Revisão 20 — confirmação da gravação local
+
+Durante a preparação da migração, foi identificado que dbAdd/dbPut/dbDelete confirmavam no sucesso da requisição IndexedDB, antes da conclusão da transação. A transação ainda poderia abortar, por exemplo por falta de espaço. Agora os quatro acessores aguardam tx.oncomplete, rejeitam aborts inclusive após request.onsuccess e fecham a conexão ao finalizar. A consulta tolera datas legadas ausentes. Nenhum banco ou registro foi renomeado, apagado ou migrado.
+
+Teste controlado simula sucesso da requisição seguido por abort, erro de requisição, erro de abertura, conclusão normal e ordenação legada. Validação sintética não substitui testes reais de falha de disco no navegador. Isolamento por conta permanece pendente; não ativar namespace novo antes da cópia preservada e verificada do legado.
