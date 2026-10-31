@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261030-agenda-parceiros-10" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 30/10 · revisão 10</small></div>
+<div id="homologNotice" data-app-release="20261031-agenda-parceiros-11" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: agenda e parceiros — 31/10 · revisão 11</small></div>
 
 <main>
 <section id="home">
@@ -3303,6 +3303,27 @@ function loadCompany(){
     $('#revisionLabToggle').onclick=toggleStagingRevisionProtocol;
   }
 }
+// Snapshot explícito: nunca percorrer/exportar todas as chaves de autenticação.
+function captureStagingBackupLocal(){
+  if(location.hostname!=='solar-clean-testes-crm.pages.dev')return null;
+  const project='https://zzphucuiqhzrilrddxnf.supabase.co';
+  if(cloudConfig().url!==project)throw Error('Configure o projeto de testes antes do backup ampliado.');
+  let actor=null;
+  const jwt=localStorage.getItem('solarCleanAccessToken');
+  if(jwt){
+    try{actor=JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub}catch(e){}
+    if(!/^[0-9a-f-]{36}$/i.test(actor||''))throw Error('Sessão inválida: entre novamente antes do backup ampliado.');
+    actor=actor.toLowerCase();
+  }
+  const keys=['solarCleanAgenda','solarCleanClients','solarCleanCrmMeta','solarCleanCrmContactHistory'];
+  const raw={};
+  for(const key of keys)raw[key]=localStorage.getItem(key);
+  // Mantém o texto original mesmo se um registro estiver ilegível, para recuperação.
+  const journalKey=actor?'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor:null;
+  return {version:1,project,actor,legacyDataScope:'device-unscoped',raw,
+    financialIntent:journalKey?{key:journalKey,raw:localStorage.getItem(journalKey)}:null,
+    limitations:['Sem cópia do banco ou dos arquivos remotos.','Dados locais legados pertencem ao aparelho e podem conter histórico de outras contas.','Sem importação automática; não reenviar intenções com novos IDs.']};
+}
 async function exportBackup(){
   const btn=$('#exportBackup'),oldText=btn.textContent;
   btn.disabled=true;
@@ -3310,11 +3331,13 @@ async function exportBackup(){
   let url=null;
   try{
     // Preserva todas as informações e fotos locais, sem alterar as vistorias.
+    const localSnapshot=captureStagingBackupLocal();
     const all=await dbAll();
+    if(JSON.stringify(localSnapshot)!==JSON.stringify(captureStagingBackupLocal()))throw Error('Dados locais ou conta mudaram durante a exportação. Tente novamente.');
     let company={};
     try{company=JSON.parse(localStorage.getItem('solarCleanCompany')||'{}')}
     catch(e){console.warn('Configurações locais inválidas no backup:',e)}
-    const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company,vistorias:all};
+    const payload={app:'Solar Clean Vistorias v4',exportedAt:new Date().toISOString(),company,vistorias:all,...(localSnapshot?{stagingLocal:localSnapshot}:{})};
     const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
     url=URL.createObjectURL(blob);
     const a=document.createElement('a');

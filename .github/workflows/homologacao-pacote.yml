@@ -40,6 +40,7 @@ jobs:
           node tests/settlement-api.test.cjs
           node tests/settlement-journal.test.cjs
           node tests/settlement-ui.test.cjs
+          node tests/backup-local.test.cjs
           node tests/agenda-ledger-status.test.cjs
           node scripts/build-settlement-browser.cjs --check
       - name: Montar pacote da versao de testes

@@ -179,3 +179,27 @@ nova gravação naquela tentativa. Cancelar diálogo remove Processando em vez d
 manter sucesso antigo. Filtro sem parceiro específico orienta a selecionar Origem,
 em vez de UUID inválido. Nenhuma alteração de banco ou registro financeiro.
 Testes simulados cobrem mensagem antiga, preparo, rejeição e diálogo cancelado.
+
+
+## Validação real de acesso sem vínculo — 31/10/2026
+
+Usuário executou na janela anônima, com conta autenticada sem vínculo em
+crm_usuarios nem sc_acessos, chamadas diretas no projeto de testes. Captura do
+console confirmou sc_is_manager HTTP 200 false; SELECT sc_fechamentos sem filtro
+de parceiro HTTP 200 []; sc_criar_fechamento com parâmetros nulos HTTP 403,
+SQLSTATE 42501, mensagem Acesso restrito ao gestor. Nenhum registro criado.
+Isso valida essas três chamadas com JWT real; não representa teste completo de
+INSERT/UPDATE de agenda, recibos, cancelamento, mídia ou isolamento de cache ao
+trocar contas. A ausência visual de agenda é evidência complementar, sem captura
+da resposta REST específica. Não conceder permissões à conta negativa.
+
+Reexecutados testes *.test.cjs, builder --check e integração PostgreSQL embarcada:
+todos concluídos com código zero. O aviso do auditor sobre políticas antigas de
+membership permanece histórico; a barreira restritiva de gestor é necessária.
+
+Inspeção de exportBackup: exporta company e dbAll() de vistorias, incluindo fotos
+locais. Não exporta agenda, CRM nem livro de fechamentos. Não apresentar esse JSON
+como backup completo do sistema. Antes de produção, validar backup/restauração do
+banco e da mídia e preservação das filas locais; restauração deve ocorrer primeiro
+em ambiente descartável. Também permanecem pendentes papéis por unidade e
+isolamento de dados locais entre contas e concorrência real em dispositivos.
