@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-clientes-antigos-14" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: clientes antigos — 31/10 · revisão 14</small></div>
+<div id="homologNotice" data-app-release="20261031-clientes-crm-15" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: clientes no CRM — 31/10 · revisão 15</small></div>
 
 <main>
 <section id="home">
@@ -389,6 +389,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <p id="crmEditorStatus" class="muted section"></p>
     </div>
 
+    <p id="crmImportedStatus" role="status" class="muted"></p>
     <div id="crmList" class="crm-list section"></div>
     <button class="section" id="homeFromCrm">Voltar ao início</button>
   </div>
@@ -864,6 +865,7 @@ function currentTech(){
   try{return JSON.parse(localStorage.getItem('solarCleanTech')||'null')}catch(e){return null}
 }
 function setTech(t){
+  clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
   window.SCSettlementUI?.clear();
   window.AgendaLedgerStatus?.clear();
@@ -2884,6 +2886,20 @@ $("#agendaValorRecebido").value=ev.valorRecebido||'';
 /* ---------- CRM / recorrência ---------- */
 let crmMetaCache={};
 let crmEditingKey='';
+let crmRenderGeneration=0;
+function clearScopedCrmView(){
+  crmRenderGeneration++;window.__crmClients=[];window.__crmFiltered=[];crmEditingKey='';
+  if($('#crmList'))$('#crmList').replaceChildren();
+  if($('#crmImportedStatus'))$('#crmImportedStatus').textContent='';
+  if($('#crmEditor'))$('#crmEditor').classList.add('hidden');
+}
+function importedCrmContext(){
+  if(location.hostname!=='solar-clean-testes-crm.pages.dev'||cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co'||!currentTech()?.cloud)return null;
+  try{const token=localStorage.getItem('solarCleanAccessToken')||'';const actor=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub;
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actor||''))return null;
+    return {url:cloudConfig().url,actor:actor.toLowerCase(),headers:crmHistoryCloudHeaders()};
+  }catch(e){return null;}
+}
 
 function crmKey(r){
   if(r.__crmKey)return r.__crmKey;
@@ -3131,6 +3147,11 @@ async function pullCrmContactClientKeys(){
   }
 }
 async function buildCrmClients(){
+  let imported=[],importError='';
+  if(typeof SCImportedClientsCRM!=='undefined'&&importedCrmContext()){
+    try{imported=await SCImportedClientsCRM.read({context:importedCrmContext,ensureSession:ensureVistoriaSession,fetcher:fetch});}
+    catch(e){importError=e.message;}
+  }
   const all=await dbAll();
   const standalone=await pullStandaloneClients();
   const cloudContactKeys=await pullCrmContactClientKeys();
@@ -3166,6 +3187,9 @@ async function buildCrmClients(){
     }
   }
 
+  // UUID cadastral preservado: nunca unir importados por telefone/nome do legado.
+  for(const row of imported)groups.set(crmKey(row),[row]);
+
   // Exibe também clientes cujo contato já existe na nuvem, mas cuja
   // vistoria/cadastro ainda não foi importado para este aparelho.
   // O identificador preserva o vínculo com o histórico remoto.
@@ -3183,14 +3207,14 @@ async function buildCrmClients(){
     }]);
   }
 
-  return [...groups.values()].map(records=>{
+  const result=[...groups.values()].map(records=>{
     records.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     const last=records[0];
     const months=recurrenceMonths(last.retorno);
     const nextDate=months?addMonthsSafe(last.createdAt,months):null;
     const status=crmStatus(nextDate);
-    const meta={status:'Ativo',lastContact:'',internalNote:'',lossReason:'',...(crmMetaCache[crmKey(last)]||{})};
-    const recent=crmContactHistoryLocal()[crmKey(last)]||[];
+    const meta={status:last.__importedClient?'Em conferência':'Ativo',lastContact:'',internalNote:'',lossReason:'',...(!last.__importedClient?crmMetaCache[crmKey(last)]||{}:{})};
+    const recent=last.__importedClient?[]:crmContactHistoryLocal()[crmKey(last)]||[];
     if(recent.length){
       const latest=recent.map(e=>String(e.at||'').slice(0,10)).filter(Boolean).sort().at(-1);
       if(latest&&(!meta.lastContact||latest>meta.lastContact))meta.lastContact=latest;
@@ -3203,8 +3227,11 @@ async function buildCrmClients(){
     const bd=b.nextDate?.getTime()||Number.MAX_SAFE_INTEGER;
     return ad-bd;
   });
+  result.importStatus=importError|| (imported.length?imported.length+' cadastro(s) importado(s) consultado(s) na nuvem. Histórico de serviços ainda não vinculado.':'');
+  return result;
 }
 function openCrmEditor(client){
+  if(client.last.__importedClient)return;
   crmEditingKey=client.key;
   const r=client.last,meta=client.meta||{};
   $('#crmEditorTitle').textContent=r.cliente||'Cliente';
@@ -3228,7 +3255,10 @@ function openCrmEditor(client){
   $('#crmEditor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function renderCrm(){
+  const turn=++crmRenderGeneration,actor=importedCrmContext()?.actor||null;
   const clients=await buildCrmClients();
+  if(turn!==crmRenderGeneration||actor!==(importedCrmContext()?.actor||null))return;
+  $('#crmImportedStatus').textContent=clients.importStatus||'';
   window.__crmClients=clients;
   const q=($('#crmSearch')?.value||'').trim().toLowerCase();
   const filter=$('#crmFilter')?.value||'';
@@ -3261,6 +3291,7 @@ async function renderCrm(){
           <b>${escapeHtml(r.cliente||'Cliente sem nome')}</b>
           <div class="small">${escapeHtml(r.cidade||'Cidade não informada')} • ${escapeHtml(r.telefone||'Sem telefone')}</div>
           <span class="crm-commercial">${escapeHtml(c.meta?.status||'Ativo')}</span>
+          ${r.__importedClient?'<span class="crm-commercial">Importado do histórico Google · '+escapeHtml(r.unidade)+'</span>':''}
         </div>
         <span class="crm-status ${c.status.key}">${escapeHtml(c.status.label)}</span>
       </div>
@@ -3273,7 +3304,7 @@ async function renderCrm(){
         ${c.meta?.lossReason?`<div><span class="muted">Motivo</span><br>${escapeHtml(c.meta.lossReason)}</div>`:''}
       </div>
       <div class="crm-actions">
-        <button data-crm-edit="${i}">Editar CRM</button>
+        ${r.__importedClient?'<button disabled>Cadastro importado · consulta</button>':`<button data-crm-edit="${i}">Editar CRM</button>`}
         ${c.records.length?`<button data-crm-open="${r.id}">Último relatório</button>`:'<button disabled>Sem vistoria ainda</button>'}
         ${whats&&c.meta?.status!=='Não contatar'?`<button data-crm-whatsapp="${i}">Preparar WhatsApp</button>`:''}
       </div>
@@ -3868,6 +3899,7 @@ $('#syncNow').onclick=async()=>{
 };
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
 window.addEventListener('online',()=>{autoSync('conexão restaurada')});
+window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanTech','solarCleanCompany'].includes(event.key))clearScopedCrmView();});
 window.addEventListener('focus',()=>{autoSync('retorno ao app')});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync('app visível')});
 // Enquanto o app estiver aberto, busca novas vistorias da equipe automaticamente.
@@ -3886,5 +3918,6 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/client-history-import-plan.js"></script>
 <script src="lib/client-history-import-api.js"></script>
 <script src="lib/client-history-ui.js"></script>
+<script src="lib/imported-clients-crm.js"></script>
 </body>
 </html>

@@ -106,3 +106,30 @@ Testes locais cobrem montagem da tela com DOM simulado, schema ausente, revisão
 explícita, limpeza de sessão, storage negado, replay com ID anterior, erro de rede,
 resposta incompatível e troca de conta. Não são testes de importação real no
 Supabase: a migração ainda não foi instalada, e nenhum cliente real foi importado.
+
+## Validação real pelo gestor e revisão 15
+
+Em 31/10 o gestor confirmou Success na execução do SQL, acesso verificado na tela
+e cadastro confirmado com ID a026a52e-d3b6-496e-bb4c-a3794e1dfcc3. Esta é evidência
+relatada pelo usuário, sem consulta direta do banco pelo agente. O arquivo de
+migração conserva NOT_APPLIED no nome histórico; a instalação foi relatada e não
+deve ser repetida sem conferir o estado atual. Não sabemos qual evento/cliente foi
+selecionado, e não presumimos que mais registros tenham sido importados.
+
+Revisão 15 integra leitura paginada de sc_clientes à lista geral de CRM somente no
+projeto/domínio de testes e com sessão conectada. Não grava em caches legados.
+Chave sc_cliente:UUID impede fusão por nome ou telefone. Cadastros entram como
+Em conferência, zero atendimentos, sem última vistoria ou recorrência inferidas.
+Nesta etapa são de consulta: sem editor CRM ou WhatsApp automático. Histórico de
+serviços e perfis comerciais só deve ser vinculado por ação específica posterior.
+
+Renderizações atrasadas verificam geração e actor antes de preencher a lista;
+troca de identificação ou sessão em outra aba limpa a lista/editor e invalida
+respostas em curso. Isso protege essa exibição, mas não resolve o armazenamento
+global legado de vistorias/agenda/CRM, que permanece pendente.
+
+Teste exercita o agregador real com uma vistoria legada e dois clientes importados
+com mesmo telefone: conserva três identidades, nenhuma vistoria falsa e nenhuma
+recorrência para importados. Paginação, erro HTTP, identidade inválida e troca de
+conta também são testados. Confirmação visual do cliente real na nova lista ainda
+depende de conferência do gestor no aparelho autenticado.

@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261031-clientes14";
+const CACHE_NAME = "solar-clean-staging-20261031-clientes15";
 
 const FILES_TO_CACHE = [
   "./",
@@ -11,7 +11,8 @@ const FILES_TO_CACHE = [
   "./lib/google-history-review.js",
   "./lib/client-history-import-plan.js",
   "./lib/client-history-import-api.js",
-  "./lib/client-history-ui.js"
+  "./lib/client-history-ui.js",
+  "./lib/imported-clients-crm.js"
 ];
 
 self.addEventListener("install", (event) => {
