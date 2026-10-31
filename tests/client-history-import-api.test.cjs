@@ -8,6 +8,8 @@ function setup(){let current=actor,calls=[];const data=new Map();return {data,ca
 let env=setup();await run(env);assert.equal(env.calls.length,1);assert.equal([...env.data.values()].map(JSON.parse)[0].phase,'confirmed');await run({...env,request:{...request,params:{...request.params,p_cliente_id:other}}});assert.equal(env.calls.length,1,'Reload não envia ID novo');
 env=setup();await assert.rejects(run({...env,fetcher:async()=>{throw Error('offline');}}),/não confirmada/);assert.equal(JSON.parse([...env.data.values()][0]).phase,'pending');await run({...env,request:{...request,params:{...request.params,p_cliente_id:other}}});assert.equal(env.calls[0].p_cliente_id,id,'Replay usa UUID originalmente preservado');
 await assert.rejects(run({...env,request:{...request,params:{...request.params,p_cadastro:{cliente:'Different'}}}}),/outros dados/);
+await assert.rejects(run({...env,request:{...request,targetMode:'existing',params:{...request.params,p_cliente_id:other}}}),/outro cliente/);
+env=setup();await run({...env,request:{...request,targetMode:'existing'}});await assert.rejects(run({...env,request:{...request,targetMode:'existing',params:{...request.params,p_cliente_id:other}}}),/outro cliente/);
 env=setup();await assert.rejects(run({...env,storage:{getItem:()=>null,setItem:()=>{throw Error('Quota');}}}),/Quota/);assert.equal(env.calls.length,0);
 env=setup();await assert.rejects(run({...env,fetcher:async()=>{env.change();return {ok:true,json:async()=>({})};}}),/Conta/);assert.equal(JSON.parse([...env.data.values()][0]).phase,'pending');
 env=setup();await assert.rejects(run({...env,context:()=>({...env.context(),url:'https://other.invalid'})}),/projeto/);assert.equal(env.calls.length,0);

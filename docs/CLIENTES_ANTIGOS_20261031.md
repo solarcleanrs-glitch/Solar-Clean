@@ -133,3 +133,30 @@ com mesmo telefone: conserva três identidades, nenhuma vistoria falsa e nenhuma
 recorrência para importados. Paginação, erro HTTP, identidade inválida e troca de
 conta também são testados. Confirmação visual do cliente real na nova lista ainda
 depende de conferência do gestor no aparelho autenticado.
+
+## Revisão 16 — vínculo explícito ao mesmo cliente
+
+O gestor confirmou que o primeiro cliente aparece corretamente na revisão 15.
+A tela agora exige escolher Cadastrar novo cliente ou Vincular a cliente já
+importado. O segundo modo carrega os cadastros permitidos pelo servidor, com busca
+por nome, telefone e cidade. Não pré-seleciona ninguém. Escolher um existente
+preenche os campos com o cadastro confirmado e os bloqueia; envio reutiliza seu
+UUID e seus campos, sem sobrescrever o cadastro a partir do novo evento.
+
+Não exige outra migração: a RPC instalada já admite vários eventos para o mesmo
+UUID/cadastro. Seleção de pessoa diferente para uma operação local pendente ou
+confirmada é rejeitada, mesmo quando os nomes/telefones são iguais. Intenções de
+criação antigas sem targetMode conservam replay do UUID original. Confirmar um
+vínculo também não significa confirmar que o serviço foi executado.
+
+Cartões importados oferecem Histórico Google vinculado, consulta paginada das
+origens daquele UUID com detalhes escapados. Troca de conta ou clique em outro
+cliente invalida respostas anteriores. Não grava cache global e não transforma
+datas de eventos em última vistoria, recorrência, agenda ou financeiro.
+
+Testes de interface simulada cobrem destino não selecionado, campos bloqueados,
+reutilização do UUID e preservação do nome existente mesmo se um campo for
+alterado programaticamente. SQL embarcado confirma um cliente com dois eventos,
+replay do segundo e campos inalterados. Fluxo com dados reais ainda requer uma
+conferência pelo gestor: selecionar outro evento da MESMA pessoa, associá-lo ao
+cliente existente e consultar o histórico vinculado. Não repetir a migração.

@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-clientes-crm-15" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: clientes no CRM — 31/10 · revisão 15</small></div>
+<div id="homologNotice" data-app-release="20261031-vinculos-google-16" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: vínculos do histórico — 31/10 · revisão 16</small></div>
 
 <main>
 <section id="home">
@@ -391,6 +391,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 
     <p id="crmImportedStatus" role="status" class="muted"></p>
     <div id="crmList" class="crm-list section"></div>
+    <section id="crmImportedOrigins" class="card hidden" aria-live="polite"></section>
     <button class="section" id="homeFromCrm">Voltar ao início</button>
   </div>
 </section>
@@ -2886,9 +2887,10 @@ $("#agendaValorRecebido").value=ev.valorRecebido||'';
 /* ---------- CRM / recorrência ---------- */
 let crmMetaCache={};
 let crmEditingKey='';
-let crmRenderGeneration=0;
+let crmRenderGeneration=0,crmOriginGeneration=0;
 function clearScopedCrmView(){
   crmRenderGeneration++;window.__crmClients=[];window.__crmFiltered=[];crmEditingKey='';
+  crmOriginGeneration++;if($('#crmImportedOrigins')){$('#crmImportedOrigins').replaceChildren();$('#crmImportedOrigins').classList.add('hidden');}
   if($('#crmList'))$('#crmList').replaceChildren();
   if($('#crmImportedStatus'))$('#crmImportedStatus').textContent='';
   if($('#crmEditor'))$('#crmEditor').classList.add('hidden');
@@ -3305,12 +3307,23 @@ async function renderCrm(){
       </div>
       <div class="crm-actions">
         ${r.__importedClient?'<button disabled>Cadastro importado · consulta</button>':`<button data-crm-edit="${i}">Editar CRM</button>`}
+        ${r.__importedClient?`<button data-crm-origins="${i}">Histórico Google vinculado</button>`:''}
         ${c.records.length?`<button data-crm-open="${r.id}">Último relatório</button>`:'<button disabled>Sem vistoria ainda</button>'}
         ${whats&&c.meta?.status!=='Não contatar'?`<button data-crm-whatsapp="${i}">Preparar WhatsApp</button>`:''}
       </div>
     </div>`;
   }).join('');
 
+  document.querySelectorAll('[data-crm-origins]').forEach(b=>b.onclick=async()=>{
+    const client=filtered[Number(b.dataset.crmOrigins)];if(!client?.last.__importedClient)return;
+    const turn=++crmOriginGeneration,actor=importedCrmContext()?.actor,panel=$('#crmImportedOrigins');
+    panel.classList.remove('hidden');panel.textContent='Consultando os eventos vinculados...';
+    try{const rows=await SCImportedClientsCRM.readOrigins({clientId:client.last.importedClientId,context:importedCrmContext,ensureSession:ensureVistoriaSession,fetcher:fetch});
+      if(turn!==crmOriginGeneration||actor!==importedCrmContext()?.actor)return;
+      panel.innerHTML='<h3>'+escapeHtml(client.last.cliente)+'</h3><p>'+rows.length+' evento(s) Google vinculado(s). Estes registros de origem não comprovam atendimento ou pagamento.</p>'+rows.map(row=>'<details class="section"><summary>'+escapeHtml(String(row.evento_original.start||'Data não informada'))+' · '+escapeHtml(row.evento_original.summary||'Evento sem título')+'</summary><p>'+escapeHtml(row.evento_original.location||'Local não informado')+'</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+escapeHtml(row.evento_original.description||'Sem descrição')+'</pre><small>'+escapeHtml(row.agenda_google)+' · '+escapeHtml(row.evento_google)+'</small></details>').join('');
+      panel.scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){if(turn===crmOriginGeneration&&actor===importedCrmContext()?.actor)panel.textContent=e.message;}
+  });
   document.querySelectorAll('[data-crm-edit]').forEach(b=>b.onclick=()=>{
     const c=filtered[Number(b.dataset.crmEdit)];
     if(c)openCrmEditor(c);
