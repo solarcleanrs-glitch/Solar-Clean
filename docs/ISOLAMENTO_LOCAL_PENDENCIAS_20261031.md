@@ -1,13 +1,13 @@
 # Isolamento local — levantamento de bloqueios
 
-Produção intocada. Este documento não representa correção instalada.
+Produção intocada. O levantamento continua pendente, exceto pelas correções de sessão registradas abaixo.
 
 ## Evidências no código atual
 
 - IndexedDB solarCleanDB/vistorias é único no aparelho, sem projeto/actor no nome.
 - Agenda, clientes, metadados e histórico CRM usam chaves globais localStorage.
 - crmMetaCache e listas renderizadas sobrevivem em memória até nova renderização.
-- Logout remove access token, mas deixa refresh token. Identificação técnica local
+- Situação encontrada antes da revisão 19: logout removia access token, mas deixava refresh token. Identificação técnica local
   não é prova de autorização, e trocar nome/e-mail não deve transferir cache.
 - Requisições iniciadas numa conta podem terminar após troca. Limpar só a tela ou
   o cache ao sair não impede que a resposta antiga seja escrita no espaço novo.
@@ -33,3 +33,10 @@ Produção intocada. Este documento não representa correção instalada.
 Importação de clientes antigos deve usar a nova persistência do servidor e uma
 fila local por conta, sem alimentar o cache legado global. A implantação precisa
 ser coordenada com a revisão de recuperação de backup ampliado e sua comparação.
+
+
+## Revisão 19 — proteção parcial de sessão
+
+Logout agora invalida a geração de autenticação, remove access e refresh tokens e limpa a senha do formulário. Login e renovação capturam geração, projeto, chave pública e valores da sessão antes da requisição; conferem após resposta e após leitura do corpo, antes de gravar tokens. Respostas antigas não podem reativar sessão encerrada ou sobrescrever conta/projeto alterado. Renovação simultânea da mesma sessão compartilha a operação; nova sessão não reutiliza a promessa antiga.
+
+Teste de corridas com respostas controladas: saída durante login/refresh, alteração de conta/token/projeto, renovação compartilhada e login normal. Nenhum cache de vistoria, foto ou fila offline foi apagado/migrado. Isto NÃO implementa isolamento completo de armazenamento e NÃO elimina os demais bloqueios deste documento.

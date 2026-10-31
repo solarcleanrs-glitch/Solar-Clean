@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-lote-google-18" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: revisão em lote — 31/10 · revisão 18</small></div>
+<div id="homologNotice" data-app-release="20261031-sessao-19" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: proteção de sessão — 31/10 · revisão 19</small></div>
 
 <main>
 <section id="home">
@@ -865,7 +865,21 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function currentTech(){
   try{return JSON.parse(localStorage.getItem('solarCleanTech')||'null')}catch(e){return null}
 }
+let authSessionGeneration=0;
+function captureAuthSessionGuard(){
+  const generation=authSessionGeneration,c={...cloudConfig()};
+  const values=['solarCleanTech','solarCleanAccessToken','solarCleanRefreshToken'].map(k=>[k,localStorage.getItem(k)]);
+  return ()=>{const now=cloudConfig();if(generation!==authSessionGeneration||now.url!==c.url||now.key!==c.key||values.some(([k,v])=>localStorage.getItem(k)!==v))throw new Error('A sessão mudou durante a autenticação. Entre novamente.');};
+}
+function endCloudSession(){
+  authSessionGeneration++;
+  localStorage.removeItem('solarCleanAccessToken');
+  localStorage.removeItem('solarCleanRefreshToken');
+  setTech(null);
+  $('#techPassword').value='';
+}
 function setTech(t){
+  authSessionGeneration++;
   clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
   window.SCSettlementUI?.clear();
@@ -1732,21 +1746,29 @@ async function ensureVistoriaSession(){
   let expiry=0;
   try{expiry=Number(JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp||0)*1000}catch(e){}
   if(expiry>Date.now()+60000)return;
-  if(pendingVistoriaSessionRefresh)return pendingVistoriaSessionRefresh;
-  pendingVistoriaSessionRefresh=(async()=>{
+  if(pendingVistoriaSessionRefresh){
+    let same=true;try{pendingVistoriaSessionRefresh.guard();}catch(e){same=false;}
+    if(same)return await pendingVistoriaSessionRefresh.promise;
+  }
+  const refreshGuard=captureAuthSessionGuard();
+  const refreshEntry={guard:refreshGuard,promise:null};
+  refreshEntry.promise=(async()=>{
     const refresh=localStorage.getItem('solarCleanRefreshToken')||'';
     if(!refresh)throw new Error('Sessão expirada. Entre novamente na nuvem.');
     const c=cloudConfig();
     const response=await fetch(`${c.url}/auth/v1/token?grant_type=refresh_token`,{
       method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},
       body:JSON.stringify({refresh_token:refresh})});
+    refreshGuard();
     if(!response.ok)throw new Error('Não foi possível renovar a sessão. Entre novamente na nuvem.');
     const data=await response.json();
+    refreshGuard();
     if(!data.access_token)throw new Error('Renovação de sessão sem token. Entre novamente na nuvem.');
     localStorage.setItem('solarCleanAccessToken',data.access_token);
     if(data.refresh_token)localStorage.setItem('solarCleanRefreshToken',data.refresh_token);
   })();
-  try{await pendingVistoriaSessionRefresh}finally{pendingVistoriaSessionRefresh=null}
+  pendingVistoriaSessionRefresh=refreshEntry;
+  try{await refreshEntry.promise}finally{if(pendingVistoriaSessionRefresh===refreshEntry)pendingVistoriaSessionRefresh=null}
 }
 async function syncAll(){
   if(syncAllRunning||vistoriaReviewBusy) return false;
@@ -3508,9 +3530,14 @@ async function cloudAuthLogin(){
   const c=cloudConfig(),email=$('#techEmail').value.trim(),password=$('#techPassword').value;
   if(!cloudReady())throw new Error('Configure primeiro a URL e a Anon Key do Supabase em Dados da empresa.');
   if(!email||!password)throw new Error('Informe e-mail e senha.');
+  authSessionGeneration++;
+  const loginGuard=captureAuthSessionGuard();
   const res=await fetch(`${c.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  loginGuard();
   if(!res.ok)throw new Error('Login inválido ou usuário não cadastrado.');
   const data=await res.json();
+  loginGuard();
+  if(!data.access_token||!data.refresh_token)throw new Error('Resposta de login incompleta.');
   localStorage.setItem('solarCleanAccessToken',data.access_token||'');
   localStorage.setItem('solarCleanRefreshToken',data.refresh_token||'');
   setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature:window.__techSignatureData||currentTech()?.signature||''});
@@ -3582,7 +3609,7 @@ $('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{
   setTech({name,email:$('#techEmail').value.trim(),cloud:false,signature:window.__techSignatureData||existing.signature||''});
   $('#loginStatus').textContent='Técnico e assinatura salvos neste aparelho.';
   show('home');
-}; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{setTech(null);localStorage.removeItem('solarCleanAccessToken');$('#loginStatus').textContent='Identificação removida.'};
+}; $('#cloudLogin').onclick=async()=>{try{$('#loginStatus').textContent='Entrando...';await cloudAuthLogin();$('#loginStatus').textContent='Login realizado.';show('home')}catch(e){$('#loginStatus').textContent=e.message}}; $('#logoutBtn').onclick=()=>{endCloudSession();$('#loginStatus').textContent='Identificação removida.'};
 
 
 $('#agendaClient').onchange=()=>{
