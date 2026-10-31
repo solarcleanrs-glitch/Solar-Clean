@@ -57,3 +57,14 @@ Identificação e acesso somente leitura ao projeto oficial e ao método de back
 usado nele. Ainda não foi pedido login/senha, publicado código em main ou alterada
 produção. Não é necessário repetir o teste de vínculo de Gaston nem a cópia local
 já conferida apenas para preencher este roteiro.
+
+
+## Identificação informada pelo gestor
+
+- Aplicativo oficial: https://solarcleanrs-glitch.github.io/Solar-Clean/
+- Projeto oficial indicado: beeucewgvktmahoidhrg.
+- Projeto de testes: zzphucuiqhzrilrddxnf; são projetos distintos.
+- A ligação efetiva do navegador ao banco oficial ainda exige conferência da configuração local; o código main lê essa configuração do aparelho.
+- Diagnóstico preparado: supabase/diagnostics/inventario_OFICIAL_somente_leitura.sql. Somente catálogos de estrutura, permissões, políticas e RLS; não consulta dados de clientes, fotos ou senhas. Precisa ser executado no SQL Editor do projeto oficial informado, pois não há acesso direto ao banco nesta sessão. Não executado até retorno do gestor.
+
+Não adaptar o código simplesmente trocando o ID de staging: os controles dependem de schema, autenticação e permissões efetivamente encontrados no oficial. Backup e mídia da produção continuam sem verificação.

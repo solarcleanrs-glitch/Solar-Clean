@@ -5,6 +5,7 @@ const path = require('node:path');
 // This guard is deliberately conservative: only top-level SELECT statements
 // and approved metadata sources are allowed. It is not a SQL parser.
 const files = [
+  'supabase/diagnostics/inventario_OFICIAL_somente_leitura.sql',
   'supabase/diagnostics/inspecionar_fechamentos_somente_leitura.sql',
   'supabase/diagnostics/inspecionar_acesso_rs_sc_parceiros_somente_leitura.sql',
   'supabase/diagnostics/inspecionar_storage_vistoria_media_somente_leitura.sql',
@@ -18,6 +19,7 @@ const approvedSources = [
   'information_schema.constraint_column_usage',
   'information_schema.role_table_grants',
   'pg_class',
+  'pg_proc',
   'pg_namespace',
   'pg_policies',
   'storage.buckets',
