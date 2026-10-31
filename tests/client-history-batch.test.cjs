@@ -9,12 +9,12 @@ const api=root.SCClientHistoryBatch.mount(host,{origins:()=>[['','Selecione'],['
 const c=(id)=>({suggestedName:'Pessoa '+id,phoneCandidates:[],addressSuggestion:'Endereço '+id,unitSuggestion:'RS',originSuggestion:'Particular',flags:[],events:[{id,summary:'<img src=x>',sourceKey:'a:'+id}]});
 api.load([c('a'),c('b')]);api.access(true,[]);
 const checks=()=>walk(host).filter(n=>n.type==='checkbox');checks().forEach(n=>{n.checked=true;n.onchange();});
-await find(host,'button','Importar').onclick();assert.deepEqual(calls.map(r=>r.params.p_evento),['a','b']);assert.match(walk(host).find(n=>n.textContent?.startsWith('Lote interrompido')).textContent,/retomar/);
+assert.match(walk(host).find(n=>n.tag==='button'&&String(n.textContent).startsWith('Importar ')).textContent,/2 cadastro/);await walk(host).find(n=>n.tag==='button'&&String(n.textContent).startsWith('Importar ')).onclick();assert.deepEqual(calls.map(r=>r.params.p_evento),['a','b']);assert.match(walk(host).find(n=>n.textContent?.startsWith('Lote interrompido')).textContent,/retomar/);
 assert.ok(checks().every(n=>n.disabled),'Freeze pending decisions after ambiguity');
-fail=false;await find(host,'button','Importar').onclick();assert.deepEqual(calls.map(r=>r.params.p_evento),['a','b','b']);assert.deepEqual(calls[1],calls[2],'Retry exact ID and payload');
-assert.match(walk(host).find(n=>n.textContent?.startsWith('Lote concluído')).textContent,/concluído/);
+fail=false;await walk(host).find(n=>n.tag==='button'&&String(n.textContent).startsWith('Importar ')).onclick();assert.deepEqual(calls.map(r=>r.params.p_evento),['a','b','b']);assert.deepEqual(calls[1],calls[2],'Retry exact ID and payload');
+assert.match(walk(host).find(n=>n.textContent?.startsWith('Último lote concluído')).textContent,/concluído/);
 api.clear();assert.equal(checks().length,0);
-api.load([c('x'),c('x')]);api.access(true,[]);checks().forEach(n=>{n.checked=true;n.onchange();});await find(host,'button','Importar').onclick();assert.equal(calls.length,3,'Duplicate people blocked before first write');
-const bad=c('z');bad.unitSuggestion=null;api.load([c('y'),bad]);api.access(true,[]);checks().forEach(n=>{n.checked=true;n.onchange();});await find(host,'button','Importar').onclick();assert.equal(calls.length,3,'Whole batch prevalidated');
+api.load([c('x'),c('x')]);api.access(true,[]);checks().forEach(n=>{n.checked=true;n.onchange();});await walk(host).find(n=>n.tag==='button'&&String(n.textContent).startsWith('Importar ')).onclick();assert.equal(calls.length,3,'Duplicate people blocked before first write');
+const bad=c('z');bad.unitSuggestion=null;api.load([c('y'),bad]);api.access(true,[]);checks().forEach(n=>{n.checked=true;n.onchange();});await walk(host).find(n=>n.tag==='button'&&String(n.textContent).startsWith('Importar ')).onclick();assert.equal(calls.length,3,'Whole batch prevalidated');
 console.log('PASS: lote exige revisão, valida antes de enviar, interrompe e retoma payload exato sem reenviar confirmados; limpa e bloqueia duplicidade');
 })().catch(e=>{console.error(e);process.exitCode=1;});
