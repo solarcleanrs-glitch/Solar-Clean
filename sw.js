@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261031-vinculos16";
+const CACHE_NAME = "solar-clean-staging-20261031-lote17";
 
 const FILES_TO_CACHE = [
   "./",
@@ -12,6 +12,7 @@ const FILES_TO_CACHE = [
   "./lib/client-history-import-plan.js",
   "./lib/client-history-import-api.js",
   "./lib/client-history-ui.js",
+  "./lib/client-history-batch.js",
   "./lib/imported-clients-crm.js"
 ];
 

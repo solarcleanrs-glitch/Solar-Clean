@@ -160,3 +160,13 @@ alterado programaticamente. SQL embarcado confirma um cliente com dois eventos,
 replay do segundo e campos inalterados. Fluxo com dados reais ainda requer uma
 conferência pelo gestor: selecionar outro evento da MESMA pessoa, associá-lo ao
 cliente existente e consultar o histórico vinculado. Não repetir a migração.
+
+## Revisão 17 — lote revisado (31/10)
+
+Histórico ampliado, a pedido de Régis, para 05/12/2022–30/10/2026: 741 eventos adicionais, 1.983 IDs únicos no arquivo combinado. O usuário confirmou visualmente eventos de 2023 no aplicativo. Nenhum cliente adicional foi importado pelo agente.
+
+Nova seção abaixo da revisão individual, com pesquisa e páginas de 15 cadastros sugeridos. Cada cartão permite conferir os eventos originais, editar campos, selecionar explicitamente um cadastro existente ou criar um novo e marcar a revisão. Sugestões de agrupamento continuam limitadas à coincidência de telefone único, título completo e endereço completo; não há fusão automática por nome/telefone. Casos repetidos por nome/telefone com clientes já importados, ou repetidos dentro do lote, exigem vínculo existente ou revisão individual.
+
+Botão único envia os marcados sequencialmente pelo mesmo RPC e diário por conta. Valida todo o plano antes da primeira escrita. Em falha, interrompe, mantém decisões/UUIDs congelados e retoma o item pendente; confirmados não são reenviados durante a mesma sessão. Ao reabrir, o diário durável continua protegendo cada evento, mas as seleções do lote são temporárias e não são restauradas. Não é transação única: uma parte pode estar confirmada antes de uma falha. Nenhuma nova migração SQL; não cria agenda, cobrança ou mensagem.
+
+Validação: testes de interface e lote com dados sintéticos (falha intermediária, retomada de payload exato, não reenvio dos confirmados, validação antes da escrita, limpeza e repetidos), suíte rápida completa e verificações dos arquivos gerados. Importação real em lote ainda depende de homologação pelo gestor.

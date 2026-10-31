@@ -47,6 +47,7 @@ jobs:
           node tests/google-history-review.test.cjs
           node tests/client-history-import-plan.test.cjs
           node tests/client-history-import-api.test.cjs
+          node tests/client-history-batch.test.cjs
           node tests/client-history-ui.test.cjs
           node tests/imported-clients-crm.test.cjs
           node scripts/build-client-history-browser.cjs --check
@@ -59,7 +60,7 @@ jobs:
           mkdir -p homologacao/lib
           cp lib/settlement-browser.js lib/settlement-ui.js lib/agenda-ledger-status.js lib/backup-recovery.js homologacao/lib/
           cp lib/google-history-review.js lib/client-history-import-plan.js lib/client-history-import-api.js lib/client-history-ui.js homologacao/lib/
-          cp lib/imported-clients-crm.js homologacao/lib/
+          cp lib/imported-clients-crm.js lib/client-history-batch.js homologacao/lib/
           for file in logo.png icon-192.svg icon-512.svg; do
             if [ -f "$file" ]; then cp "$file" homologacao/; fi
           done
