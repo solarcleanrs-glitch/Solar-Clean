@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-copia-conta-21" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: conferência por conta — 31/10 · revisão 21</small></div>
+<div id="homologNotice" data-app-release="20261031-sincronizacao-conta-22" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: sincronização por conta — 31/10 · revisão 22</small></div>
 
 <main>
 <section id="home">
@@ -865,6 +865,13 @@ function captureAuthSessionGuard(){
   const values=['solarCleanTech','solarCleanAccessToken','solarCleanRefreshToken'].map(k=>[k,localStorage.getItem(k)]);
   return ()=>{const now=cloudConfig();if(generation!==authSessionGeneration||now.url!==c.url||now.key!==c.key||values.some(([k,v])=>localStorage.getItem(k)!==v))throw new Error('A sessão mudou durante a autenticação. Entre novamente.');};
 }
+function captureVistoriaOperationGuard(){
+  if(cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')return ()=>{};
+  const generation=authSessionGeneration,config={...cloudConfig()},tech=localStorage.getItem('solarCleanTech');
+  const actor=()=>{try{return JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){return '';}};
+  const owner=actor();
+  return ()=>{const c=cloudConfig();if(generation!==authSessionGeneration||c.url!==config.url||c.key!==config.key||localStorage.getItem('solarCleanTech')!==tech||actor()!==owner)throw Error('A conta mudou durante a operação. Dados locais preservados; sincronize novamente na conta correta.');};
+}
 function endCloudSession(){
   authSessionGeneration++;
   localStorage.removeItem('solarCleanAccessToken');
@@ -1262,6 +1269,8 @@ function blobToDataUrl(blob){
   });
 }
 async function uploadPhotoToStorage(photo,cloudId,index){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   if(photo.storagePath) return {...photo,data:photo.data||''};
   if(!photo.data) return photo;
   const c=cloudConfig();
@@ -1273,6 +1282,7 @@ async function uploadPhotoToStorage(photo,cloudId,index){
     headers:storageHeaders({'Content-Type':blob.type||'image/jpeg','x-upsert':'true'}),
     body:blob
   });
+  operationGuard();
   if(!res.ok){
     const msg=await res.text().catch(()=>'');
     throw new Error(`Falha ao enviar foto para a nuvem (${res.status})${msg?': '+msg.slice(0,120):''}`);
@@ -1280,23 +1290,29 @@ async function uploadPhotoToStorage(photo,cloudId,index){
   return {name:photo.name||`foto-${index}.${ext}`,type:photo.type||blob.type||'image/jpeg',category:photo.category||'Foto',storagePath:path,data:photo.data};
 }
 async function downloadStorageData(path){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   if(!path) return '';
   const c=cloudConfig();
   const res=await fetch(`${c.url}/storage/v1/object/${MEDIA_BUCKET}/${path}`,{headers:storageHeaders()});
+  operationGuard();
   if(!res.ok) throw new Error(`Falha ao baixar imagem da nuvem (${res.status})`);
-  return await blobToDataUrl(await res.blob());
+  const blob=await res.blob();operationGuard();const data=await blobToDataUrl(blob);operationGuard();return data;
 }
 async function hydrateRecordMedia(record){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   if(!record) return record;
   const photos=record.photos||[];
   let changed=false,failures=0;
   for(const p of photos){
     if(!p.data && p.storagePath){
-      try{p.data=await downloadStorageData(p.storagePath);changed=true}
-      catch(e){failures++;console.warn('Foto não recuperada do Storage:',e)}
+      try{p.data=await downloadStorageData(p.storagePath);operationGuard();changed=true}
+      catch(e){operationGuard();failures++;console.warn('Foto não recuperada do Storage:',e)}
     }
   }
-  if(changed && record.id) await dbPut(record);
+  operationGuard();
+  if(changed && record.id){await dbPut(record);operationGuard();}
   if(failures){
     alert(failures+' foto(s) não puderam ser baixadas do armazenamento privado. Verifique sua conexão e o login na nuvem e abra a vistoria novamente. O registro não foi apagado.');
   }
@@ -1441,29 +1457,32 @@ async function confirmExistingVistoriaCreation(local,payload){
 }
 const pendingRecordUploads=new Map();
 async function pushRecord(local){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
-  const key=local.id;
+  const key=local.id==null?null:cloudConfig().url+':'+(typeof authSessionGeneration==='number'?authSessionGeneration:0)+':'+local.id;
   if(key!=null && pendingRecordUploads.has(key)) return pendingRecordUploads.get(key);
   const upload=(async()=>{
-  await ensureVistoriaSession();
+  await ensureVistoriaSession();operationGuard();
   const c=cloudConfig();
   // Validar antes de qualquer envio de foto ou consulta da vistoria.
-  if(local.scopeId!=null){cloudScopePayload(local);await ensureRecordScope(local);}
+  if(local.scopeId!=null){cloudScopePayload(local);await ensureRecordScope(local);operationGuard();}
   // No modo antigo, UUID indica registro remoto; no modo revisionado,
   // somente uma revisão-base confirmada prova que já existe na nuvem.
   const hadCloudId=Boolean(local.cloudId) && (!revisionProtocolEnabled() || Number(local.baseRevision)>0 || local.syncStatus==='synced');
   if(!local.cloudId){
   local.cloudId=crypto.randomUUID();
   local.updatedAt=new Date().toISOString();
-  await dbPut(local);
+  operationGuard();await dbPut(local);operationGuard();
 }
   // Não sobrescrever silenciosamente uma edição mais recente de outro aparelho.
   // Este controle é preventivo; uma atualização simultânea após o GET ainda
   // exige controle transacional por versão no servidor (backlog).
   if(hadCloudId && local.syncStatus!=='synced'){
     const check=await fetch(`${c.url}/rest/v1/vistorias?select=client_uuid,updated_at,revision&client_uuid=eq.${encodeURIComponent(local.cloudId)}&limit=1`,{headers:cloudHeaders({'Prefer':''})});
+    operationGuard();
     if(!check.ok)throw new Error('Não foi possível conferir a versão remota; vistoria mantida pendente.');
-    const remote=await check.json();
+    const remote=await check.json();operationGuard();
     if(!Array.isArray(remote))throw new Error('Consulta de conflito inválida; vistoria mantida pendente.');
     if(remote.length!==1)throw new Error('Vistoria remota ausente ou duplicada; edição local preservada.');
     if(revisionProtocolEnabled() && Number.isSafeInteger(local.baseRevision) && local.baseRevision>0 && Number(remote[0].revision)!==local.baseRevision)
@@ -1477,12 +1496,12 @@ async function pushRecord(local){
   const uploaded=[];
   for(let i=0;i<sourcePhotos.length;i++){
     const photo=await uploadPhotoToStorage(sourcePhotos[i],local.cloudId,i);
-    uploaded.push(photo);
+    operationGuard();uploaded.push(photo);
     // Guarda imediatamente o caminho de cada foto enviada. Se outra foto
     // falhar, o reenvio aproveita as anteriores sem duplicar objetos no bucket.
     if(photo.storagePath && photo.storagePath!==sourcePhotos[i]?.storagePath){
       local.photos=[...uploaded,...sourcePhotos.slice(i+1)];
-      await dbPut(local);
+      operationGuard();await dbPut(local);operationGuard();
     }
   }
   local.photos=uploaded;
@@ -1502,15 +1521,17 @@ async function pushRecord(local){
     headers:cloudHeaders({'Prefer':useRevision?'return=representation':'resolution=merge-duplicates,return=representation'}),
     body:JSON.stringify(payload)
   });
+  operationGuard();
   let rows;
   if(!res.ok){
-    const msg=await res.text().catch(()=>'');
+    const msg=await res.text().catch(()=>'');operationGuard();
     let errorBody=null;
     try{errorBody=JSON.parse(msg);}catch(e){}
     if(useRevision&&!hadCloudId&&res.status===409&&errorBody?.code==='23505'&&String(errorBody.message||'').includes('vistorias_client_uuid_key'))
       rows=await confirmExistingVistoriaCreation(local,payload);
     else throw new Error(`Envio falhou (${res.status})${msg?': '+msg.slice(0,160):''}`);
   }else rows=await res.json();
+  operationGuard();
   // O PostgREST pode responder 2xx e retornar [] quando RLS impede a gravação.
   // Somente marcar como sincronizado após confirmar o registro retornado.
   if(!Array.isArray(rows)||rows.length!==1||rows[0].client_uuid!==payload.client_uuid){
@@ -1522,7 +1543,7 @@ async function pushRecord(local){
   // conflito falso na próxima edição, especialmente com relógios divergentes.
   if(rows[0].updated_at)local.updatedAt=rows[0].updated_at;
   local.cloudId=payload.client_uuid; local.syncStatus='synced';
-  await dbPut(local); return rows[0];
+  operationGuard();await dbPut(local);operationGuard(); return rows[0];
   })();
   if(key!=null) pendingRecordUploads.set(key,upload);
   try{return await upload}
@@ -1688,7 +1709,9 @@ async function previewVistoriaConflict(choice){
   }catch(error){$('#conflictReviewStatus').textContent=error.message||String(error);}
 }
 async function pullCloud(){
-  await ensureVistoriaSession();
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
+  await ensureVistoriaSession();operationGuard();
   const c=cloudConfig();
   // Busca todas as páginas antes de conciliar registros locais. Um resultado
   // parcial nunca deve ser interpretado como exclusão de vistorias.
@@ -1696,13 +1719,14 @@ async function pullCloud(){
   const pageSize=500;
   for(let offset=0;;offset+=pageSize){
     const res=await fetch(`${c.url}/rest/v1/vistorias?select=*&order=updated_at.desc,client_uuid.asc&limit=${pageSize}&offset=${offset}`,{headers:cloudHeaders({'Prefer':''})});
+    operationGuard();
     if(!res.ok) throw new Error(`Leitura falhou (${res.status}); nenhum registro local foi removido.`);
-    const page=await res.json();
+    const page=await res.json();operationGuard();
     if(!Array.isArray(page)) throw new Error('Resposta inesperada da nuvem; sincronização interrompida.');
     rows.push(...page);
     if(page.length<pageSize)break;
   }
-  const locals=await dbAll();
+  const locals=await dbAll();operationGuard();
 
   // 1) Atualiza ou adiciona o que existe na nuvem.
   for(const row of rows){
@@ -1716,10 +1740,10 @@ async function pullCloud(){
         if(existing.conflictSnapshots)incoming.conflictSnapshots=existing.conflictSnapshots;
         const photoCache=new Map((existing.photos||[]).filter(p=>p.storagePath&&p.data).map(p=>[p.storagePath,p.data]));
         incoming.photos=(incoming.photos||[]).map(p=>({...p,data:photoCache.get(p.storagePath)||p.data||''}));
-        await dbPut(incoming);
+        operationGuard();await dbPut(incoming);operationGuard();
       }
     }else{
-      await dbAdd(incoming);
+      operationGuard();await dbAdd(incoming);operationGuard();
     }
   }
 
@@ -1766,6 +1790,8 @@ async function ensureVistoriaSession(){
   try{await refreshEntry.promise}finally{if(pendingVistoriaSessionRefresh===refreshEntry)pendingVistoriaSessionRefresh=null}
 }
 async function syncAll(){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   if(syncAllRunning||vistoriaReviewBusy) return false;
   syncAllRunning=true;
 
@@ -1776,23 +1802,23 @@ async function syncAll(){
     }
 
     updateSyncBadge('Sincronizando...');
-    await ensureVistoriaSession();
+    await ensureVistoriaSession();operationGuard();
 
-    const all=await dbAll();
+    const all=await dbAll();operationGuard();
 
     for(const r of all.filter(x=>x.syncStatus!=='synced'||!x.cloudId)){
-      await pushRecord(r);
+      operationGuard();await pushRecord(r);operationGuard();
     }
 
     if(cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co')await syncPendingAgenda();
 
-    await pullCloud();
+    operationGuard();await pullCloud();operationGuard();
 
     updateSyncBadge('Nuvem sincronizada',true);
     $('#cloudStatus').textContent='Sincronização concluída.';
 
-    await updateDashboard();
-    await renderHistory();
+    operationGuard();await updateDashboard();operationGuard();
+    await renderHistory();operationGuard();
 
     return true;
 

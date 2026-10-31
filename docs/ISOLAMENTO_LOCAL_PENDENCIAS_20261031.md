@@ -65,3 +65,12 @@ Painel em Dados da empresa, exclusivo do hostname de staging. Valida sessão em 
 
 
 Ensaio executado no Chrome remoto em 31/10/2026 após publicação da revisão 21: PASSOU em IndexedDB real, com registros sintéticos e namespaces novos. Cópia/releitura, preservação de texto de foto/pendência, repetição sem duplicar, A/B/A e rejeição de conflito sem cópia parcial confirmados na interface do ensaio. Foto sintética é texto data URL de teste, não imagem real de vistoria. Não houve acesso ao banco operacional nesse ensaio. Ainda falta a conferência com o legado real do gestor.
+
+
+## Evidência real da cópia e revisão 22
+
+Régis enviou a confirmação da revisão 21: 2 vistorias copiadas, 2 novas, 0 já presentes, para a conta gestora. Inspeção prévia mostrou 1 foto e 0 vistorias pendentes. A mensagem confirmou releitura da cópia, originais mantidos e armazenamento novo não ativado. Cópia básica do legado real validada; não pedir repetição sem mudança que a justifique.
+
+Revisão 22: guardas capturam geração de identificação, projeto/chave, técnico local e UUID do JWT antes da primeira espera. Renovação do token da mesma conta é tolerada; saída/troca de conta/projeto interrompe pushRecord, pullCloud, upload/download de fotos, hidratação e coordenação syncAll nos pontos protegidos. Uploads em andamento passam a distinguir geração/projeto/ID local. Testes controlados trocaram conta durante leitura do corpo remoto e consulta local: não houve escrita de vistoria nem confirmação como sincronizada na nova conta.
+
+Limite: não desfaz requisição já enviada; um envio pode ter sido confirmado no servidor e continuar pendente no aparelho, exigindo a reconciliação pelo mesmo UUID já implementada. Não há namespace operacional ativo. Ainda revisar helpers internos de vínculo, agenda/CRM, todos os escritores assíncronos, formulários/renderizações/backup e transações antes da ativação. Isto reduz corridas em caminhos centrais, não comprova isolamento completo.

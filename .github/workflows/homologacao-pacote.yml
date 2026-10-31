@@ -28,6 +28,7 @@ jobs:
           node tests/access-boundaries.test.cjs
           node tests/auth-session-race.test.cjs
           node tests/vistoria-storage-commit.test.cjs
+          node tests/vistoria-operation-context.test.cjs
           node tests/scoped-vistoria-store.test.cjs
           node tests/scoped-migration-ui.test.cjs
           node tests/read-only-diagnostics.test.cjs
