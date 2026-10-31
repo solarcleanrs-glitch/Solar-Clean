@@ -86,3 +86,20 @@ mudança de contexto. Não equivalem a restauração do PostgreSQL/Storage nem t
 real no aparelho do usuário. Promoção dos arquivos para os stores operacionais e
 validação de restauração do banco/mídia continuam pendentes; não declarar sistema
 recuperável em produção com base neste ensaio.
+
+
+## Validação no aparelho e revisão 13
+
+Usuário enviou confirmação visual do ensaio: 2 vistorias sincronizadas e, após
+carregar agenda e exportar novo JSON, 5 agendamentos; 0 clientes CRM locais e
+journal ausente. Releitura integral da cópia isolada concluída. Isso não demonstra
+recuperação operacional nem backup completo do banco ou das mídias remotas.
+
+Revisão 13 acrescenta comparação somente leitura do arquivo com os dados atuais:
+iguais, ausentes, divergentes e exclusivos do aparelho para vistorias/agenda/CRM.
+Vistorias usam cloudId como identidade quando disponível, mas mudança do ID local
+continua divergência e requer revisão. Não deduz identidade por nome/telefone.
+Conteúdo ilegível e identidades repetidas bloqueiam comparação da coleção; não
+são tratados como listas vazias. Ordem de propriedades JSON não causa conflito.
+Journal somente é comparado, sem reenvio ou promoção; diferença exige conferência.
+A comparação não constitui comando de importação e não modifica stores de trabalho.
