@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261101-transacoes25";
+const CACHE_NAME = "solar-clean-staging-20261101-isolamento28";
 
 const FILES_TO_CACHE = [
   "./",
@@ -9,6 +9,7 @@ const FILES_TO_CACHE = [
   "./lib/agenda-ledger-status.js",
   "./lib/backup-recovery.js",
   "./lib/scoped-vistoria-store.js",
+  "./lib/scoped-local-runtime.js",
   "./lib/scoped-vistoria-migration-ui.js",
   "./lib/google-history-review.js",
   "./lib/client-history-import-plan.js",
@@ -45,3 +46,4 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
+

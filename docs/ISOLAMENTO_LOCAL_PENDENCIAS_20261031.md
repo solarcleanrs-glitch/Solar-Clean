@@ -91,3 +91,37 @@ observada no sucesso da requisição aborta a transação; troca após commit re
 a entrega à nova UI. Um commit já ocorrido não é desfeito. Namespace operacional
 continua legado e exige integração futura: esta correção não substitui isolamento.
 Testes controlados dos três pontos e suíte rápida completa passaram.
+
+
+## Revisão 28 — roteamento operacional preparado, ativação desligada
+
+SCScopedLocalRuntime separa o banco IndexedDB operacional e as quatro chaves de
+agenda/clientes/CRM por projeto de testes + UUID. Os acessores reais da aplicação
+passam por esse roteador. A marca de ativação NÃO é criada automaticamente e não
+há botão de ativação nesta revisão. Os dados reais continuam no armazenamento
+legado até completar a revisão de formulários e migração. Produção mantém o
+comportamento anterior. Não afirmar isolamento operacional já ativado.
+
+A operação de preparação exige conta responsável explícita e cópia conferida de
+todas as vistorias e quatro chaves, preserva texto original de agenda/CRM, fotos,
+assinaturas e pendências, não sobrescreve destino divergente nem apaga originais.
+Verifica o legado antes/depois e só escreve a marca de ativação após conferência.
+Falhas de espaço, troca de contexto, fonte alterada, formato ilegível e conflito
+mantêm a ativação desligada. A integração futura deve validar a conta no servidor,
+coordenar outras abas e preservar os rascunhos antes de oferecer a ativação.
+
+Em modo ativo, conta ausente nunca recai sobre dados globais. Falha ao carregar o
+módulo também bloqueia acesso se a marca estiver ativa. O banco novo usa chaves
+incrementais compatíveis com o app; a antiga cópia de conferência fica separada.
+Backup ampliado acompanha as chaves da conta ativa e identifica seu escopo.
+
+Testes controlados executaram os acessores reais de agenda/clientes/CRM em A/B/A,
+pendências, logout sem fallback, conflito, quota e mudança durante a cópia. O
+ensaio tests/scoped-operational-browser.html usa IndexedDB real e apenas dados
+sintéticos em namespaces aleatórios; não toca no banco operacional ou no Supabase.
+
+Formulários agora capturam contexto ao abrir nova vistoria/edição: resultado de
+foto ou salvamento atrasado é bloqueado após troca de conta; impressão verifica o
+contexto do relatório. Renderizadores e atalhos de CRM/admin/agenda e prévia de
+conflito ganharam guardas adicionais. Não limpa nem migra rascunhos: preservação e
+limpeza de tela por sessão continuam pendentes antes da ativação operacional.

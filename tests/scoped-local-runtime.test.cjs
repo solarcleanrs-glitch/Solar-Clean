@@ -1,0 +1,23 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {create,PROJECT,MODE,KEYS,PREFIX}=require('../lib/scoped-local-runtime.js');
+const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222';
+function setup(){let current={project:PROJECT,actor:A,generation:1},quota=false;const map=new Map();const storage={getItem:k=>map.get(k)??null,setItem:(k,v)=>{if(quota&&k!==MODE)throw Error('Quota');map.set(k,v);}};const runtime=create({storage,context:()=>current}),spaces=new Map(),backend={async list(n){return structuredClone(spaces.get(n)||[]);},async copyMissing(n,rows,check){check();const old=spaces.get(n)||[];if(old.length&&JSON.stringify(old)!==JSON.stringify(rows))throw Error('Conflito');spaces.set(n,structuredClone(rows));}};const source=[{id:1,photos:[{data:'data:image/jpeg;base64,cGhvdG8='}],syncStatus:'pending',cloudId:null}];
+ map.set(KEYS[0],JSON.stringify([{id:'Old:ID',syncStatus:'pending'}]));map.set(KEYS[1],'[]');map.set(KEYS[2],'{"cliente":{"status":"ativo"}}');map.set(KEYS[3],'{"cliente":[{"id":"contact-1","pending":true}]}');
+ return {runtime,map,storage,source,backend,spaces,get current(){return current},set current(v){current=v},set quota(v){quota=v},activate:()=>runtime.copyAndEnable({confirmedOwner:current,sourceRecords:source,readLegacy:async()=>source,backend})};}
+(async()=>{
+ let s=setup(),original=s.runtime.legacySnapshot();assert.equal(s.runtime.capture().database,'solarCleanDB');
+ const result=await s.activate();assert.equal(result.verifiedVistorias,1);assert.equal(result.verifiedKeys,4);assert.deepEqual(s.runtime.legacySnapshot(),original);
+ assert.equal(s.runtime.capture().database,PREFIX+A);assert.equal(s.runtime.get(KEYS[0]),original[KEYS[0]]);
+ s.runtime.set(KEYS[0],'[{"id":"A-only"}]');const snap=s.runtime.capture();s.current={...s.current,actor:B};assert.throws(()=>snap.check(),/mudou/);assert.equal(s.runtime.get(KEYS[0]),null);s.runtime.set(KEYS[0],'[{"id":"B-only"}]');
+ s.current={...s.current,actor:A};assert.equal(s.runtime.get(KEYS[0]),'[{"id":"A-only"}]');assert.deepEqual(s.runtime.legacySnapshot(),original);
+ s.current={...s.current,actor:null};assert.throws(()=>s.runtime.get(KEYS[0]),/Entre/,'no fallback to global legacy after logout');
+ s.current={project:'https://production.invalid',actor:A,generation:2};assert.equal(s.runtime.capture().database,'solarCleanDB','production routing unchanged');
+ s=setup();s.quota=true;await assert.rejects(s.activate(),/Quota/);assert.equal(s.map.get(MODE),undefined);assert.equal(s.runtime.capture().database,'solarCleanDB');
+ s=setup();s.map.set(PREFIX+A+':'+KEYS[0],'[]');await assert.rejects(s.activate(),/Destino/);assert.equal(s.spaces.size,0);
+ s=setup();s.backend.copyMissing=async()=>{s.current={...s.current,actor:B}};await assert.rejects(s.activate(),/mudou/);assert.equal(s.map.get(MODE),undefined);
+ s=setup();s.backend.copyMissing=async(n,rows)=>{s.spaces.set(n,structuredClone(rows));s.map.set(KEYS[0],'[{"changed":true}]')};await assert.rejects(s.activate(),/CRM mudaram/);assert.equal(s.map.get(MODE),undefined);
+ s=setup();s.map.set(KEYS[2],'{broken');await assert.rejects(s.activate(),/ilegíveis/);assert.equal(s.spaces.size,0);
+ s=setup();await assert.rejects(s.runtime.copyAndEnable({confirmedOwner:{project:PROJECT,actor:B},sourceRecords:s.source,readLegacy:async()=>s.source,backend:s.backend}),/Confirme/);
+ console.log('PASS: scoped operational routing A/B/A, exact agenda/CRM bytes, photo/queue copy, explicit owner, quota/conflict/races and no legacy fallback after activation');
+})().catch(e=>{console.error(e);process.exit(1)});

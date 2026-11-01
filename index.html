@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261031-contexto-agenda-crm-23" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: proteção de agenda e CRM — 31/10 · revisão 23</small></div>
+<div id="homologNotice" data-app-release="20261101-armazenamento-conta-28" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: armazenamento por conta em preparação — 01/11 · revisão 28</small></div>
 
 <main>
 <section id="home">
@@ -775,17 +775,32 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 </section>
 </main>
 
+<script src="lib/scoped-local-runtime.js"></script>
 <script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
 let step=1, deferredPrompt=null, currentReportRecord=null, editingRecord=null;
+let formSessionGuard=null,currentReportSessionGuard=null;
 
 /* ---------- IndexedDB ---------- */
 const DB_NAME='solarCleanDB', DB_VERSION=2, STORE='vistorias';
+let scopedRuntimeInstance=null;
+function scopedLocalRuntime(){
+ if(!window.SCScopedLocalRuntime){if(cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co'&&localStorage.getItem('solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf')==='1')throw Error('Armazenamento separado indisponível. Reabra com conexão; os dados foram preservados.');return null;}
+ if(!scopedRuntimeInstance)scopedRuntimeInstance=window.SCScopedLocalRuntime.create({storage:localStorage,context:()=>{
+  let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
+  return {project:cloudConfig().url,actor,generation:authSessionGeneration};
+ }});
+ return scopedRuntimeInstance;
+}
+function scopedLocalGet(key){const runtime=scopedLocalRuntime();return runtime?runtime.get(key):localStorage.getItem(key);}
+function scopedLocalSet(key,value){const runtime=scopedLocalRuntime();if(runtime)runtime.set(key,value);else localStorage.setItem(key,value);}
+
 function openDB(){
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    const name=typeof scopedLocalRuntime==='function'?(scopedLocalRuntime()?.capture().database||DB_NAME):DB_NAME;
+    const req=indexedDB.open(name,DB_VERSION);
     req.onupgradeneeded=()=>{
       const db=req.result;
       let s;
@@ -872,8 +887,8 @@ function captureVistoriaOperationGuard(){
   if(cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')return ()=>{};
   const generation=authSessionGeneration,config={...cloudConfig()},tech=localStorage.getItem('solarCleanTech');
   const actor=()=>{try{return JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){return '';}};
-  const owner=actor();
-  return ()=>{const c=cloudConfig();if(generation!==authSessionGeneration||c.url!==config.url||c.key!==config.key||localStorage.getItem('solarCleanTech')!==tech||actor()!==owner)throw Error('A conta mudou durante a operação. Dados locais preservados; sincronize novamente na conta correta.');};
+  const owner=actor(),localMode=typeof scopedLocalRuntime==='function'?scopedLocalRuntime()?.fingerprint():null;
+  return ()=>{const c=cloudConfig();if(generation!==authSessionGeneration||c.url!==config.url||c.key!==config.key||localStorage.getItem('solarCleanTech')!==tech||actor()!==owner||(typeof scopedLocalRuntime==='function'?scopedLocalRuntime()?.fingerprint():null)!==localMode)throw Error('A conta mudou durante a operação. Dados locais preservados; sincronize novamente na conta correta.');};
 }
 function endCloudSession(){
   authSessionGeneration++;
@@ -918,6 +933,7 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
+  formSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
   window.__agendaSourceId=null;
   resetServiceContext();
   // Uma nova vistoria libera um novo salvamento; a anterior não pode ser criada de novo.
@@ -931,6 +947,7 @@ $("#pagamentoStatus").value='Pendente';
   window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
 }
 function loadRecordToForm(r,preserveScope=false){
+  formSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
   window.__agendaSourceId=null;
   resetServiceContext(r,preserveScope);
   $('#cliente').value=r.cliente||''; $('#telefone').value=r.telefone||''; $('#cidade').value=r.cidade||''; $('#endereco').value=r.endereco||'';$('#mapsUrl').value=r.mapsUrl||'';$("#pagamentoStatus").value=r.pagamentoStatus||'Pendente';
@@ -945,6 +962,7 @@ $("#valorRecebido").value=r.valorRecebido||'';
   loadSignaturePad(window.__signatureData);
 }
 function renderReport(r){
+  currentReportSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
   const showGeneration=r.showGeneration!==false;
   const p=Number(r.placas||0),w=Number(r.potPlaca||0),a=Number(r.antes||0),d=Number(r.depois||0);
   const total=p&&w?((p*w)/1000).toFixed(2):'—',dif=(a||d)?(d-a).toFixed(2):'—',pct=a?(((d-a)/a)*100).toFixed(1):'—';
@@ -1186,11 +1204,13 @@ function renderPhotoPreview(){
   });
 }
 async function addPhotosFromInput(inputId){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+  if(typeof formSessionGuard==='function')formSessionGuard();operationGuard();
   const input=$('#'+inputId),category=photoCategories[inputId],files=[...input.files];
   if(!files.length)return;
   input.disabled=true;
   try{
-    for(const f of files) window.__pendingPhotos.push(await fileToData(f,category));
+    for(const f of files){const photo=await fileToData(f,category);operationGuard();if(typeof formSessionGuard==='function')formSessionGuard();window.__pendingPhotos.push(photo);}
     input.value=''; renderPhotoPreview();
   }finally{input.disabled=false}
 }
@@ -1695,21 +1715,23 @@ async function resolveVistoriaConflict(choice){
   finally{vistoriaReviewBusy=false;if(currentVistoriaReview){$('#useLocalVistoria').disabled=currentVistoriaReview.fields.includes('sc_escopo_id')||!revisionProtocolEnabled();$('#useRemoteVistoria').disabled=false;}}
 }
 async function previewVistoriaConflict(choice){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   const review=currentVistoriaReview;
   if(!review)return;
   try{
     let record;
     if(choice==='remote'){
-      const remote=await readVistoriaForReview(review.cloudId);
+      const remote=await readVistoriaForReview(review.cloudId);operationGuard();
       if(Number(remote.revision)!==review.revision)throw new Error('A versão da nuvem mudou. Compare novamente.');
       record=fromCloud(remote);
     }else{
-      record=(await dbAll()).find(row=>row.id===review.localId);
+      record=(await dbAll()).find(row=>row.id===review.localId);operationGuard();
       if(!record||vistoriaReviewFingerprint(record)!==review.fingerprint)throw new Error('A cópia local mudou. Compare novamente.');
       record=structuredClone(record);delete record.id;
     }
-    await hydrateRecordMedia(record);renderReport(record);
-  }catch(error){$('#conflictReviewStatus').textContent=error.message||String(error);}
+    await hydrateRecordMedia(record);operationGuard();renderReport(record);
+  }catch(error){operationGuard();$('#conflictReviewStatus').textContent=error.message||String(error);}
 }
 async function pullCloud(){
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
@@ -1930,10 +1952,10 @@ async function renderHistory(){
 
 /* ---------- Cadastro simples de clientes ---------- */
 function clientLocalList(){
-  try{return JSON.parse(localStorage.getItem('solarCleanClients')||'[]')}catch(e){return []}
+  try{return JSON.parse((typeof scopedLocalGet==='function'?scopedLocalGet('solarCleanClients'):localStorage.getItem('solarCleanClients'))||'[]')}catch(e){return []}
 }
 function saveClientLocalList(rows){
-  localStorage.setItem('solarCleanClients',JSON.stringify(rows||[]));
+  (typeof scopedLocalSet==='function'?scopedLocalSet:localStorage.setItem.bind(localStorage))('solarCleanClients',JSON.stringify(rows||[]));
 }
 function standaloneClientKey(c){
   const phone=String(c.telefone||'').replace(/\D/g,'');
@@ -2349,7 +2371,7 @@ async function archiveStagingAgenda(event){
   return true;
 }
 function agendaLocal(){
-  try{return JSON.parse(localStorage.getItem('solarCleanAgenda')||'[]')}catch(e){return []}
+  try{return JSON.parse((typeof scopedLocalGet==='function'?scopedLocalGet('solarCleanAgenda'):localStorage.getItem('solarCleanAgenda'))||'[]')}catch(e){return []}
 }
 let agendaOriginGeneration=0;
 let agendaPartnerNames=new Map();
@@ -2415,7 +2437,7 @@ async function populateAgendaOrigins(event=null){
   }catch(error){if(generation===agendaOriginGeneration)$('#agendaStatusMsg').textContent=error.message;}
 }
 function saveAgendaLocal(rows){
-  localStorage.setItem('solarCleanAgenda',JSON.stringify(rows||[]));
+  (typeof scopedLocalSet==='function'?scopedLocalSet:localStorage.setItem.bind(localStorage))('solarCleanAgenda',JSON.stringify(rows||[]));
 }
 function agendaExistingFinance(id){
   const previous=id?agendaLocal().find(event=>event.id===id):null;
@@ -2738,16 +2760,18 @@ $('#agendaSettlementCsv').onclick=()=>{
 $('#agendaMonthlyMonth').onchange=()=>{$('#agendaMonthlyResult').innerHTML='';clearAgendaPartnerPreview();};
 $('#agendaMonthlyRun').onclick=renderAgendaMonthly;
 async function renderAgenda(){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   window.AgendaLedgerStatus?.clear();
   clearAgendaPartnerPreview();
   $('#agendaMonthly').classList.toggle('hidden',!serviceContextEnabled()||!canSeeAgendaFinance());
   if(!$('#agendaMonthlyMonth').value)$('#agendaMonthlyMonth').value=formatAgendaDate(new Date()).slice(0,7);
   $('#agendaMonthlyResult').innerHTML='';
   const editingKey=window.__agendaEditingId?$('#agendaClient').value:'';
-  await populateAgendaClients();
+  await populateAgendaClients();operationGuard();
   if(editingKey)$('#agendaClient').value=editingKey;
-  const rows=await pullAgenda();
-  await populateAgendaOrigins(rows.find(event=>event.id===window.__agendaEditingId)||null);
+  const rows=await pullAgenda();operationGuard();
+  await populateAgendaOrigins(rows.find(event=>event.id===window.__agendaEditingId)||null);operationGuard();
   const dateInput = $('#agendaDateFilter');
 
 if (!dateInput.value) {
@@ -2977,14 +3001,14 @@ function crmKey(r){
   return `nome:${String(r.cliente||'').trim().toLowerCase()}|${String(r.cidade||'').trim().toLowerCase()}`;
 }
 function crmLocalMeta(){
-  try{return JSON.parse(localStorage.getItem('solarCleanCrmMeta')||'{}')}catch(e){return {}}
+  try{return JSON.parse((typeof scopedLocalGet==='function'?scopedLocalGet('solarCleanCrmMeta'):localStorage.getItem('solarCleanCrmMeta'))||'{}')}catch(e){return {}}
 }
 function saveCrmLocalMeta(meta){
-  localStorage.setItem('solarCleanCrmMeta',JSON.stringify(meta||{}));
+  (typeof scopedLocalSet==='function'?scopedLocalSet:localStorage.setItem.bind(localStorage))('solarCleanCrmMeta',JSON.stringify(meta||{}));
 }
 function crmContactHistoryLocal(){
   try{
-    const entries=JSON.parse(localStorage.getItem('solarCleanCrmContactHistory')||'{}');
+    const entries=JSON.parse((typeof scopedLocalGet==='function'?scopedLocalGet('solarCleanCrmContactHistory'):localStorage.getItem('solarCleanCrmContactHistory'))||'{}');
     return entries&&typeof entries==='object'&&!Array.isArray(entries)?entries:{};
   }catch(e){return {}}
 }
@@ -2998,7 +3022,7 @@ function addCrmContactHistory(clientKey,entry){
     followup:String(entry.followup||'').slice(0,10),
     note:String(entry.note||'').slice(0,1000)
   },...items].slice(0,100);
-  localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
+  (typeof scopedLocalSet==='function'?scopedLocalSet:localStorage.setItem.bind(localStorage))('solarCleanCrmContactHistory',JSON.stringify(all));
   return all[clientKey];
 }
 function mergeCrmContactHistory(clientKey,incoming){
@@ -3009,7 +3033,7 @@ function mergeCrmContactHistory(clientKey,incoming){
     if(e&&e.id)byId.set(e.id,e);
   }
   all[clientKey]=[...byId.values()].sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,100);
-  localStorage.setItem('solarCleanCrmContactHistory',JSON.stringify(all));
+  (typeof scopedLocalSet==='function'?scopedLocalSet:localStorage.setItem.bind(localStorage))('solarCleanCrmContactHistory',JSON.stringify(all));
   return all[clientKey];
 }
 function crmHistoryCloudHeaders(extra={}){
@@ -3336,8 +3360,10 @@ function openCrmEditor(client){
   $('#crmEditor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function renderCrm(){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
   const turn=++crmRenderGeneration,actor=importedCrmContext()?.actor||null;
-  const clients=await buildCrmClients();
+  const clients=await buildCrmClients();operationGuard();
   if(turn!==crmRenderGeneration||actor!==(importedCrmContext()?.actor||null))return;
   $('#crmImportedStatus').textContent=clients.importStatus||'';
   window.__crmClients=clients;
@@ -3404,15 +3430,15 @@ async function renderCrm(){
     }catch(e){if(turn===crmOriginGeneration&&actor===importedCrmContext()?.actor)panel.textContent=e.message;}
   });
   document.querySelectorAll('[data-crm-edit]').forEach(b=>b.onclick=()=>{
-    const c=filtered[Number(b.dataset.crmEdit)];
+    operationGuard();const c=filtered[Number(b.dataset.crmEdit)];
     if(c)openCrmEditor(c);
   });
   document.querySelectorAll('[data-crm-open]').forEach(b=>b.onclick=async()=>{
-    const r=(await dbAll()).find(x=>x.id===Number(b.dataset.crmOpen));
-    if(r){await hydrateRecordMedia(r);renderReport(r)}
+    operationGuard();const r=(await dbAll()).find(x=>x.id===Number(b.dataset.crmOpen));operationGuard();
+    if(r){await hydrateRecordMedia(r);operationGuard();renderReport(r)}
   });
   document.querySelectorAll('[data-crm-whatsapp]').forEach(b=>b.onclick=()=>{
-    const c=filtered[Number(b.dataset.crmWhatsapp)];
+    operationGuard();const c=filtered[Number(b.dataset.crmWhatsapp)];
     if(!c || c.meta?.status==='Não contatar')return;
     const url=whatsappLink(c.last.telefone,c.last.cliente,recurrenceWhatsappMessage(c));
     if(url) window.open(url,'_blank','noopener');
@@ -3450,7 +3476,7 @@ function captureStagingBackupLocal(){
   }
   const keys=['solarCleanAgenda','solarCleanClients','solarCleanCrmMeta','solarCleanCrmContactHistory'];
   const raw={};
-  for(const key of keys)raw[key]=localStorage.getItem(key);
+  for(const key of keys)raw[key]=typeof scopedLocalGet==='function'?scopedLocalGet(key):localStorage.getItem(key);
   // Mantém o texto original mesmo se um registro estiver ilegível, para recuperação.
   const journalKey=actor?'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor:null;
   const clientImportIntents=[];
@@ -3458,7 +3484,7 @@ function captureStagingBackupLocal(){
     for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))clientImportIntents.push({key,raw:localStorage.getItem(key)});}
     clientImportIntents.sort((a,b)=>a.key.localeCompare(b.key));
   }
-  return {version:1,project,actor,legacyDataScope:'device-unscoped',raw,
+  return {version:1,project,actor,legacyDataScope:(typeof scopedLocalRuntime==='function'&&scopedLocalRuntime()?.enabled())?'account-scoped':'device-unscoped',raw,
     clientImportIntents,
     financialIntent:journalKey?{key:journalKey,raw:localStorage.getItem(journalKey)}:null,
     limitations:['Sem cópia do banco ou dos arquivos remotos.','Dados locais legados pertencem ao aparelho e podem conter histórico de outras contas.','Sem importação automática; não reenviar intenções com novos IDs.']};
@@ -3503,6 +3529,8 @@ let generateAndSaveRunning=false;
 let savedCurrentFormRecordId=null;
 async function generateAndSave(){
   if(generateAndSaveRunning) return;
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+  if(typeof formSessionGuard==='function')formSessionGuard();operationGuard();
   if(savedCurrentFormRecordId!=null){
     alert('Esta vistoria já foi salva. Para um novo serviço, toque em Nova vistoria. Para corrigir informações, use Editar no histórico.');
     return;
@@ -3521,13 +3549,13 @@ async function generateAndSave(){
     r.dateLabel=editingRecord.dateLabel||new Date(editingRecord.createdAt).toLocaleDateString('pt-BR');
     r.updatedAt=new Date().toISOString();
     r.syncStatus='pending';
-    await dbPut(r);
+    await dbPut(r);operationGuard();
     editingRecord=null;
   }else{
     // ID definido antes do primeiro salvamento: o envio na nuvem é idempotente.
     r.cloudId=crypto.randomUUID();
     r.syncStatus='pending';
-    const id=await dbAdd(r);
+    const id=await dbAdd(r);operationGuard();
     r.id=id;
   }
   // Desde o primeiro armazenamento local, esta tela só pode salvar esta vistoria uma vez.
@@ -3551,28 +3579,28 @@ if(window.__agendaSourceId){
       agendaEv.valorCobrado=Number(r.valorCobrado||0);
       agendaEv.valorRecebido=Number(r.valorRecebido||0);
 
-      await saveAgendaEvent(agendaEv);
+      await saveAgendaEvent(agendaEv);operationGuard();
     }
   }catch(e){
-    console.warn('Falha ao atualizar pagamento na agenda:',e);
+    operationGuard();console.warn('Falha ao atualizar pagamento na agenda:',e);
   }
 }
   window.__agendaSourceId=null;
   // A vistoria fica salva no aparelho imediatamente.
-  await updateDashboard();
-  await renderHistory();
+  await updateDashboard();operationGuard();
+  await renderHistory();operationGuard();
   renderReport(r);
 
   // Com internet, envia esta vistoria na hora, inclusive fotos e assinaturas.
   if(navigator.onLine && cloudReady()){
     updateSyncBadge('Enviando vistoria…');
     try{
-      await pushRecord(r);
+      await pushRecord(r);operationGuard();
       updateSyncBadge('Nuvem sincronizada',true);
-      await updateDashboard();
-      await renderHistory();
+      await updateDashboard();operationGuard();
+      await renderHistory();operationGuard();
     }catch(e){
-      console.warn('Sincronização automática pendente:',e);
+      operationGuard();console.warn('Sincronização automática pendente:',e);
       updateSyncBadge('Pendente de sincronizar');
     }
   }else{
@@ -3603,7 +3631,9 @@ async function cloudAuthLogin(){
 
 /* ---------- Painel administrativo ---------- */
 async function renderAdmin(){
-  const all=await dbAll(),q=($('#adminSearch').value||'').toLowerCase(),city=($('#adminCity').value||'').toLowerCase(),tech=$('#adminTechFilter').value;
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+
+  const all=await dbAll();operationGuard();const q=($('#adminSearch').value||'').toLowerCase(),city=($('#adminCity').value||'').toLowerCase(),tech=$('#adminTechFilter').value;
   const techs=[...new Set(all.map(x=>x.tecnico).filter(Boolean))].sort();
   const current=$('#adminTechFilter').value;
   $('#adminTechFilter').innerHTML='<option value="">Todos</option>'+techs.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
@@ -3611,7 +3641,7 @@ async function renderAdmin(){
   const filtered=all.filter(r=>(!q||(r.cliente||'').toLowerCase().includes(q))&&(!city||(r.cidade||'').toLowerCase().includes(city))&&(!tech||r.tecnico===tech));
   $('#adminTotal').textContent=all.length; $('#adminTechs').textContent=techs.length; $('#adminPending').textContent=all.filter(x=>x.syncStatus!=='synced').length;
   $('#adminList').innerHTML=filtered.length?filtered.map(r=>`<div class="admin-row"><div><b>${escapeHtml(r.cliente||'Cliente')}</b><div class="small">${escapeHtml(r.cidade||'')}</div></div><div>${escapeHtml(r.tecnico||'Não identificado')}</div><div>${escapeHtml(r.dateLabel||'')}</div><div><button data-admin-open="${r.id}" style="min-height:40px">Abrir</button></div></div>`).join(''):'<p class="muted">Nenhuma vistoria encontrada.</p>';
-  document.querySelectorAll('[data-admin-open]').forEach(b=>b.onclick=async()=>{const r=(await dbAll()).find(x=>x.id===Number(b.dataset.adminOpen));if(r){await hydrateRecordMedia(r);renderReport(r)}});
+  document.querySelectorAll('[data-admin-open]').forEach(b=>b.onclick=async()=>{operationGuard();const r=(await dbAll()).find(x=>x.id===Number(b.dataset.adminOpen));operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();renderReport(r)}});
 }
 
 /* ---------- Eventos ---------- */
@@ -3658,7 +3688,7 @@ if(techSigCanvas){
 }
 $('#clearTechSignature').onclick=()=>clearTechSignaturePad(true);
 setTimeout(prepareSignatureCanvas,0);
-$('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>window.print();
+$('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>{try{if(typeof currentReportSessionGuard==='function')currentReportSessionGuard();window.print();}catch(e){alert(e.message);}};
 $('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{
   const name=$('#techName').value.trim();
   if(!name){$('#loginStatus').textContent='Informe o nome do técnico.';return}
@@ -4021,3 +4051,4 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/imported-clients-crm.js"></script>
 </body>
 </html>
+

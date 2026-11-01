@@ -34,6 +34,9 @@ jobs:
           node tests/auth-session-race.test.cjs
           node tests/vistoria-storage-commit.test.cjs
           node tests/vistoria-operation-context.test.cjs
+          node tests/scoped-local-runtime.test.cjs
+          node tests/scoped-local-app.test.cjs
+          node tests/form-operation-context.test.cjs
           node tests/scoped-vistoria-store.test.cjs
           node tests/scoped-migration-ui.test.cjs
           node tests/read-only-diagnostics.test.cjs
@@ -71,6 +74,7 @@ jobs:
           mkdir -p homologacao/lib
           cp lib/settlement-browser.js lib/settlement-ui.js lib/agenda-ledger-status.js lib/backup-recovery.js homologacao/lib/
           cp lib/google-history-review.js lib/client-history-import-plan.js lib/client-history-import-api.js lib/client-history-ui.js homologacao/lib/
+          cp lib/scoped-local-runtime.js homologacao/lib/
           cp lib/imported-clients-crm.js lib/client-history-batch.js lib/scoped-vistoria-store.js lib/scoped-vistoria-migration-ui.js homologacao/lib/
           for file in logo.png icon-192.svg icon-512.svg; do
             if [ -f "$file" ]; then cp "$file" homologacao/; fi
@@ -89,4 +93,5 @@ jobs:
           name: solar-clean-homologacao
           path: homologacao/
           retention-days: 14
+
 

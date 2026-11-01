@@ -136,3 +136,10 @@ ensaiado com essa fundação real, substituindo o helper simplificado anterior.
 Não foi instalada no banco oficial nem no staging ativo. Não restringe as
 políticas antigas: o corte de acesso legado depende de cliente autenticado e
 implantação coordenada. Não representa segurança completa do projeto.
+
+
+01/11, revisão 28: roteador por conta integrado a vistorias, agenda, clientes e CRM,
+mas sem ativação automática ou oferta de ativação ao gestor. Ensaios A/B/A e de
+falhas passaram; formulários/fotos/salvamento/impressão receberam proteção contra
+resultado antigo. Falta finalizar rascunhos/limpeza de sessão, coordenação de abas e
+homologação operacional antes de habilitar namespaces para dados reais.
