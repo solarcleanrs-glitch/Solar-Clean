@@ -801,17 +801,20 @@ function openDB(){
 }
 // A request success is not a committed transaction. Resolve only on tx.complete.
 async function runVistoriaStore(mode,work){
+  const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
+  operationGuard();
   const db=await openDB();
   return new Promise((resolve,reject)=>{
     let tx,result,requestError=null,settled=false;
-    const finish=(error)=>{if(settled)return;settled=true;db.close();if(error)reject(error);else resolve(result);};
+    const finish=(error)=>{if(settled)return;settled=true;db.close();if(!error){try{operationGuard();}catch(changed){error=changed;}}if(error)reject(error);else resolve(result);};
     try{
+      operationGuard();
       tx=db.transaction(STORE,mode);
       tx.oncomplete=()=>finish(null);
       tx.onabort=()=>finish(requestError||tx.error||new Error('Gravação local interrompida; não foi confirmada.'));
       tx.onerror=()=>{requestError=tx.error||new Error('Falha no armazenamento local.');};
       const req=work(tx.objectStore(STORE));
-      req.onsuccess=()=>{result=req.result;};
+      req.onsuccess=()=>{try{operationGuard();result=req.result;}catch(error){requestError=error;try{tx.abort();}catch(e){finish(error);}}};
       req.onerror=()=>{requestError=req.error||new Error('Falha no registro local.');};
     }catch(error){
       if(tx){requestError=error;try{tx.abort();}catch(e){finish(error);}}else finish(error);

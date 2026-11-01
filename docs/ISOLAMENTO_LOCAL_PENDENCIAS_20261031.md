@@ -81,3 +81,13 @@ Limite: não desfaz requisição já enviada; um envio pode ter sido confirmado 
 Guardas por contexto também nos helpers de escopo e agenda paginada, escrita/arquivamento de agenda, fila de pendentes, contatos/metadados/perfis CRM, dashboard e histórico de vistorias. Catch de indisponibilidade mantém o tratamento de rede da mesma conta, mas propaga troca de contexto para impedir fallback e gravação de dados antigos na sessão nova. Fila interrompe antes do próximo registro se a identidade mudar. Cache CRM em memória é esvaziado ao limpar a visão da sessão.
 
 Testes de respostas controladas: pullAgenda e pullCrmMeta não gravam após troca; histórico não renderiza; fila não envia o segundo registro na conta nova. Suíte rápida passou. Banco operacional permanece legado; o roteiro PILOTO_OFICIAL_PREPARACAO_20261031.md registra bloqueios remanescentes e sequência para decisão sobre produção.
+
+## Revisão 25 — fronteira das transações locais
+
+runVistoriaStore captura a guarda de contexto antes de abrir IndexedDB, confere
+novamente antes da transação, no resultado da requisição e antes de entregar o
+resultado após commit. Troca durante abertura impede iniciar transação; troca
+observada no sucesso da requisição aborta a transação; troca após commit rejeita
+a entrega à nova UI. Um commit já ocorrido não é desfeito. Namespace operacional
+continua legado e exige integração futura: esta correção não substitui isolamento.
+Testes controlados dos três pontos e suíte rápida completa passaram.
