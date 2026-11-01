@@ -22,6 +22,8 @@ jobs:
         run: |
           npm --prefix tests/postgres run test:ledger
           npm --prefix tests/postgres run test:clients
+          npm --prefix tests/postgres run test:agenda:legacy
+          npm --prefix tests/postgres run test:ledger:text-ids
       - name: Validar codigo
         run: |
           node tests/crm-whatsapp.test.cjs

@@ -8,6 +8,11 @@ assert.equal(paymentText({...header,anterior_centavos:35000},[]),'Quitado no fec
 assert.equal(paymentText({...header,status:'Cancelado'},[]),null);
 assert.throws(()=>paymentText(header,[{id:'a',valor_centavos:35001}]),/inconsistente/);
 assert.throws(()=>paymentText(header,[{id:'a',valor_centavos:1},{id:'a',valor_centavos:1}]),/duplicado/);
+for(const bad of [null,undefined,'',' ',false,true,[],{},'NaN','1e2']){
+ assert.throws(()=>paymentText({...header,anterior_centavos:bad},[]),/Valor inválido/);
+ assert.throws(()=>paymentText(header,[{id:'bad',valor_centavos:bad}]),/Valor inválido/);
+}
+assert.match(paymentText({...header,total_centavos:'35000',anterior_centavos:'0'},[]),/Pendente/);
 const service='44444444-4444-4444-8444-444444444444',actor='11111111-1111-4111-8111-111111111111';
 const row={id:service,unit:'SC',serviceContext:{partnerId:header.parceiro_id}};
 function harness({paid=true,cancelled=false,offline=false,fail=false,delayed=false}={}){

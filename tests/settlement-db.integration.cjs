@@ -4,6 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
 const {PGlite}=require('@electric-sql/pglite');
 process.chdir(require('node:path').join(__dirname,'..'));
 (async()=>{
+const textAgendaIds=process.env.SC_TEST_TEXT_AGENDA_IDS==='1';
 const db=new PGlite();
 await db.exec(`create role anon; create role authenticated; create schema auth;
 create table auth.users(id uuid primary key);
@@ -15,22 +16,53 @@ create table public.sc_clientes_escopos(id uuid primary key,unidade text,parceir
 insert into auth.users values('11111111-1111-4111-8111-111111111111'),('99999999-9999-4999-8999-999999999999');
 insert into sc_parceiros values('22222222-2222-4222-8222-222222222222','YES',true),('33333333-3333-4333-8333-333333333333','Elysia',true);
 insert into sc_clientes_escopos values('44444444-4444-4444-8444-444444444444','SC','22222222-2222-4222-8222-222222222222');`);
-await db.exec(fs.readFileSync('supabase/migrations/20261030_agenda_eventos_STAGING_NOT_APPLIED.sql','utf8'));
-await db.exec(fs.readFileSync('supabase/migrations/20261030_fechamentos_STAGING_NOT_APPLIED.sql','utf8'));
+let agendaSql=fs.readFileSync('supabase/migrations/20261030_agenda_eventos_STAGING_NOT_APPLIED.sql','utf8');
+if(textAgendaIds) {
+  // Build the actual nullable legacy column shape, then apply the additive rehearsal.
+  const fixture=fs.readFileSync('tests/legacy-agenda-db.integration.cjs','utf8');
+  const legacyDdl=fixture.match(/await db.exec\(`(create table public.agenda_eventos[\s\S]*?)create table public.vistorias/)[1];
+  await db.exec(legacyDdl);
+  await db.query("insert into agenda_eventos(id,cliente,status) values('preserved:old','Legacy','Status antigo')");
+  await db.exec(fs.readFileSync('supabase/rehearsals/20261101_agenda_legada_LOCAL_ONLY.sql','utf8'));
+  const createStart=agendaSql.indexOf('create table public.agenda_eventos (');
+  const createEnd=agendaSql.indexOf('create index agenda_eventos_unidade_data_idx');
+  assert.ok(createStart>=0 && createEnd>createStart);
+  agendaSql=agendaSql.slice(0,createStart)+agendaSql.slice(createEnd);
+}
+await db.exec(agendaSql);
+let ledgerSql=fs.readFileSync('supabase/migrations/20261030_fechamentos_STAGING_NOT_APPLIED.sql','utf8');
+if(textAgendaIds) ledgerSql=fs.readFileSync('supabase/rehearsals/20261101_fechamentos_text_LOCAL_ONLY.sql','utf8');
+await db.exec(ledgerSql);
 const manager='11111111-1111-4111-8111-111111111111',partner='22222222-2222-4222-8222-222222222222';
-const sid=n=>`55555555-5555-4555-8555-${String(n).padStart(12,'0')}`,fid=n=>`66666666-6666-4666-8666-${String(n).padStart(12,'0')}`,rid=n=>`77777777-7777-4777-8777-${String(n).padStart(12,'0')}`;
+const sid=n=>textAgendaIds?`google:legacy/event-${n}`:`55555555-5555-4555-8555-${String(n).padStart(12,'0')}`,fid=n=>`66666666-6666-4666-8666-${String(n).padStart(12,'0')}`,rid=n=>`77777777-7777-4777-8777-${String(n).padStart(12,'0')}`;
 for(let n=1;n<=8;n++)await db.query(`insert into agenda_eventos(id,client_key,cliente,unidade,sc_escopo_id,data,hora,status,valor_cobrado,valor_recebido) values($1,'test','Synthetic','SC','44444444-4444-4444-8444-444444444444','2026-10-31','10:00','Concluído',350.10,100)`,[sid(n)]);
 const asUser=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
-const create=(n,ids=[1],revision=1,p=partner)=>db.query(`select sc_criar_fechamento($1,$2,'SC','2026-10-01',$3::jsonb) as result`,[fid(n),p,JSON.stringify(ids.map(i=>({id:sid(i),revision})))]).then(r=>r.rows[0].result);
+const create=async(n,ids=[1],revision=1,p=partner)=>{
+ const items=ids.map(i=>({id:sid(i),revision}));
+ const body=textAgendaIds?require('../lib/settlement-api.cjs').createIntent({id:fid(n),partnerId:p,unit:'SC',month:'2026-10',items,agendaIdType:'text'}).body:null;
+ return db.query(`select sc_criar_fechamento($1,$2,'SC','2026-10-01',$3::jsonb) as result`,[fid(n),p,JSON.stringify(body?body.p_itens:items)]).then(r=>r.rows[0].result);
+};
 const pay=(n,f,amount)=>db.query(`select sc_registrar_recebimento($1,$2,$3,'2026-11-01','Pix') as result`,[rid(n),fid(f),amount]).then(r=>r.rows[0].result);
 await asUser(manager);
+if(textAgendaIds) {
+  for(const [column,value] of [['status',null],['data',null],['unidade',null],['valor_cobrado',null],['valor_recebido',null],['valor_recebido',-1]]) {
+    await db.exec('reset role');
+    await db.query(`update agenda_eventos set ${column}=$1 where id=$2`,[value,sid(8)]);
+    const revision=(await db.query('select revision from agenda_eventos where id=$1',[sid(8)])).rows[0].revision;
+    await asUser(manager);
+    await assert.rejects(create(90,[8],Number(revision)),/elegível|Revise/,'legacy missing or negative values must be rejected explicitly');
+    await db.exec('reset role');
+    await db.query("update agenda_eventos set status='Concluído',data='2026-10-31',unidade='SC',valor_cobrado=350.10,valor_recebido=100 where id=$1",[sid(8)]);
+    await asUser(manager);
+  }
+}
 const first=await create(1);assert.equal(first.total_centavos,35010);assert.equal(first.anterior_centavos,10000);assert.equal(first.saldo_centavos,25010);
 assert.deepEqual(await create(1),first); // ambiguous network retry exactly once
 await assert.rejects(create(1,[2]),/outro conteúdo/);
 await assert.rejects(create(2),/fechamento ativo/);
 await assert.rejects(create(2,[2],2),/alterado/);
 await assert.rejects(create(2,[2],1,'33333333-3333-4333-8333-333333333333'),/parceiro/);
-await assert.rejects(create(2,[2,2]),/duplicados/);
+await assert.rejects(create(2,[2,2]),/duplicad/);
 await assert.rejects(create(2,[2,99]),/não encontrado/);
 assert.equal((await db.query('select count(*)::int as n from sc_fechamentos')).rows[0].n,1,'atomic rollback of failed creates');
 await assert.rejects(db.query('update agenda_eventos set valor_cobrado=400 where id=$1',[sid(1)]),/bloqueados/);
@@ -67,5 +99,7 @@ const corrupt=(await db.query(diagnostic)).rows[0].integridade;
 assert.equal(corrupt.totais_divergentes,1);assert.equal(corrupt.recebimentos_acima_do_saldo,1);
 await db.exec('rollback');
 assert.deepEqual((await db.query(diagnostic)).rows[0].integridade,healthy);
+assert.equal((await db.query('select id from agenda_eventos where id=$1',[sid(1)])).rows[0].id,sid(1),'original agenda ID preserved');
+if(textAgendaIds) assert.deepEqual((await db.query("select id,status,sc_escopo_id from agenda_eventos where id='preserved:old'")).rows,[{id:'preserved:old',status:'Status antigo',sc_escopo_id:null}]);
 await db.close();console.log('PASS: embedded PostgreSQL migration, RLS, RPC rights, atomicity, revisions, unique claims, idempotent partial/full receipts and cancellation');
 })().catch(error=>{console.error(error.message);process.exit(1);});

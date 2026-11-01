@@ -68,3 +68,58 @@ já conferida apenas para preencher este roteiro.
 - Diagnóstico preparado: supabase/diagnostics/inventario_OFICIAL_somente_leitura.sql. Somente catálogos de estrutura, permissões, políticas e RLS; não consulta dados de clientes, fotos ou senhas. Precisa ser executado no SQL Editor do projeto oficial informado, pois não há acesso direto ao banco nesta sessão. Não executado até retorno do gestor.
 
 Não adaptar o código simplesmente trocando o ID de staging: os controles dependem de schema, autenticação e permissões efetivamente encontrados no oficial. Backup e mídia da produção continuam sem verificação.
+
+## Atualização do ensaio de recuperação e compatibilidade
+
+O gestor confirmou cópia do dump e mídia no disco E:, decodificação do dump,
+restauração local de public/auth/storage, contagens comparadas para as tabelas
+do aplicativo e Storage e chave primária de storage.objects conferida. Uma carga
+local repetida foi descartada e auth/storage foram restaurados novamente uma
+única vez. A confirmação final não apresentou IDs duplicados.
+
+Este é um ensaio de recuperação de dados: --no-owner/--no-privileges não valida
+as permissões originais; não executa Auth, Storage HTTP, Realtime ou a aplicação
+completa. Não substitui cópia externa nem inventário byte a byte da mídia.
+
+O ensaio sintético test:ledger:text-ids executa o financeiro com IDs de agenda
+textuais não UUID, conservando os demais IDs como UUID. Adapta em memória apenas
+o tipo da FK agenda_id e os recordsets JSON. Exercita criação, replay, rejeição
+de duplicados, revisões, pagamentos, cancelamento e bloqueios por papel.
+Não é migração para o oficial: a fixture ainda usa os outros campos e controles
+de staging. Faltam migração aditiva do esquema legado, autenticação coordenada,
+isolamento local operacional e os demais critérios de piloto acima.
+
+### Ensaio estrutural da agenda legada — 01/11
+
+Arquivo exclusivo do laboratório: supabase/rehearsals/20261101_agenda_legada_LOCAL_ONLY.sql.
+Teste: npm --prefix tests/postgres run test:agenda:legacy. Adiciona revision,
+maps_url, sc_escopo_id e arquivado_em; mantém id text e todos os valores legados.
+Fixture PostgreSQL valida IDs não UUID, campos nulos, unidade desconhecida,
+status legado, valores monetários, datas e mídia não relacionada preservados.
+Reexecução e ID de tipo incompatível falham sem alterações parciais.
+Não instala FK de escopo, gatilho de revisão, CAS ou permissões. Esses mecanismos
+exigem desenho coordenado e verificação independente antes de qualquer piloto.
+Não foi executado contra o dump real nem publicado em produção.
+
+O ensaio financeiro com IDs textuais agora parte da tabela legada anulável e
+executa a adaptação aditiva antes dos testes de fechamento. Candidato isolado:
+supabase/rehearsals/20261101_fechamentos_text_LOCAL_ONLY.sql. Rejeita explicitamente
+unidade/status/data ausentes e valores cobrados/recebidos ausentes ou recebidos
+negativos; registros antigos não elegíveis permanecem preservados. Casos de
+pagamento, replay, cancelamento, revisão e negação de acesso passaram no banco
+embutido. A fundação de acesso e os triggers continuam sendo fixtures de staging:
+isso não comprova uma migração completa sobre o dump nem autoriza execução remota.
+
+O adaptador de intents aceita agendaIdType=text somente por opção explícita para
+preparação de ensaio. IDs textuais preservam caixa e conteúdo; UUID continua como
+padrão. sendIntent mantém a validação UUID e o bloqueio ao projeto de testes:
+nenhuma ativação remota foi adicionada. O ensaio SQL legado usa agora os itens
+construídos pelo adaptador real, em vez de JSON manual. Testes de adaptador,
+journal e UI passaram, incluindo rejeição de IDs textuais antes de qualquer fetch.
+
+Preparação financeira e projeção de saldo agora rejeitam valores ausentes,
+booleanos, texto vazio e números inválidos, em vez de convertê-los silenciosamente
+para zero. Testes de UI confirmam bloqueio de salvar e ausência de POST quando
+recebido legado é inválido; a projeção não exibe quitação com recebimento ausente.
+A suíte rápida completa e verificação dos bundles passaram após essa mudança.
+Mudanças apenas no workspace; não publicadas no staging ou no oficial nesta etapa.

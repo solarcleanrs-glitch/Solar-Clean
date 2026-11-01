@@ -8,7 +8,7 @@ const element=id=>{if(!nodes.has(id))nodes.set(id,{value:'',disabled:false,textC
 element('agendaMonthlyMonth').value='2026-10';element('agendaUnitFilter').value='SC';element('agendaOriginFilter').value=partner;
 const moneyResult=id=>({id,status:headers[0].status,total_centavos:35000,anterior_centavos:10000,recebimentos_centavos:receipts.reduce((n,r)=>n+r.valor_centavos,0),saldo_centavos:25000-receipts.reduce((n,r)=>n+r.valor_centavos,0)});
 const buttons=(attr)=>[...element('ledgerList').innerHTML.matchAll(new RegExp(attr+'="([^"]+)"','g'))].map(m=>({dataset:{[attr==='data-ledger-pay'?'ledgerPay':'ledgerCancel']:m[1]}}));
-let payButtons=[],cancelButtons=[];
+let payButtons=[],cancelButtons=[],legacyPaid=100;
 const ctx={console,URLSearchParams,Date,Number,JSON,Map,Set,Promise,Error,atob:x=>Buffer.from(x,'base64').toString(),crypto:{randomUUID:()=>`66666666-6666-4666-8666-${String(++serial).padStart(12,'0')}`},navigator:{onLine:true,locks:{request:async(k,fn)=>fn()}},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{getElementById:element,querySelectorAll:selector=>selector==='[data-ledger-pay]'?(payButtons=buttons('data-ledger-pay')):(cancelButtons=buttons('data-ledger-cancel'))},currentTech:()=>({cloud:true}),serviceContextEnabled:()=>true,canSeeAgendaFinance:()=>true,ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:'https://zzphucuiqhzrilrddxnf.supabase.co',key:'synthetic'}),agendaLocal:()=>local,escapeHtml:s=>String(s).replace(/[<>]/g,''),formatAgendaDate:()=> '2026-10-30',confirm:()=>accept,prompt:()=> 'Erro de teste'};
 ctx.window=ctx;memory.set('solarCleanAccessToken','x.'+Buffer.from(JSON.stringify({sub:actor})).toString('base64')+'.x');
 ctx.fetch=async(url,options={})=>{
@@ -26,7 +26,7 @@ ctx.fetch=async(url,options={})=>{
  }
  let rows=[];
  if(!offset){
-  if(table==='agenda_eventos')rows=[{id:service,cliente:'Synthetic',unidade:'SC',data:'2026-10-31',status:'Concluído',revision:1,sc_escopo_id:scope,valor_servico:350,gasto_extra:20,valor_cobrado:350,valor_recebido:100,escopo:{id:scope,unidade:'SC',parceiro_id:partner}}];
+  if(table==='agenda_eventos')rows=[{id:service,cliente:'Synthetic',unidade:'SC',data:'2026-10-31',status:'Concluído',revision:1,sc_escopo_id:scope,valor_servico:350,gasto_extra:20,valor_cobrado:350,valor_recebido:legacyPaid,escopo:{id:scope,unidade:'SC',parceiro_id:partner}}];
   if(table==='sc_fechamentos')rows=headers;
   if(table==='sc_fechamento_recebimentos')rows=receipts;
   if(table==='sc_fechamento_itens'&&headers.length)rows=[{agenda_id:service}];
@@ -35,6 +35,12 @@ ctx.fetch=async(url,options={})=>{
 };
 vm.createContext(ctx);vm.runInContext(fs.readFileSync('lib/settlement-browser.js','utf8'),ctx);vm.runInContext(source,ctx);vm.runInContext(fs.readFileSync('lib/settlement-ui.js','utf8'),ctx);
 (async()=>{
+ for(const bad of [null,undefined,'',false,-1]){
+  legacyPaid=bad;const writes=requests.filter(r=>r.options.method==='POST').length;
+  await element('ledgerPrepare').onclick();assert.equal(element('ledgerSave').disabled,true);assert.match(element('ledgerMessage').textContent,/ausente\/inválido/);
+  assert.equal(requests.filter(r=>r.options.method==='POST').length,writes);
+ }
+ legacyPaid=100;
  await element('ledgerPrepare').onclick();assert.equal(element('ledgerSave').disabled,false);assert.ok(element('ledgerPrepared').innerHTML.includes('250,00'));
  accept=false;await element('ledgerSave').onclick();assert.equal(headers.length,0);
  accept=true;uncertain=true;await element('ledgerSave').onclick();assert.equal(headers.length,1);assert.ok(element('ledgerMessage').textContent.includes('mesmo ID'));
