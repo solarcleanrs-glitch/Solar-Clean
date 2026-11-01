@@ -25,6 +25,7 @@ jobs:
           npm --prefix tests/postgres run test:agenda:legacy
           npm --prefix tests/postgres run test:agenda:rollback
           npm --prefix tests/postgres run test:pilot:access
+          npm --prefix tests/postgres run test:pilot:rollback
           npm --prefix tests/postgres run test:ledger:text-ids
       - name: Validar codigo
         run: |
@@ -88,3 +89,4 @@ jobs:
           name: solar-clean-homologacao
           path: homologacao/
           retention-days: 14
+

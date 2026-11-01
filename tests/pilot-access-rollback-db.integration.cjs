@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require('@electric-sql/pglite');
+(async()=>{
+const db=new PGlite(),manager='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+await db.exec(`create role anon;create role authenticated;create schema auth;
+create table auth.users(id uuid primary key,email text);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+create table agenda_eventos(id text primary key);create table vistorias(id bigint primary key);create table crm_clientes(client_key text primary key);
+insert into agenda_eventos values('Legacy/ID');`);
+await db.query('insert into auth.users values($1,$3),($2,$4)',[manager,other,'manager@example.invalid','other@example.invalid']);
+const raw=fs.readFileSync(path.join(__dirname,'../supabase/rehearsals/20261101_conferir_acesso_ROLLBACK_LOCAL.sql'),'utf8');
+const sql=raw.replaceAll(":'manager_uuid'",`'${manager}'`).replaceAll(":'manager_email'","'manager@example.invalid'").replaceAll(":'other_uuid'",`'${other}'`);
+await assert.rejects(db.exec(sql),/Banco local/);await db.exec('rollback');
+const embedded=sql.replace("current_database()<>'solar_clean_oficial_restore'",'false');
+const results=await db.exec(embedded);assert.ok(results.some(r=>r.rows.some(x=>x.estruturas_de_teste_removidas===true)));
+assert.deepEqual((await db.query('select * from agenda_eventos')).rows,[{id:'Legacy/ID'}]);
+await assert.rejects(db.exec(embedded.replaceAll('manager@example.invalid','wrong@example.invalid')),/divergente/);await db.exec('rollback');
+assert.equal((await db.query("select to_regclass('public.sc_acessos') is null as absent")).rows[0].absent,true);
+await db.close();console.log('PASS: identity-checked access rehearsal tests real roles and revocation, rejects wrong email and rolls back all new structures');
+})().catch(e=>{console.error(e);process.exit(1)});
