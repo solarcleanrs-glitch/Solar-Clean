@@ -123,3 +123,16 @@ para zero. Testes de UI confirmam bloqueio de salvar e ausência de POST quando
 recebido legado é inválido; a projeção não exibe quitação com recebimento ausente.
 A suíte rápida completa e verificação dos bundles passaram após essa mudança.
 Mudanças apenas no workspace; não publicadas no staging ou no oficial nesta etapa.
+
+### Fundação de acesso isolada — 01/11
+
+20261101_acesso_piloto_LOCAL_ONLY.sql referencia auth.users diretamente, sem
+pressupor CRM intermediário. Cria só tabelas novas, helper de gestor ativo por
+UUID e políticas de leitura. Não concede escrita de papéis/unidades à API,
+mesmo ao gestor; não escolhe a primeira conta nem classifica registros antigos.
+Teste PostgreSQL confirmou negação para anon, técnico com identidade textual
+igual, tentativa de autopromoção e gestor revogado. O financeiro legado foi
+ensaiado com essa fundação real, substituindo o helper simplificado anterior.
+Não foi instalada no banco oficial nem no staging ativo. Não restringe as
+políticas antigas: o corte de acesso legado depende de cliente autenticado e
+implantação coordenada. Não representa segurança completa do projeto.

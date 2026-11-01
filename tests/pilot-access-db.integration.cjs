@@ -1,0 +1,32 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require('@electric-sql/pglite');
+(async()=>{
+const db=new PGlite(),manager='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+await db.exec(`create role anon;create role authenticated;create schema auth;
+create table auth.users(id uuid primary key,email text);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+create table agenda_eventos(id text primary key,cliente text);
+insert into agenda_eventos values('Legacy:Id/1','Synthetic preserved');`);
+await db.query('insert into auth.users values($1,$3),($2,$3)',[manager,other,'same-name@example.invalid']);
+const sql=fs.readFileSync(path.join(__dirname,'../supabase/rehearsals/20261101_acesso_piloto_LOCAL_ONLY.sql'),'utf8');
+await db.exec(sql);
+assert.equal((await db.query('select count(*)::int as n from sc_acessos')).rows[0].n,0,'no automatic manager or legacy classification');
+await db.query("insert into sc_acessos(user_id,papel,ativo) values($1,'gestor',true),($2,'tecnico',true)",[manager,other]);
+await db.exec("insert into sc_parceiros(nome) values('Synthetic partner')");
+const asUser=async id=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');};
+await asUser(manager);
+assert.equal((await db.query('select sc_is_manager() as ok')).rows[0].ok,true);
+assert.equal((await db.query('select count(*)::int as n from sc_parceiros')).rows[0].n,1);
+for(const statement of ["update sc_acessos set ativo=false","delete from sc_acessos","truncate sc_acessos","insert into sc_parceiros(nome) values('Injected')"])
+ await assert.rejects(db.exec(statement),/permission denied/,'API cannot administer roles, even manager');
+await asUser(other);assert.equal((await db.query('select sc_is_manager() as ok')).rows[0].ok,false);
+for(const t of ['sc_acessos','sc_parceiros','sc_clientes_escopos','sc_acesso_unidades'])assert.equal((await db.query(`select count(*)::int as n from ${t}`)).rows[0].n,0,'same displayed name/email does not confer role');
+await db.exec('reset role');await db.query('update sc_acessos set ativo=false where user_id=$1',[manager]);await asUser(manager);
+assert.equal((await db.query('select sc_is_manager() as ok')).rows[0].ok,false);
+assert.equal((await db.query('select count(*)::int as n from sc_parceiros')).rows[0].n,0,'revocation takes effect');
+await db.exec('reset role;set role anon');await assert.rejects(db.exec('select sc_is_manager()'),/permission denied/);await assert.rejects(db.exec('select * from sc_acessos'),/permission denied/);
+await db.exec('reset role');assert.deepEqual((await db.query('select * from agenda_eventos')).rows,[{id:'Legacy:Id/1',cliente:'Synthetic preserved'}]);
+await db.close();console.log('PASS: pilot read foundation uses explicit UUID and active role, no automatic classification, denied self-promotion, revocation and anonymous denial');
+})().catch(e=>{console.error(e);process.exit(1)});

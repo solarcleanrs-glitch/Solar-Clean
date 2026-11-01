@@ -10,12 +10,16 @@ await db.exec(`create role anon; create role authenticated; create schema auth;
 create table auth.users(id uuid primary key);
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
-create function public.sc_is_manager() returns boolean language sql stable as $$select auth.uid()='11111111-1111-4111-8111-111111111111'::uuid$$;
+`);
+if(textAgendaIds) await db.exec(fs.readFileSync('supabase/rehearsals/20261101_acesso_piloto_LOCAL_ONLY.sql','utf8'));
+else await db.exec(`create function public.sc_is_manager() returns boolean language sql stable as $$select auth.uid()='11111111-1111-4111-8111-111111111111'::uuid$$;
 create table public.sc_parceiros(id uuid primary key default gen_random_uuid(),nome text unique not null,ativo boolean default true);
 create table public.sc_clientes_escopos(id uuid primary key,unidade text,parceiro_id uuid references sc_parceiros(id));
-insert into auth.users values('11111111-1111-4111-8111-111111111111'),('99999999-9999-4999-8999-999999999999');
+`);
+await db.exec(`insert into auth.users values('11111111-1111-4111-8111-111111111111'),('99999999-9999-4999-8999-999999999999');
 insert into sc_parceiros values('22222222-2222-4222-8222-222222222222','YES',true),('33333333-3333-4333-8333-333333333333','Elysia',true);
-insert into sc_clientes_escopos values('44444444-4444-4444-8444-444444444444','SC','22222222-2222-4222-8222-222222222222');`);
+insert into sc_clientes_escopos(id,unidade,parceiro_id) values('44444444-4444-4444-8444-444444444444','SC','22222222-2222-4222-8222-222222222222');`);
+if(textAgendaIds) await db.exec("insert into sc_acessos(user_id,papel,ativo) values('11111111-1111-4111-8111-111111111111','gestor',true)");
 let agendaSql=fs.readFileSync('supabase/migrations/20261030_agenda_eventos_STAGING_NOT_APPLIED.sql','utf8');
 if(textAgendaIds) {
   // Build the actual nullable legacy column shape, then apply the additive rehearsal.
