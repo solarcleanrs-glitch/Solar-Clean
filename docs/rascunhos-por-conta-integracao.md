@@ -21,8 +21,8 @@ O aplicativo carrega o cofre, o controlador e o adaptador de formulário. A inte
 
 ## Pendências antes da ativação
 
-1. Coordenação efetiva entre abas: o evento de troca de conta externa precisa preservar o formulário da conta de origem antes de limpar a tela. IDs distintos por formulário evitam colisões comuns, mas não substituem uma estratégia de exclusão mútua.
-2. Testar duas abas recuperando e salvando a mesma origem, mudanças de projeto/modo e expiração de sessão com formulário aberto. A busca por UUID antes do salvamento sequencial não é uma garantia atômica entre abas.
+1. Validar a integração completa entre abas no aplicativo, incluindo sessão expirada e operações em andamento. A revisão 30 implementa preservação externa e exclusão mútua; o ensaio sintético dos módulos passou, mas não habilita dados reais.
+2. Testar mudanças de projeto/modo e expiração de sessão com formulário aberto. O fluxo candidato envolve a busca e a gravação no Web Lock por origem; a API precisa estar disponível no navegador de campo.
 3. Validar recuperação em navegador com o armazenamento por conta ativado apenas em cenário sintético isolado, incluindo fotos maiores, assinatura e exportação de relatório. Os testes VM não substituem essa validação.
 4. Conferir integralidade das cópias de dados por conta antes de habilitar a nova persistência. Os dados legados continuam preservados.
 
@@ -37,3 +37,5 @@ O salvamento candidato usa Web Locks exclusivos por proprietário e UUID do rasc
 `draft-multitab.test.cjs` confere filas concorrentes, rejeição de cópia já gravada, sessão alterada enquanto aguarda e falha de espaço seguida de nova tentativa. `form-draft-app.test.cjs` também cobre o bloqueio e a recuperação na integração real extraída do app.
 
 O cenário `tests/draft-multitab-browser.html` permite conferir Web Locks, IndexedDB e eventos de armazenamento com duas abas reais. Ele usa apenas dados fictícios e chaves prefixadas por um UUID de simulação. Não habilita o modo por conta do aplicativo e não lê nem modifica tokens reais. Esses ensaios de módulos não substituem a validação completa da migração, da expiração de sessão e das operações em andamento no aplicativo antes de uma ativação com dados reais.
+
+Ensaio observado em Chrome, com duas abas reais: primeira aba reteve o Web Lock durante uma pausa; a segunda aguardou e depois recebeu a rejeição de cópia já gravada. IndexedDB permaneceu com um registro. A troca A → B limpou o formulário da outra aba e mostrou zero cópias em B; ao voltar para A, a cópia foi recuperada com o cliente fictício original. Nenhum token ou registro real foi usado.
