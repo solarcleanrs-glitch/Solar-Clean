@@ -17,4 +17,6 @@ jobs:
           cache-dependency-path: tests/postgres/package-lock.json
       - run: npm ci --prefix tests/postgres --ignore-scripts --no-audit --no-fund
       - name: Verificar autorização e projeção no PostgreSQL isolado
-        run: NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-db.integration.cjs
+        run: |
+          NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-db.integration.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-legacy-db.integration.cjs

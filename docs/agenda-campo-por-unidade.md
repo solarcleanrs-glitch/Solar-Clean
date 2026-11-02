@@ -31,6 +31,12 @@ Não substitui teste de Auth HTTP ou sessão de técnico real. No Supabase de
 testes também foram conferidos gestor, conta não autorizada e anônimo em
 transação somente leitura com ROLLBACK, preservando registros e políticas.
 
+`field-agenda-legacy-db.integration.cjs` executa em sequência os ensaios locais
+aditivos da agenda e da fundação de acesso, cria uma associação sintética de
+membro e instala a mesma projeção. Confere IDs textuais, campos nulos, valores
+originais preservados e ausência de classificação automática. A associação de
+membro é um pré-requisito separado, não uma migração oficial já autorizada.
+
 ## Antes da liberação
 
 - Integrar a consulta na interface de campo e nos dados locais por conta.
