@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {create,PROJECT}=require('../lib/account-draft-vault.cjs');
+const A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',ID='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+let state={project:PROJECT,actor:A,generation:1},quota=false,race=false;
+const data=new Map(),storage={getItem:k=>data.has(k)?data.get(k):null,setItem(k,v){if(quota)throw Error('quota');data.set(k,v);if(race)state={...state,actor:B,generation:state.generation+1};}};
+const vault=create({storage,context:()=>state});
+const draft={record:{cliente:'Sintético',photos:[{data:'data:image/gif;base64,R0lG'}],clientSignature:'signature'},editingRecord:{id:7,revision:3},agendaSourceId:'legacy-text-id',step:6};
+vault.save(ID,draft);draft.record.cliente='changed';
+state={...state,actor:B,generation:2};assert.equal(vault.read(ID),null);
+vault.save(ID,{record:{cliente:'B'}});
+state={...state,actor:A,generation:3};assert.equal(vault.read(ID).payload.record.cliente,'Sintético');assert.equal(vault.read(ID).payload.editingRecord.revision,3);
+quota=true;assert.throws(()=>vault.save(ID,{record:{cliente:'lost'}}),/quota/);quota=false;assert.equal(vault.read(ID).payload.record.cliente,'Sintético');
+race=true;assert.throws(()=>vault.save(ID,{record:{cliente:'race snapshot'}}),/conta mudou/);race=false;assert.equal(vault.read(ID).payload.record.cliente,'B');
+state={...state,actor:A,generation:5};assert.equal(vault.read(ID).payload.record.cliente,'race snapshot');
+state={...state,actor:''};assert.throws(()=>vault.read(ID),/identificada/);
+state={project:'https://production.example',actor:A,generation:6};assert.throws(()=>vault.save(ID,{}),/testes/);
+assert.equal(data.size,2);console.log('PASS: draft snapshots isolate A/B/A, retain edit identity/photo/signature, propagate quota and reject session races and production');

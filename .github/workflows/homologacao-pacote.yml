@@ -37,6 +37,7 @@ jobs:
           node tests/scoped-local-runtime.test.cjs
           node tests/scoped-local-app.test.cjs
           node tests/form-operation-context.test.cjs
+          node tests/account-draft-vault.test.cjs
           node tests/scoped-vistoria-store.test.cjs
           node tests/scoped-migration-ui.test.cjs
           node tests/read-only-diagnostics.test.cjs
