@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261101-armazenamento-conta-28" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: armazenamento por conta em preparação — 01/11 · revisão 28</small></div>
+<div id="homologNotice" data-app-release="20261101-rascunhos-conta-29" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: recuperação de rascunhos em preparação — 01/11 · revisão 29</small></div>
 
 <main>
 <section id="home">
@@ -108,6 +108,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="settingsBtn">Dados da empresa</button>
       <button id="installBtn">Instalar aplicativo</button>
     </div>
+    <div id="accountDraftPanel" class="section hidden"><label>Rascunhos desta conta<select id="accountDraftSelect"></select></label><button id="refreshAccountDrafts" type="button">Consultar rascunhos</button><button id="recoverAccountDraft" type="button">Recuperar rascunho</button><p id="accountDraftStatus" class="muted" role="status"></p></div>
     <p class="muted section" id="loggedUser">Modo local — técnico não identificado</p>
   </div>
   <div class="card section">
@@ -776,6 +777,9 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 </main>
 
 <script src="lib/scoped-local-runtime.js"></script>
+<script src="lib/account-draft-vault.js"></script>
+<script src="lib/account-draft-session.js"></script>
+<script src="lib/form-draft-adapter.js"></script>
 <script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
@@ -796,6 +800,74 @@ function scopedLocalRuntime(){
 }
 function scopedLocalGet(key){const runtime=scopedLocalRuntime();return runtime?runtime.get(key):localStorage.getItem(key);}
 function scopedLocalSet(key,value){const runtime=scopedLocalRuntime();if(runtime)runtime.set(key,value);else localStorage.setItem(key,value);}
+
+/* Draft integration is dormant until account-scoped storage is activated.
+   This release does not create or change that activation marker. */
+let appDraftController=null,appDraftSuspended=false,appDraftCloudId=null,appDraftRecovered=false;
+function appDraftEnabled(){return location.hostname==='solar-clean-testes-crm.pages.dev'&&Boolean(scopedLocalRuntime()?.enabled());}
+function appDraftContext(){
+  let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
+  // Refreshing a token for the same owner does not transfer draft ownership.
+  return {project:cloudConfig().url,actor,generation:0};
+}
+function captureAppFormDraft(){
+  if(generateAndSaveRunning||[...document.querySelectorAll('#formScreen input[type=file]')].some(n=>n.disabled))throw Error('Aguarde o salvamento ou a leitura das fotos antes de trocar de conta.');
+  return window.SCFormDraftAdapter.capture($('#formScreen'),{
+    step,photos:window.__pendingPhotos||[],signature:window.__signatureData||'',signatureAt:window.__signatureAt||'',
+    editingRecord,savedId:savedCurrentFormRecordId,agendaSourceId:window.__agendaSourceId??null,
+    serviceContext:serviceContextDraft,scopeId:serviceContextScopeId,draftCloudId:appDraftCloudId
+  });
+}
+function restoreAppFormDraft(payload){
+  const state=window.SCFormDraftAdapter.restore($('#formScreen'),payload);
+  editingRecord=state.editingRecord;savedCurrentFormRecordId=state.savedId;
+  window.__agendaSourceId=state.agendaSourceId;window.__pendingPhotos=state.photos;
+  window.__signatureData=state.signature;window.__signatureAt=state.signatureAt;
+  serviceContextGeneration++;serviceContextDraft=state.serviceContext;serviceContextScopeId=state.scopeId;
+  appDraftCloudId=state.draftCloudId||null;appDraftRecovered=true;
+  formSessionGuard=captureVistoriaOperationGuard();
+  step=state.step;updateGenerationVisibility();renderPhotoPreview();loadSignaturePad(state.signature);stepView();show('formScreen');
+}
+function clearAppDraftView(){
+  appDraftSuspended=true;
+  try{
+    editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();
+    currentReportRecord=null;currentReportSessionGuard=()=>{throw Error('Abra um relatório nesta conta.');};
+    ['rCliente','rTelefone','rCidade','rEndereco','rTecnico','rObs','rDate','rSujidades','rInvStatus','rInv','rDps','rPlacas','rPotPlaca','rPotTotal','rMarcaPlaca','rTelhado','rSujeira','rEstrutura','rInvInternet','rAntes','rDepois','rDif','rPct','rLimpeza','rRetorno'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
+    ['rPhotos','historyList','adminList','agendaList'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
+    ['rTechSignature','rClientSignature'].forEach(id=>{const n=$('#'+id);if(n){n.removeAttribute('src');n.classList.add('hidden');}});
+    window.__techSignatureData='';clearTechSignaturePad(false);
+    $('#techName').value='';$('#techEmail').value='';$('#techPassword').value='';show('home');
+  }finally{appDraftSuspended=false;}
+}
+function getAppDraftController(){
+  if(appDraftSuspended||!appDraftEnabled())return null;
+  if(!window.SCAccountDraftSession||!window.SCFormDraftAdapter)throw Error('Recuperação de rascunhos indisponível. Preserve o formulário e reabra com conexão.');
+  if(!appDraftController)appDraftController=window.SCAccountDraftSession.create({storage:localStorage,context:appDraftContext,snapshot:captureAppFormDraft,clear:clearAppDraftView,restore:restoreAppFormDraft,randomUUID:()=>crypto.randomUUID()});
+  return appDraftController;
+}
+function prepareAppFormReplacement(){const d=getAppDraftController();if(d){d.preserve();d.forgetOpen();}}
+function beginAppFormDraft(){const d=getAppDraftController();if(d){appDraftCloudId=crypto.randomUUID();appDraftRecovered=false;d.begin();}}
+async function assertAppDraftSaveAllowed(){
+  if(!appDraftEnabled())return;
+  if(appDraftRecovered&&!appDraftCloudId)throw Error('Cópia antiga para conferência. Abra o registro pelo histórico antes de salvar.');
+  if(!editingRecord&&appDraftCloudId&&(await dbAll()).some(r=>r.cloudId===appDraftCloudId))throw Error('Esta cópia já originou uma vistoria salva. Abra Editar no histórico para corrigir o registro existente.');
+}
+function prepareAppDraftAccountChange(){
+  const d=getAppDraftController();if(!d)return ()=>{};
+  d.preserve();
+  return ()=>{d.forgetOpen();clearAppDraftView();refreshAppDraftList();};
+}
+function refreshAppDraftList(){
+  const panel=$('#accountDraftPanel');if(!panel)return;
+  panel.classList.toggle('hidden',!appDraftEnabled());if(!appDraftEnabled())return;
+  const select=$('#accountDraftSelect');select.textContent='';
+  try{
+    const rows=getAppDraftController().list();
+    rows.forEach((row,i)=>{const option=document.createElement('option');option.value=row.id;option.textContent=`Rascunho ${i+1} — etapa ${row.payload.state?.step||'?'}`;select.appendChild(option);});
+    $('#accountDraftStatus').textContent=rows.length?`${rows.length} cópia(s) desta conta. Recuperar não salva nem sincroniza uma vistoria.`:'Nenhum rascunho nesta conta.';
+  }catch(e){$('#accountDraftStatus').textContent=e.message;}
+}
 
 function openDB(){
   return new Promise((resolve,reject)=>{
@@ -891,11 +963,13 @@ function captureVistoriaOperationGuard(){
   return ()=>{const c=cloudConfig();if(generation!==authSessionGeneration||c.url!==config.url||c.key!==config.key||localStorage.getItem('solarCleanTech')!==tech||actor()!==owner||(typeof scopedLocalRuntime==='function'?scopedLocalRuntime()?.fingerprint():null)!==localMode)throw Error('A conta mudou durante a operação. Dados locais preservados; sincronize novamente na conta correta.');};
 }
 function endCloudSession(){
+  const finishDraftChange=typeof prepareAppDraftAccountChange==='function'?prepareAppDraftAccountChange():()=>{};
   authSessionGeneration++;
   localStorage.removeItem('solarCleanAccessToken');
   localStorage.removeItem('solarCleanRefreshToken');
   setTech(null);
   $('#techPassword').value='';
+  finishDraftChange();
 }
 function setTech(t){
   authSessionGeneration++;
@@ -906,6 +980,7 @@ function setTech(t){
   window.AgendaLedgerStatus?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
   updateLoggedUser();
+  if(typeof refreshAppDraftList==='function')refreshAppDraftList();
 }
 function updateLoggedUser(){
   const t=currentTech();
@@ -945,6 +1020,7 @@ $("#pagamentoStatus").value='Pendente';
   $('#showGeneration').checked=true;
   $('#dpsExtra').classList.add('hidden'); updateGenerationVisibility();
   window.__signatureData=''; window.__signatureAt=''; clearSignaturePad(false);
+  if(typeof beginAppFormDraft==='function')beginAppFormDraft();
 }
 function loadRecordToForm(r,preserveScope=false){
   formSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
@@ -960,6 +1036,7 @@ $("#valorRecebido").value=r.valorRecebido||'';
   setRadio('invStatus',r.invStatus); setRadio('invInternet',r.invInternet||'Não verificado'); $('#erroInv').value=r.erroInv||''; $('#showGeneration').checked=r.showGeneration!==false; $('#antes').value=r.antes||''; $('#depois').value=r.depois||''; setRadio('limpeza',r.limpeza); setRadio('retorno',r.retorno); $('#obs').value=r.obs||''; updateGenerationVisibility();
   window.__signatureData=r.clientSignature||''; window.__signatureAt=r.signatureAt||'';
   loadSignaturePad(window.__signatureData);
+  if(typeof beginAppFormDraft==='function')beginAppFormDraft();
 }
 function renderReport(r){
   currentReportSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
@@ -1066,8 +1143,10 @@ function loadTechSignaturePad(data){
   if(!techSignatureCtx) return;
   clearTechSignaturePad(false);
   if(!data){$('#techSignatureStatus').textContent='Assinatura ainda não cadastrada.';return}
+  const signatureGuard=captureVistoriaOperationGuard();
   const img=new Image();
   img.onload=()=>{
+    try{signatureGuard();if(window.__techSignatureData!==data)return;}catch(e){return;}
     const r=canvas.getBoundingClientRect();
     techSignatureCtx.drawImage(img,0,0,r.width,180);
     $('#techSignatureStatus').textContent='Assinatura cadastrada.';
@@ -1161,8 +1240,10 @@ function loadSignaturePad(data,preserveState=true){
   if(!signatureCtx) return;
   clearSignaturePad(false);
   if(!data){$('#signatureStatus').textContent='Assinatura ainda não registrada.';return}
+  const signatureGuard=captureVistoriaOperationGuard();
   const img=new Image();
   img.onload=()=>{
+    try{signatureGuard();if(window.__signatureData!==data)return;}catch(e){return;}
     const currentRect=canvas.getBoundingClientRect();
     if(signatureCtx) signatureCtx.drawImage(img,0,0,currentRect.width,180);
     $('#signatureStatus').textContent='Assinatura registrada.';
@@ -1923,11 +2004,11 @@ async function renderHistory(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{operationGuard();const r=(await dbAll()).find(x=>x.id===Number(b.dataset.open));operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();renderReport(r)}});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
     operationGuard();const r=(await dbAll()).find(x=>x.id===Number(b.dataset.edit));
-    operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r,true);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
+    operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();prepareAppFormReplacement();savedCurrentFormRecordId=null;editingRecord={...r};loadRecordToForm(r,true);window.__pendingPhotos=[...(r.photos||[])];renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-duplicate]').forEach(b=>b.onclick=async()=>{
     operationGuard();const r=(await dbAll()).find(x=>x.id===Number(b.dataset.duplicate));
-    operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();savedCurrentFormRecordId=null;editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
+    operationGuard();if(r){await hydrateRecordMedia(r);operationGuard();prepareAppFormReplacement();savedCurrentFormRecordId=null;editingRecord=null;loadRecordToForm(r);window.__pendingPhotos=[...(r.photos||[])];window.__signatureData='';window.__signatureAt='';clearSignaturePad(false);renderPhotoPreview();step=1;stepView();show('formScreen')}
   });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Excluir esta vistoria? Ela será removida deste aparelho e também da nuvem.')) return;
@@ -2874,7 +2955,7 @@ if (tituloData && df) {
     if(!ev)return;
     const all=await dbAll();
     const r=all.find(x=>crmKey(x)===ev.clientKey)||null;
-    editingRecord=null; resetForm(); window.__pendingPhotos=[]; renderPhotoPreview();
+    prepareAppFormReplacement();editingRecord=null; resetForm(); window.__pendingPhotos=[]; renderPhotoPreview();
     if(r)loadRecordToForm(r);
     // Um atendimento anterior do cliente não determina o parceiro deste agendamento.
     applyAgendaServiceContext(ev);
@@ -3537,6 +3618,7 @@ async function generateAndSave(){
   }
   generateAndSaveRunning=true;
   try{
+  if(typeof assertAppDraftSaveAllowed==='function'){await assertAppDraftSaveAllowed();operationGuard();}
   let r=collectForm();
 
   if(editingRecord){
@@ -3553,7 +3635,7 @@ async function generateAndSave(){
     editingRecord=null;
   }else{
     // ID definido antes do primeiro salvamento: o envio na nuvem é idempotente.
-    r.cloudId=crypto.randomUUID();
+    r.cloudId=(typeof appDraftEnabled==='function'&&appDraftEnabled()&&appDraftCloudId)||crypto.randomUUID();
     r.syncStatus='pending';
     const id=await dbAdd(r);operationGuard();
     r.id=id;
@@ -3623,9 +3705,12 @@ async function cloudAuthLogin(){
   const data=await res.json();
   loginGuard();
   if(!data.access_token||!data.refresh_token)throw new Error('Resposta de login incompleta.');
+  const finishDraftChange=typeof prepareAppDraftAccountChange==='function'?prepareAppDraftAccountChange():()=>{};
   localStorage.setItem('solarCleanAccessToken',data.access_token||'');
   localStorage.setItem('solarCleanRefreshToken',data.refresh_token||'');
-  setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature:window.__techSignatureData||currentTech()?.signature||''});
+  const signature=(typeof appDraftEnabled==='function'&&appDraftEnabled()&&String(currentTech()?.email||'').toLowerCase()!==email.toLowerCase())?'':(window.__techSignatureData||currentTech()?.signature||'');
+  setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature});
+  finishDraftChange();
   return true;
 }
 
@@ -3645,7 +3730,9 @@ async function renderAdmin(){
 }
 
 /* ---------- Eventos ---------- */
-$('#newBtn').onclick=()=>{editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();step=1;stepView();show('formScreen')};
+$('#newBtn').onclick=()=>{prepareAppFormReplacement();editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();step=1;stepView();show('formScreen')};
+$('#refreshAccountDrafts').onclick=refreshAppDraftList;
+$('#recoverAccountDraft').onclick=()=>{try{const d=getAppDraftController();if(!d)return;if(!confirm('Recuperar esta cópia? O formulário aberto será preservado antes da recuperação.'))return;d.recover($('#accountDraftSelect').value);}catch(e){$('#accountDraftStatus').textContent=e.message;}};
 $('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')};
 $('#crmBtn').onclick=async()=>{await renderCrm();show('crmScreen')};
 $('#agendaBtn').onclick=async()=>{await renderAgenda();show('agendaScreen')};
@@ -3690,6 +3777,7 @@ $('#clearTechSignature').onclick=()=>clearTechSignaturePad(true);
 setTimeout(prepareSignatureCanvas,0);
 $('#generateBtn').onclick=generateAndSave; $('#printBtn').onclick=()=>{try{if(typeof currentReportSessionGuard==='function')currentReportSessionGuard();window.print();}catch(e){alert(e.message);}};
 $('#saveCompany').onclick=saveCompany; $('#useLocalTech').onclick=()=>{
+  if(appDraftEnabled()){$('#loginStatus').textContent='Com armazenamento por conta, entre com e-mail e senha na nuvem.';return;}
   const name=$('#techName').value.trim();
   if(!name){$('#loginStatus').textContent='Informe o nome do técnico.';return}
   const existing=currentTech()||{};

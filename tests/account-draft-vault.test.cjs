@@ -27,6 +27,9 @@ const key=[...data.keys()].find(k=>k.includes(A));
 vault.save(ID,{record:{cliente:'version checked'}},{expectedRaw:data.get(key)});
 assert.equal(vault.read(ID).payload.record.cliente,'version checked');
 const fs=require('node:fs'),vm=require('node:vm'),browser={window:{}};
-vm.runInNewContext(fs.readFileSync('lib/account-draft-vault.cjs','utf8'),browser);
+vm.runInNewContext(fs.readFileSync('lib/account-draft-vault.js','utf8'),browser);
 assert.equal(typeof browser.window.SCAccountDraftVault.create,'function');
 console.log('PASS: browser build, lossless JSON validation and stale snapshot rejection before writes');
+
+Object.defineProperty(storage,'length',{get:()=>data.size});storage.key=i=>[...data.keys()][i]??null;assert.equal(vault.list().length,1);assert.equal(vault.list()[0].owner,A);
+vm.runInNewContext(fs.readFileSync('lib/account-draft-session.js','utf8'),browser);assert.equal(typeof browser.window.SCAccountDraftSession.create,'function');

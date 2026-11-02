@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),{capture,restore}=require('../lib/form-draft-adapter.js');
+function fixture(){const fields=[{tagName:'INPUT',type:'number',id:'valor',value:'0'},{tagName:'INPUT',type:'text',id:'cliente',value:''},{tagName:'INPUT',type:'checkbox',id:'generation',value:'on',checked:false},{tagName:'SELECT',type:'select-one',id:'origin',value:'partner',options:[],ownerDocument:{createElement:()=>({})},appendChild(o){this.options.push(o);}},{tagName:'INPUT',type:'file',id:'photos',value:'not copied'},{tagName:'INPUT',type:'password',id:'secret',value:'not copied'}];return {fields,form:{querySelectorAll:()=>fields}};}
+const {form,fields}=fixture(),state={step:5,photos:[{data:'data:image/gif;base64,R0lG'}],signature:'signature',signatureAt:'date',editingRecord:{id:3,cloudId:'stable-id',baseRevision:4},savedId:null,agendaSourceId:'legacy text ID',serviceContext:null,scopeId:null};
+const snap=capture(form,state);state.photos[0].data='changed';assert.equal(snap.fields.length,4);assert.equal(snap.state.photos[0].data,'data:image/gif;base64,R0lG');assert.equal(JSON.stringify(snap).includes('not copied'),false);
+fields[0].value='99';fields[1].value='other';fields[2].checked=true;const out=restore(form,snap);
+assert.equal(fields[0].value,'0');assert.equal(fields[1].value,'');assert.equal(fields[2].checked,false);assert.equal(fields[3].options[0].value,'partner');assert.equal(out.editingRecord.baseRevision,4);assert.equal(out.agendaSourceId,'legacy text ID');
+const invalid=structuredClone(snap);invalid.fields[3].identity='different';fields[0].value='leave intact';assert.throws(()=>restore(form,invalid),/incompatíveis/);assert.equal(fields[0].value,'leave intact');
+invalid.fields=snap.fields;invalid.state.step=9;assert.throws(()=>restore(form,invalid),/inválido/);assert.equal(fields[0].value,'leave intact');
+console.log('PASS: incomplete form, zero, unchecked controls, photos, signature, edit/revision and text agenda link restored; invalid layouts rejected before mutation, files/passwords excluded');
