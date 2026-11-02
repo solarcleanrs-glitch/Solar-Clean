@@ -91,9 +91,10 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261101-rascunhos-conta-29" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: recuperação de rascunhos em preparação — 01/11 · revisão 29</small></div>
+<div id="homologNotice" data-app-release="20261101-rascunhos-abas-30" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: rascunhos entre abas em preparação — 01/11 · revisão 30</small></div>
 
 <main>
+<section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
 <section id="home">
   <div class="card">
     <h2>Olá!</h2>
@@ -780,6 +781,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <script src="lib/account-draft-vault.js"></script>
 <script src="lib/account-draft-session.js"></script>
 <script src="lib/form-draft-adapter.js"></script>
+<script src="lib/draft-save-lock.js"></script>
 <script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
@@ -804,6 +806,7 @@ function scopedLocalSet(key,value){const runtime=scopedLocalRuntime();if(runtime
 /* Draft integration is dormant until account-scoped storage is activated.
    This release does not create or change that activation marker. */
 let appDraftController=null,appDraftSuspended=false,appDraftCloudId=null,appDraftRecovered=false;
+let appDraftQuarantined=false;
 function appDraftEnabled(){return location.hostname==='solar-clean-testes-crm.pages.dev'&&Boolean(scopedLocalRuntime()?.enabled());}
 function appDraftContext(){
   let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
@@ -843,9 +846,29 @@ function clearAppDraftView(){
 function getAppDraftController(){
   if(appDraftSuspended||!appDraftEnabled())return null;
   if(!window.SCAccountDraftSession||!window.SCFormDraftAdapter)throw Error('Recuperação de rascunhos indisponível. Preserve o formulário e reabra com conexão.');
-  if(!appDraftController)appDraftController=window.SCAccountDraftSession.create({storage:localStorage,context:appDraftContext,snapshot:captureAppFormDraft,clear:clearAppDraftView,restore:restoreAppFormDraft,randomUUID:()=>crypto.randomUUID()});
+  if(!appDraftController)appDraftController=window.SCAccountDraftSession.create({storage:localStorage,context:appDraftContext,snapshot:captureAppFormDraft,clear:clearAppDraftView,restore:restoreAppFormDraft,randomUUID:()=>crypto.randomUUID(),quarantine:quarantineAppDraft});
   return appDraftController;
 }
+function quarantineAppDraft(error){
+  appDraftQuarantined=true;
+  screens.forEach(id=>$('#'+id).classList.add('hidden'));
+  $('#draftQuarantinePanel').classList.remove('hidden');
+  $('#draftQuarantineStatus').textContent='A conta mudou em outra aba, mas a cópia não pôde ser conferida. '+error.message;
+}
+function handleAppDraftExternalChange(manual=false){
+  if(!appDraftController&&!appDraftEnabled())return;
+  try{
+    const result=getAppDraftControllerForExternalChange()?.externalChange();
+    if(result?.sameOwner){
+      if(appDraftQuarantined&&manual){appDraftQuarantined=false;$('#draftQuarantinePanel').classList.add('hidden');formSessionGuard=captureVistoriaOperationGuard();show('formScreen');}
+      return;
+    }
+    appDraftQuarantined=false;$('#draftQuarantinePanel').classList.add('hidden');
+    if(!result?.changed)clearAppDraftView();
+    show('home');refreshAppDraftList();
+  }catch(e){quarantineAppDraft(e);}
+}
+function getAppDraftControllerForExternalChange(){return appDraftController||getAppDraftController();}
 function prepareAppFormReplacement(){const d=getAppDraftController();if(d){d.preserve();d.forgetOpen();}}
 function beginAppFormDraft(){const d=getAppDraftController();if(d){appDraftCloudId=crypto.randomUUID();appDraftRecovered=false;d.begin();}}
 async function assertAppDraftSaveAllowed(){
@@ -917,7 +940,7 @@ async function dbAll(){
 async function dbDelete(id){await runVistoriaStore('readwrite',store=>store.delete(id));}
 
 /* ---------- UI helpers ---------- */
-function show(id){screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}
+function show(id){if(appDraftQuarantined)return;screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}
 function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
 function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
 function stepView(){
@@ -3609,6 +3632,13 @@ async function exportBackup(){
 let generateAndSaveRunning=false;
 let savedCurrentFormRecordId=null;
 async function generateAndSave(){
+  if(typeof appDraftEnabled!=='function'||!appDraftEnabled())return generateAndSaveUnlocked();
+  if(!window.SCDraftSaveLock)throw Error('Coordenação entre abas indisponível. Preserve o rascunho.');
+  const actor=appDraftContext().actor,draftId=appDraftCloudId,guard=captureVistoriaOperationGuard(),formGuard=formSessionGuard;
+  const check=()=>{guard();if(typeof formGuard==='function')formGuard();if(appDraftQuarantined||appDraftCloudId!==draftId)throw Error('O formulário mudou enquanto aguardava o salvamento.');};
+  return window.SCDraftSaveLock.run({locks:navigator.locks,actor,draftId,check,operation:generateAndSaveUnlocked});
+}
+async function generateAndSaveUnlocked(){
   if(generateAndSaveRunning) return;
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
   if(typeof formSessionGuard==='function')formSessionGuard();operationGuard();
@@ -3732,6 +3762,7 @@ async function renderAdmin(){
 /* ---------- Eventos ---------- */
 $('#newBtn').onclick=()=>{prepareAppFormReplacement();editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();step=1;stepView();show('formScreen')};
 $('#refreshAccountDrafts').onclick=refreshAppDraftList;
+$('#retryDraftPreservation').onclick=()=>handleAppDraftExternalChange(true);
 $('#recoverAccountDraft').onclick=()=>{try{const d=getAppDraftController();if(!d)return;if(!confirm('Recuperar esta cópia? O formulário aberto será preservado antes da recuperação.'))return;d.recover($('#accountDraftSelect').value);}catch(e){$('#accountDraftStatus').textContent=e.message;}};
 $('#historyBtn').onclick=async()=>{await renderHistory();show('historyScreen')};
 $('#crmBtn').onclick=async()=>{await renderCrm();show('crmScreen')};
@@ -4114,7 +4145,8 @@ $('#syncNow').onclick=async()=>{
 };
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
 window.addEventListener('online',()=>{autoSync('conexão restaurada')});
-window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanTech','solarCleanCompany'].includes(event.key))clearScopedCrmView();});
+window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanRefreshToken','solarCleanTech','solarCleanCompany','solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf'].includes(event.key)||event.key===null){clearScopedCrmView();handleAppDraftExternalChange();}});
+window.addEventListener('beforeunload',event=>{if(appDraftQuarantined){event.preventDefault();event.returnValue='';}});
 window.addEventListener('focus',()=>{autoSync('retorno ao app')});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync('app visível')});
 // Enquanto o app estiver aberto, busca novas vistorias da equipe automaticamente.

@@ -27,3 +27,13 @@ O aplicativo carrega o cofre, o controlador e o adaptador de formulário. A inte
 4. Conferir integralidade das cópias de dados por conta antes de habilitar a nova persistência. Os dados legados continuam preservados.
 
 O marcador de ativação continua ausente por padrão. O aplicativo oficial e o banco oficial não são alterados por esta implementação.
+
+## Revisão 30 — coordenação candidata entre abas
+
+A integração agora trata eventos externos de tokens/identificação. Um formulário aberto é copiado usando o proprietário capturado na abertura, sem reclassificá-lo pelo token da nova conta. Se a cópia falhar, a navegação fica bloqueada e o formulário permanece em memória; o usuário pode tentar preservar novamente. O aviso de saída do navegador é solicitado enquanto essa situação existir.
+
+O salvamento candidato usa Web Locks exclusivos por proprietário e UUID do rascunho, envolvendo a checagem de duplicidade e o fluxo de gravação. Uma aba que aguardava o bloqueio confere novamente sessão e formulário antes de salvar. Navegadores sem essa API não salvam por um caminho desprotegido.
+
+`draft-multitab.test.cjs` confere filas concorrentes, rejeição de cópia já gravada, sessão alterada enquanto aguarda e falha de espaço seguida de nova tentativa. `form-draft-app.test.cjs` também cobre o bloqueio e a recuperação na integração real extraída do app.
+
+O cenário `tests/draft-multitab-browser.html` permite conferir Web Locks, IndexedDB e eventos de armazenamento com duas abas reais. Ele usa apenas dados fictícios e chaves prefixadas por um UUID de simulação. Não habilita o modo por conta do aplicativo e não lê nem modifica tokens reais. Esses ensaios de módulos não substituem a validação completa da migração, da expiração de sessão e das operações em andamento no aplicativo antes de uma ativação com dados reais.
