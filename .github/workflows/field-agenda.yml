@@ -1,0 +1,20 @@
+name: Validar consulta de campo por unidade
+on:
+  push:
+    branches: [feature/crm-whatsapp-recorrencia-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  field-agenda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/postgres/package-lock.json
+      - run: npm ci --prefix tests/postgres --ignore-scripts --no-audit --no-fund
+      - name: Verificar autorização e projeção no PostgreSQL isolado
+        run: NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-db.integration.cjs
