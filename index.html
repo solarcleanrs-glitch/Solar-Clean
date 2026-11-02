@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261102-retomada-login-32" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: retomada após login recusado — 02/11 · revisão 32</small></div>
+<div id="homologNotice" data-app-release="20261102-agenda-campo-33" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: consulta de campo por acesso — 02/11 · revisão 33</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -1003,6 +1003,7 @@ function setTech(t){
   window.SCClientHistoryUI?.clear();
   window.SCScopedMigrationUI?.clear();
   window.SCSettlementUI?.clear();
+  window.SCFieldAgendaUI?.clear();
   window.AgendaLedgerStatus?.clear();
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
   updateLoggedUser();
@@ -4182,6 +4183,8 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/client-history-import-api.js"></script>
 <script src="lib/client-history-batch.js"></script>
 <script src="lib/client-history-ui.js"></script>
+<script src="lib/field-agenda-api.js"></script>
+<script src="lib/field-agenda-ui.js"></script>
 <script src="lib/imported-clients-crm.js"></script>
 </body>
 </html>

@@ -1,7 +1,9 @@
 # Consulta operacional por unidade — candidata para homologação
 
-Implementada no banco de testes em 02/11/2026. O aplicativo ainda usa a consulta
-anterior; esta etapa não ativa novos usuários nem substitui políticas existentes.
+Implementada no banco de testes em 02/11/2026. A revisão 33 integra uma consulta
+de leitura separada na tela inicial: “Agenda de campo por acesso — testes”.
+A agenda principal ainda usa a consulta anterior; esta etapa não ativa novos
+usuários nem substitui políticas existentes.
 
 `sc_agenda_campo(p_inicio date, p_fim date, p_unidade text default null)` retorna
 somente identificação operacional, contato, localização, placas, unidade,
@@ -39,7 +41,9 @@ membro é um pré-requisito separado, não uma migração oficial já autorizada
 
 ## Antes da liberação
 
-- Integrar a consulta na interface de campo e nos dados locais por conta.
+- Validar a consulta separada com uma sessão real e concluir sua adoção na
+  agenda principal. A consulta separada não grava dados locais e exige internet;
+  falhas não usam a agenda antiga como fallback. A troca de conta limpa a tela.
 - Substituir o acesso antigo às tabelas em conjunto com as políticas; manter
   acesso direto amplo permitiria contornar a projeção.
 - Separar também relatório, fotos, CRM e escrita operacional. Esta consulta

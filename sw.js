@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261102-login32";
+const CACHE_NAME = "solar-clean-staging-20261102-field33";
 
 const FILES_TO_CACHE = [
   "./",
@@ -6,6 +6,8 @@ const FILES_TO_CACHE = [
   "./manifest.json",
   "./lib/settlement-browser.js",
   "./lib/settlement-ui.js",
+  "./lib/field-agenda-api.js",
+  "./lib/field-agenda-ui.js",
   "./lib/agenda-ledger-status.js",
   "./lib/backup-recovery.js",
   "./lib/scoped-vistoria-store.js",

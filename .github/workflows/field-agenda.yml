@@ -20,3 +20,4 @@ jobs:
         run: |
           NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-db.integration.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-legacy-db.integration.cjs
+          node tests/field-agenda-api.test.cjs
