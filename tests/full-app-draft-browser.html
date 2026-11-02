@@ -1,0 +1,59 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aplicativo completo — ensaio isolado de rascunhos</title>
+<style>body{font:15px system-ui;margin:18px;background:#edf3f8;color:#173247}header{padding:14px;background:white;border:2px solid #d99930;border-radius:12px;margin-bottom:12px}h1{font-size:21px}button{padding:10px;margin:4px;font:inherit}iframe{width:100%;height:900px;border:1px solid #aebdcc;border-radius:10px;background:white}#result{white-space:pre-wrap;font-weight:600}</style>
+<header><h1>Aplicativo completo — teste sintético isolado</h1><p>Carrega o formulário e as funções reais do aplicativo. Configuração, contas e rascunhos ficam em memória. O IndexedDB aceita somente dois nomes exclusivos desta simulação. Chamadas de rede do aplicativo são bloqueadas.</p>
+<button id="media">Adicionar foto e assinatura sintéticas</button><button id="accountB">Simular login na conta B</button><button id="accountA">Simular login na conta A</button><button id="audit">Conferir dados do teste</button><p id="result" role="status">Preparando aplicativo isolado…</p></header>
+<iframe id="app" title="Aplicativo Solar Clean com dados sintéticos" sandbox="allow-scripts allow-same-origin"></iframe>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),actors={A:crypto.randomUUID(),B:crypto.randomUUID()};
+const fixtureId=crypto.randomUUID(),gif='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function bootstrap(seed){
+ const PROJECT='https://zzphucuiqhzrilrddxnf.supabase.co',MODE='solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf',PREFIX='solarCleanScopedOperational:v1:zzphucuiqhzrilrddxnf:';
+ const jwt=actor=>'synthetic.'+btoa(JSON.stringify({sub:actor,exp:Math.floor(Date.now()/1000)+86400}))+'.not-a-real-token';
+ const values=new Map([[MODE,'1'],['solarCleanAccessToken',jwt(seed.actors.A)],['solarCleanRefreshToken','synthetic-refresh-A'],['solarCleanTech',JSON.stringify({name:'Conta sintética A',email:'a@example.invalid',cloud:true,signature:''})],['solarCleanCompany',JSON.stringify({empresa:'TESTE SINTÉTICO — NÃO É PRODUÇÃO',supabaseUrl:PROJECT,supabaseKey:'synthetic-public-key-not-valid'})]]);
+ const memory={get length(){return values.size;},key:i=>[...values.keys()][i]??null,getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(String(k),String(v)),removeItem:k=>values.delete(k),clear:()=>values.clear()};
+ Object.defineProperty(window,'localStorage',{value:memory,configurable:false});
+ Object.defineProperty(navigator,'onLine',{value:false,configurable:false});
+ const nativeDB=window.indexedDB,allowed=new Set(Object.values(seed.actors).map(id=>PREFIX+id));
+ Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowed.has(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
+ window.fetch=async(url,options={})=>{
+  if(String(url)===PROJECT+'/auth/v1/token?grant_type=password'){
+   const body=JSON.parse(options.body||'{}'),which=body.email==='a@example.invalid'?'A':body.email==='b@example.invalid'?'B':null;
+   if(!which)return new Response('Conta fictícia inválida',{status:401});
+   return new Response(JSON.stringify({access_token:jwt(seed.actors[which]),refresh_token:'synthetic-refresh-'+which}),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  throw Error('Rede desativada neste ensaio sintético.');
+ };
+ window.confirm=()=>true;
+ window.alert=message=>parent.postMessage({type:'solar-clean-synthetic-alert',fixtureId:seed.fixtureId,message:String(message)},location.origin);
+ window.addEventListener('unhandledrejection',event=>parent.postMessage({type:'solar-clean-synthetic-error',fixtureId:seed.fixtureId,message:String(event.reason?.message||event.reason)},location.origin));
+}
+async function audit(){
+ const w=$('app').contentWindow,rows=await w.dbAll(),snap=w.captureAppFormDraft(),drafts=w.getAppDraftController().list();
+ const token=w.localStorage.getItem('solarCleanAccessToken'),actor=JSON.parse(atob(token.split('.')[1])).sub,account=actor===actors.A?'A':'B';
+ $('result').textContent=`Conta sintética: ${account}\nVistorias locais: ${rows.length} · fotos salvas: ${rows.reduce((n,r)=>n+(r.photos||[]).length,0)} · assinaturas salvas: ${rows.filter(r=>r.clientSignature).length}\nRascunhos desta conta: ${drafts.length}\nFormulário: ${snap.fields.find(f=>f.identity.includes(':cliente:'))?.value||'vazio'} · fotos: ${snap.state.photos.length} · assinatura: ${snap.state.signature?'sim':'não'}`;
+}
+function action(fn){return async()=>{try{await fn();}catch(error){$('result').textContent='FALHOU: '+error.message;}};}
+async function login(which){
+ const w=$('app').contentWindow;w.document.getElementById('techEmail').value=which.toLowerCase()+'@example.invalid';w.document.getElementById('techPassword').value='synthetic-only';w.document.getElementById('techName').value='Conta sintética '+which;
+ await w.cloudAuthLogin();await audit();
+}
+$('accountA').onclick=action(()=>login('A'));$('accountB').onclick=action(()=>login('B'));$('audit').onclick=action(audit);
+$('media').onclick=action(()=>{const w=$('app').contentWindow;w.__pendingPhotos=[{name:'synthetic.gif',type:'image/gif',category:'Antes',data:gif}];w.renderPhotoPreview();w.__signatureAt=new Date().toISOString();w.loadSignaturePad(gif);$('result').textContent='Foto e assinatura sintéticas adicionadas ao formulário real.';});
+window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('app').contentWindow&&event.data?.fixtureId===fixtureId&&['solar-clean-synthetic-alert','solar-clean-synthetic-error'].includes(event.data.type))$('result').textContent=event.data.message;});
+(async()=>{
+ if(location.hostname!=='solar-clean-testes-crm.pages.dev')throw Error('Ensaio permitido apenas no site de testes.');
+ const response=await fetch('/index.html');if(!response.ok)throw Error('Não foi possível carregar o aplicativo.');
+ let html=await response.text();
+ if(!html.includes('function appDraftEnabled()')||!html.includes('function generateAndSaveUnlocked()'))throw Error('Aplicativo incompatível com o ensaio.');
+ // These fixture-only changes isolate storage/network; operational functions
+ // and event handlers remain exactly the current application source.
+ html=html.replace(/<script\b[^>]*src="https?:[^>]*><\/script>/g,'');
+ const registration="if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');";
+ if(!html.includes(registration))throw Error('Revisar isolamento do service worker antes do ensaio.');
+ html=html.replace(registration,'/* Service worker disabled only in synthetic fixture. */');
+ const setup='<base href="'+location.origin+'/">'+'<script>('+bootstrap.toString()+')('+JSON.stringify({actors,fixtureId})+');'+'</'+'script>';
+ html=html.replace('<head>','<head>'+setup);
+ $('app').srcdoc=html;$('result').textContent='Aplicativo sintético preparado. Use Nova vistoria na área abaixo.';
+})().catch(error=>$('result').textContent='FALHOU: '+error.message);
+</script></html>
