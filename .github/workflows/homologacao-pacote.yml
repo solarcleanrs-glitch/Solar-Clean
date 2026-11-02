@@ -43,6 +43,7 @@ jobs:
           node tests/form-draft-app.test.cjs
           node tests/signature-session-context.test.cjs
           node tests/draft-multitab.test.cjs
+          node tests/full-app-draft-fixture.test.cjs
           node tests/scoped-vistoria-store.test.cjs
           node tests/scoped-migration-ui.test.cjs
           node tests/read-only-diagnostics.test.cjs
