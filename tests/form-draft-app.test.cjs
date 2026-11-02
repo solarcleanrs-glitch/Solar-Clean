@@ -18,8 +18,9 @@ function setup(enabled=true){
  return {ctx,data,fields,calls,quota:v=>quota=v};
 }
 (async()=>{
- let h=setup();h.ctx.beginAppFormDraft();h.quota(true);assert.throws(()=>h.ctx.endCloudSession(),/quota/);assert.equal(h.data.get('solarCleanAccessToken'),token(A));assert.equal(h.fields[0].value,'Synthetic A');assert.equal(h.calls.length,0);
+ let h=setup();h.ctx.$('#countV').textContent='99';h.ctx.$('#countC').textContent='88';h.ctx.$('#countPending').textContent='77';h.ctx.beginAppFormDraft();h.quota(true);assert.throws(()=>h.ctx.endCloudSession(),/quota/);assert.equal(h.data.get('solarCleanAccessToken'),token(A));assert.equal(h.fields[0].value,'Synthetic A');assert.equal(h.calls.length,0);
  h.quota(false);h.ctx.endCloudSession();assert.equal(h.data.has('solarCleanAccessToken'),false);assert.equal(h.fields[0].value,'');assert.equal(h.ctx.__pendingPhotos.length,0);assert.equal(h.ctx.__techSignatureData,'');
+ for(const id of ['countV','countC','countPending'])assert.equal(h.ctx.$('#'+id).textContent,'—','old account counters must be cleared synchronously');
  const key=[...h.data.keys()].find(k=>k.startsWith('solarCleanDraft:'));assert.ok(key.includes(A));const saved=JSON.parse(h.data.get(key));assert.equal(saved.payload.state.editingRecord.baseRevision,4);assert.equal(saved.payload.state.agendaSourceId,'legacy text id');
  h=setup();h.ctx.beginAppFormDraft();await h.ctx.cloudAuthLogin();assert.equal(h.data.get('solarCleanAccessToken'),token(B));assert.equal(JSON.parse(h.data.get('solarCleanTech')).signature,'','old technician signature must not enter the new account');assert.equal(h.fields[0].value,'');assert.equal(h.ctx.getAppDraftController().list().length,0);
  h.data.set('solarCleanAccessToken',token(A));const own=h.ctx.getAppDraftController().list();assert.equal(own.length,1);h.ctx.getAppDraftController().recover(own[0].id);assert.equal(h.fields[0].value,'Synthetic A');assert.equal(h.fields[1].value,'0');assert.equal(h.ctx.editingRecord.id,9);assert.equal(h.ctx.step,6);

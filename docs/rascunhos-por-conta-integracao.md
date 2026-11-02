@@ -39,3 +39,11 @@ O salvamento candidato usa Web Locks exclusivos por proprietário e UUID do rasc
 O cenário `tests/draft-multitab-browser.html` permite conferir Web Locks, IndexedDB e eventos de armazenamento com duas abas reais. Ele usa apenas dados fictícios e chaves prefixadas por um UUID de simulação. Não habilita o modo por conta do aplicativo e não lê nem modifica tokens reais. Esses ensaios de módulos não substituem a validação completa da migração, da expiração de sessão e das operações em andamento no aplicativo antes de uma ativação com dados reais.
 
 Ensaio observado em Chrome, com duas abas reais: primeira aba reteve o Web Lock durante uma pausa; a segunda aguardou e depois recebeu a rejeição de cópia já gravada. IndexedDB permaneceu com um registro. A troca A → B limpou o formulário da outra aba e mostrou zero cópias em B; ao voltar para A, a cópia foi recuperada com o cliente fictício original. Nenhum token ou registro real foi usado.
+
+## Revisão 31 — ensaio do aplicativo completo
+
+O cenário `full-app-draft-browser.html` carrega uma cópia gerada do HTML atual do aplicativo. O comando `node scripts/build-full-app-draft-fixture.cjs --check` exige correspondência com o fonte. Os testes verificam que a configuração e os tokens são fictícios e ficam apenas em memória, que a rede é bloqueada e que IndexedDB recusa a base legada e qualquer nome fora de dois UUIDs exclusivos da simulação. O service worker e o carregador externo do Google são desativados somente nessa cópia de teste.
+
+No ensaio real do navegador, a troca A/B/A preservou e recuperou o formulário incompleto, valor zero, classificação RS/Particular, foto e assinatura. A cópia recuperada foi salva por meio do botão real do app e gerou o relatório com mídia e assinatura em IndexedDB. O ensaio identificou contadores antigos no resumo após a troca de conta: a revisão 31 limpa esses números imediatamente e solicita nova leitura com a guarda da sessão atual. Um teste de regressão cobre essa limpeza síncrona.
+
+Esta simulação valida o fluxo local e a interface; a autenticação é simulada e nenhuma sincronização remota é executada. Ela não valida o servidor de autenticação, políticas do banco, migração dos dados reais nem o arquivo PDF exportado pelo navegador.

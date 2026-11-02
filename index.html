@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261101-rascunhos-abas-30" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: rascunhos entre abas em preparação — 01/11 · revisão 30</small></div>
+<div id="homologNotice" data-app-release="20261102-rascunhos-contadores-31" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: recuperação e resumo por conta em preparação — 02/11 · revisão 31</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -838,9 +838,12 @@ function clearAppDraftView(){
     currentReportRecord=null;currentReportSessionGuard=()=>{throw Error('Abra um relatório nesta conta.');};
     ['rCliente','rTelefone','rCidade','rEndereco','rTecnico','rObs','rDate','rSujidades','rInvStatus','rInv','rDps','rPlacas','rPotPlaca','rPotTotal','rMarcaPlaca','rTelhado','rSujeira','rEstrutura','rInvInternet','rAntes','rDepois','rDif','rPct','rLimpeza','rRetorno'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
     ['rPhotos','historyList','adminList','agendaList'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
+    ['countV','countC','countPending'].forEach(id=>{if($('#'+id))$('#'+id).textContent='—';});
     ['rTechSignature','rClientSignature'].forEach(id=>{const n=$('#'+id);if(n){n.removeAttribute('src');n.classList.add('hidden');}});
     window.__techSignatureData='';clearTechSignaturePad(false);
     $('#techName').value='';$('#techEmail').value='';$('#techPassword').value='';show('home');
+    if(typeof updateSyncBadge==='function')updateSyncBadge('Conta alterada');
+    if(typeof updateDashboard==='function'&&appDraftEnabled()&&appDraftContext().actor)void updateDashboard().catch(()=>{});
   }finally{appDraftSuspended=false;}
 }
 function getAppDraftController(){
