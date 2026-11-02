@@ -49,3 +49,11 @@ No ensaio real do navegador, a troca A/B/A preservou e recuperou o formulário i
 Esta simulação valida o fluxo local e a interface; a autenticação é simulada e nenhuma sincronização remota é executada. Ela não valida o servidor de autenticação, políticas do banco, migração dos dados reais nem o arquivo PDF exportado pelo navegador.
 
 Revisão 31 conferida no navegador após a correção: conta A com uma vistoria, uma foto e uma assinatura; após login em B, a auditoria e os três contadores do resumo mostraram zero. Ao retornar para A, os contadores e a auditoria voltaram a um, sem perda da mídia. Na etapa anterior do mesmo ensaio completo, recuperar a origem anterior ao salvamento e tentar salvar novamente foi rejeitado, mantendo uma única vistoria. O painel de rascunhos também é atualizado na abertura do aplicativo, sem exigir novo login.
+
+## Revisão 32 — formulário após tentativa de login recusada
+
+Uma tentativa de login incrementa a geração da sessão para invalidar operações antigas. O ensaio de regressão identificou que, mesmo após recusa sem mudança de conta, a guarda do formulário permanecia na geração antiga, impedindo continuar o salvamento.
+
+Na homologação, a revisão 32 reconstrói apenas a guarda do formulário original depois da falha, se o projeto/chave, a identificação, ambos os tokens, a geração da tentativa e a própria referência do formulário continuarem iguais. Não restaura tokens nem revalida operações assíncronas antigas. Não faz essa reconstrução após logout, troca de conta, nova tentativa concorrente ou substituição do formulário. O comportamento de produção permanece fora dessa correção.
+
+`auth-session-race.test.cjs` reproduz a recusa, falha de rede, logout durante a tentativa e abertura de outro formulário. O cenário completo também oferece uma recusa sintética para conferir continuidade e salvamento sem autenticação real.

@@ -117,7 +117,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261102-rascunhos-contadores-31" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: recuperação e resumo por conta em preparação — 02/11 · revisão 31</small></div>
+<div id="homologNotice" data-app-release="20261102-retomada-login-32" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: retomada após login recusado — 02/11 · revisão 32</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -3756,8 +3756,12 @@ async function cloudAuthLogin(){
   const c=cloudConfig(),email=$('#techEmail').value.trim(),password=$('#techPassword').value;
   if(!cloudReady())throw new Error('Configure primeiro a URL e a Anon Key do Supabase em Dados da empresa.');
   if(!email||!password)throw new Error('Informe e-mail e senha.');
+  const previousFormGuard=typeof formSessionGuard==='function'?formSessionGuard:null;
+  const previousIdentity=['solarCleanTech','solarCleanAccessToken','solarCleanRefreshToken'].map(key=>[key,localStorage.getItem(key)]);
   authSessionGeneration++;
+  const attemptGeneration=authSessionGeneration;
   const loginGuard=captureAuthSessionGuard();
+  try{
   const res=await fetch(`${c.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:{'apikey':c.key,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
   loginGuard();
   if(!res.ok)throw new Error('Login inválido ou usuário não cadastrado.');
@@ -3771,6 +3775,13 @@ async function cloudAuthLogin(){
   setTech({name:$('#techName').value.trim()||email,email,cloud:true,signature});
   finishDraftChange();
   return true;
+  }catch(error){
+    // A failed sign-in invalidates old asynchronous operations, but must not
+    // permanently disable an untouched form in the unchanged original account.
+    const now=cloudConfig();
+    if(c.url==='https://zzphucuiqhzrilrddxnf.supabase.co'&&previousFormGuard&&formSessionGuard===previousFormGuard&&authSessionGeneration===attemptGeneration&&now.url===c.url&&now.key===c.key&&previousIdentity.every(([key,value])=>localStorage.getItem(key)===value))formSessionGuard=captureVistoriaOperationGuard();
+    throw error;
+  }
 }
 
 /* ---------- Painel administrativo ---------- */
