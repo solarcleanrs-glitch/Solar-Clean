@@ -16,3 +16,17 @@ state={...state,actor:A,generation:5};assert.equal(vault.read(ID).payload.record
 state={...state,actor:''};assert.throws(()=>vault.read(ID),/identificada/);
 state={project:'https://production.example',actor:A,generation:6};assert.throws(()=>vault.save(ID,{}),/testes/);
 assert.equal(data.size,2);console.log('PASS: draft snapshots isolate A/B/A, retain edit identity/photo/signature, propagate quota and reject session races and production');
+state={project:PROJECT,actor:A,generation:7};
+const before=[...data.values()];
+for(const invalid of [{photo:new Uint8Array([1,2])},{amount:NaN},{amount:Infinity},{missing:undefined},{when:new Date()}, {photos:new Array(2)}])assert.throws(()=>vault.save(ID,invalid),/preservado|binária|incompleta/);
+const circular={};circular.self=circular;assert.throws(()=>vault.save(ID,circular),/preservado/);
+assert.deepEqual([...data.values()],before,'unsupported data must never overwrite a valid draft');
+assert.throws(()=>vault.save(ID,{record:{}},{expectedRaw:null}),/outra aba/);
+assert.deepEqual([...data.values()],before);
+const key=[...data.keys()].find(k=>k.includes(A));
+vault.save(ID,{record:{cliente:'version checked'}},{expectedRaw:data.get(key)});
+assert.equal(vault.read(ID).payload.record.cliente,'version checked');
+const fs=require('node:fs'),vm=require('node:vm'),browser={window:{}};
+vm.runInNewContext(fs.readFileSync('lib/account-draft-vault.cjs','utf8'),browser);
+assert.equal(typeof browser.window.SCAccountDraftVault.create,'function');
+console.log('PASS: browser build, lossless JSON validation and stale snapshot rejection before writes');
