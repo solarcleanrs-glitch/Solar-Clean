@@ -22,3 +22,4 @@ jobs:
           NODE_PATH=./tests/postgres/node_modules node tests/field-agenda-legacy-db.integration.cjs
           node tests/field-agenda-api.test.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/legacy-report-media-guard-db.integration.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/scoped-report-db.integration.cjs
