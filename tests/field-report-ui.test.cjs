@@ -12,7 +12,7 @@ const row={client_uuid:owner,cliente:'Synthetic',created_at:'2026-10-29T02:59:59
 const window={addEventListener:(name,fn)=>events[name]=fn,fetch:()=>{},SCFieldAgenda:{
  reports:async()=>deferred?await deferred.promise:[row],
  report:async()=>({client_uuid:owner,cliente:'Synthetic',placas:0,obs:'PRIVATE',valor_cobrado:'PRIVATE',media_manifest:[{category:'Antes'}]}),
- photo:async()=>({}),read:async()=>[]}};
+ photo:async()=>({}),read:async()=>[],clients:async()=>[]}};
 vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{window,location:{hostname:'solar-clean-testes-crm.pages.dev'},document:{querySelector:()=>home,getElementById:id=>nodes.get(id),createElement:()=>new Element(),createDocumentFragment:()=>new Element()},navigator:{onLine:true},currentTech:()=>({cloud:true}),captureVistoriaOperationGuard:()=>{const before=actor;return()=>{if(actor!==before)throw Error('account changed');};},ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:'staging'}),crmHistoryCloudHeaders:()=>({}),URL:{createObjectURL:()=> 'blob:synthetic',revokeObjectURL:url=>revoked.push(url)},Date,Set,Error,String,Object});
 const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
@@ -26,5 +26,11 @@ const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve))
  let resolve;deferred={promise:new Promise(r=>resolve=r)};const pending=el('fieldReportsLoad').onclick();await flush();
  el('fieldAgendaUnit').value='SC';el('fieldAgendaUnit').onchange();resolve([row]);await pending;
  assert.equal(el('fieldReportsRows').children.length,0,'late result cannot refill changed filters');assert.equal(el('fieldReportsLoad').disabled,false);
+ window.SCFieldAgenda.clients=async()=>[{cliente:'Synthetic imported',telefone:'',cidade:'City',endereco:'Street',unidade:'RS',origem:'particular'}];
+ await el('fieldClientsLoad').onclick();assert.equal(el('fieldClientsRows').children.length,1);
+ el('fieldClientsSearch').value='old account search';window.SCFieldAgendaUI.clear();assert.equal(el('fieldClientsRows').children.length,0);assert.equal(el('fieldClientsSearch').value,'');
+ let release;window.SCFieldAgenda.clients=()=>new Promise(r=>release=r);
+ const oldClients=el('fieldClientsLoad').onclick();await flush();el('fieldClientsSearch').value='new query';el('fieldClientsSearch').oninput();release([{cliente:'stale'}]);await oldClients;
+ assert.equal(el('fieldClientsRows').children.length,0,'late client search cannot refill the screen');assert.equal(el('fieldClientsLoad').disabled,false);
  console.log('PASS: actual UI renders zero safely, hides unapproved fields, uses Brazil date, revokes photo URLs on account switch and rejects late filter results');
 })().catch(e=>{console.error(e);process.exit(1)});
