@@ -37,13 +37,19 @@ const {PGlite}=require('@electric-sql/pglite');
   for(const photo of photos.slice(0,2))await db.query("insert into storage.objects values($1,'vistoria-media')",[photo.storagePath]);
  }
  await db.query("insert into storage.objects values($1,'vistoria-media')",[id(301)+'/guessed.jpg']);
+ await db.exec("alter table vistorias add column created_at timestamptz;update vistorias set created_at='2026-10-29T02:59:59Z'");
  const baseline=(await db.query('select to_jsonb(v) row from vistorias v order by client_uuid')).rows;
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261103003507_scoped_report_read_staging.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261103004245_scoped_report_list_staging.sql'),'utf8'));
  const asUser=async n=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[n?id(n):'']);await db.exec('set role authenticated');};
  const report=async n=>(await db.query('select sc_relatorio_campo($1) r',[id(n)])).rows[0].r;
- await asUser(1);assert.ok(await report(303),'manager retains unclassified');
+ const list=async(unit=null)=>(await db.query("select * from sc_relatorios_campo('2026-10-28','2026-10-28',$1)",[unit])).rows;
+ await asUser(1);assert.ok(await report(303),'manager retains unclassified');assert.equal((await list()).length,3);
+ assert.equal((await list('RS')).length,1);
+ assert.equal((await db.query("select * from sc_relatorios_campo('2026-10-29','2026-10-29',null)")).rows.length,0,'Brazil date boundary');
  for(const n of [2,4]){
   await asUser(n);const r=await report(301);assert.equal(r.cliente,'Synthetic');
+  assert.deepEqual((await list()).map(x=>x.client_uuid),[id(301)],'list obeys same scope as report');
   for(const forbidden of ['obs','valor_cobrado','client_signature','sc_escopo_id'])assert.equal(Object.hasOwn(r,forbidden),false);
   assert.equal(r.media_manifest.length,1,'internal, foreign and traversal paths excluded');
   assert.equal(await report(302),null);assert.equal(await report(303),null);assert.equal(await report(999),null);
@@ -56,7 +62,7 @@ const {PGlite}=require('@electric-sql/pglite');
  }
  await asUser(3);assert.ok(await report(302));assert.equal(await report(301),null);
  await asUser(5);assert.equal(await report(301),null,'different partner');
- await asUser(6);await assert.rejects(report(301),/não autorizado/);
+ await asUser(6);await assert.rejects(report(301),/não autorizado/);await assert.rejects(list(),/não autorizado/);
  await asUser(99);await assert.rejects(report(301),/não autorizado/);
  await asUser(null);await assert.rejects(report(301),/Autenticação/);
  await db.exec('reset role');await db.query('update sc_acessos set ativo=false where user_id=$1',[id(2)]);

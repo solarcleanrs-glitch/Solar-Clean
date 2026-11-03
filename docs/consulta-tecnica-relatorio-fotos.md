@@ -1,6 +1,10 @@
 # Consulta técnica de relatório e fotos — testes
 
-Disponível no banco de testes, sem ativar contas ou modificar a interface atual.
+Disponível no banco de testes, sem ativar contas. A tela inicial possui o painel
+“Agenda e relatórios por acesso — testes”: usa o período/unidade selecionados,
+lista relatórios autorizados e abre a consulta técnica. Cada foto é carregada
+apenas ao pressionar “Abrir foto”. A agenda principal e o PDF atual do gestor
+continuam em seus fluxos anteriores.
 `sc_relatorio_campo(p_vistoria uuid)` recebe o `client_uuid` da vistoria e retorna
 um JSON técnico ou `null` quando o registro não existe ou está fora do escopo.
 Conta ausente, desativada ou sem papel operacional recebe erro de autorização.
@@ -51,7 +55,23 @@ acesso preservado do gestor e bloqueios de outra conta/anônimo/foto inválida.
 Impressões digitais de vistorias e objetos do Storage ficaram iguais. Isso
 não é teste HTTP com uma conta real de técnico ou parceiro.
 
-Falta integrar a projeção na interface específica de campo e validar uma sessão
-de técnico/parceiro antes de ativar esses perfis. CRM e escrita operacional
+Falta validar a interface com sessão real de técnico/parceiro antes de ativar
+esses perfis. CRM e escrita operacional
 permanecem em etapas separadas. A versão oficial não foi alterada. Não aplicar
 a migração automaticamente em produção nem desfazer as proteções anteriores.
+
+`sc_relatorios_campo(p_inicio,p_fim,p_unidade)` lista apenas identificador,
+cliente, data e unidade dos relatórios autorizados pela mesma regra do detalhe.
+Limite de 93 dias; datas interpretadas no fuso America/Sao_Paulo. Registros sem
+classificação aparecem ao gestor apenas na opção de todas as unidades.
+
+O painel não grava relatórios/fotos em armazenamento local e não usa o cache
+antigo como alternativa a uma falha. Fotografias são baixadas com autenticação,
+sem URL assinada pública, exibidas por URL de objeto em memória e revogadas ao
+trocar de conta, filtros ou relatório. A autorização do servidor é verificada
+no download; cópias já baixadas não são apagadas por revogação de acesso.
+
+`field-report-api.test.cjs` e `field-report-ui.test.cjs` conferem a projeção,
+tipo de imagem, ausência de token na URL, bloqueio de foto interna/estrangeira,
+troca de conta durante download, limpeza das URLs, respostas atrasadas após
+mudança de filtros, exibição correta do valor zero e data no fuso brasileiro.
