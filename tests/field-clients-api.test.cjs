@@ -3,6 +3,7 @@ const assert=require('node:assert/strict'),api=require('../lib/field-agenda-api.
 const row={id:'11111111-1111-4111-8111-111111111111',cliente:'Synthetic',telefone:'',cidade:'City',endereco:'Street',unidade:'RS',origem:'particular',cadastro_inicial:{secret:true},criado_por:'private'};
 const ctx={url:'https://zzphucuiqhzrilrddxnf.supabase.co',check:()=>{},input:{unit:'RS',search:'Synthetic'},headers:{}};
 (async()=>{
+ for(const search of [false,0,{},[]]) await assert.rejects(api.clients({...ctx,input:{unit:'RS',search},fetch:()=>{throw Error('network must not run');}}),/inválida/);
  let calls=[];
  const rows=await api.clients({...ctx,fetch:async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>calls.length===1?[row]:[]};}});
  assert.equal(rows.length,1);assert.deepEqual(Object.keys(rows[0]).sort(),['id','cliente','telefone','cidade','endereco','unidade','origem'].sort());
