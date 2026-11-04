@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {plan}=require('../lib/client-history-import-plan.cjs');
+const c={events:[{id:'a',status:'confirmed',sourceKey:'test@example.invalid:a',description:'Original sintético'}]};
+const review={confirmed:true,clientId:'11111111-1111-4111-8111-111111111111',calendarId:'test@example.invalid',fields:{cliente:'Cliente',telefone:'',cidade:'',endereco:'',unidade:'SC',origem:'nao_informada',parceiro_id:null}};
+const before=JSON.stringify(c),p=plan(c,review);assert.deepEqual(p,plan(c,review));assert.equal(JSON.stringify(c),before);assert.equal(p[0].params.p_original.sourceKey,undefined);assert.equal(p[0].params.p_original.description,c.events[0].description);
+assert.throws(()=>plan(c,{...review,confirmed:false}),/Confirmação/);
+assert.throws(()=>plan(c,{...review,calendarId:'other@example.invalid'}),/origem incompatível/);
+for(const fields of [{...review.fields,unidade:''},{...review.fields,origem:'YES'},{...review.fields,telefone:'51999991234'},{...review.fields,valor:350},{...review.fields,origem:'parceiro'}])assert.throws(()=>plan(c,{...review,fields}));
+assert.throws(()=>plan({events:[c.events[0],c.events[0]]},review),/repetido/);
+assert.throws(()=>plan({events:[{...c.events[0],status:'cancelled'}]},review),/incompatível/);
+console.log('PASS: plano explícito por evento, campos revisados, origem conferida e IDs preservados sem I/O');

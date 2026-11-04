@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{execFileSync}=require('node:child_process');
+execFileSync(process.execPath,['scripts/build-full-app-draft-fixture.cjs','--check']);
+const source=fs.readFileSync('tests/full-app-draft-env.js','utf8');
+const allowed=[];let outsideReads=0;
+const w={indexedDB:{open(name){allowed.push(name);return name;}},confirm:null,addEventListener(){}};
+Object.defineProperty(w,'localStorage',{get(){outsideReads++;throw Error('must never read real storage');},configurable:true});
+const c={window:w,navigator:{},Map,Set,Date,JSON,Object,String,Error,Math,btoa:s=>Buffer.from(s).toString('base64'),Response,parent:{postMessage(){}},location:{origin:'https://solar-clean-testes-crm.pages.dev'}};
+vm.createContext(c);vm.runInContext(source,c);
+const A='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',B='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';c.bootstrap({actors:{A,B},fixtureId:'synthetic'});
+assert.equal(outsideReads,0);assert.equal(c.navigator.onLine,false);assert.throws(()=>w.indexedDB.open('solarCleanDB'),/bloqueada/);
+const db='solarCleanScopedOperational:v1:zzphucuiqhzrilrddxnf:'+A;assert.equal(w.indexedDB.open(db),db);assert.deepEqual(allowed,[db]);
+assert.equal(w.localStorage.getItem('solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf'),'1');
+(async()=>{await assert.rejects(w.fetch('https://example.invalid/real'),/desativada/);const r=await w.fetch('https://zzphucuiqhzrilrddxnf.supabase.co/auth/v1/token?grant_type=password',{body:JSON.stringify({email:'b@example.invalid'})});assert.equal(r.status,200);assert.equal(outsideReads,0);console.log('PASS: synthetic complete app fixture cannot access real localStorage, legacy/other IndexedDB or real network');})().catch(e=>{console.error(e);process.exit(1)});

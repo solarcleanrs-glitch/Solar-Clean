@@ -1,9 +1,28 @@
-const CACHE_NAME = "solar-clean-v2";
+const CACHE_NAME = "solar-clean-staging-20261104-field-status43";
 
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./lib/settlement-browser.js",
+  "./lib/settlement-ui.js",
+  "./lib/field-agenda-api.js",
+  "./lib/field-agenda-ui.js",
+  "./lib/agenda-ledger-status.js",
+  "./lib/backup-recovery.js",
+  "./lib/scoped-vistoria-store.js",
+  "./lib/scoped-local-runtime.js",
+  "./lib/account-draft-vault.js",
+  "./lib/account-draft-session.js",
+  "./lib/form-draft-adapter.js",
+  "./lib/draft-save-lock.js",
+  "./lib/scoped-vistoria-migration-ui.js",
+  "./lib/google-history-review.js",
+  "./lib/client-history-import-plan.js",
+  "./lib/client-history-import-api.js",
+  "./lib/client-history-ui.js",
+  "./lib/client-history-batch.js",
+  "./lib/imported-clients-crm.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -33,3 +52,4 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
+

@@ -1,0 +1,22 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Ensaio de armazenamento operacional separado</title><style>body{font:18px system-ui;max-width:850px;margin:40px auto;padding:20px}button{font:inherit;padding:12px}pre{white-space:pre-wrap}</style><h1>Ensaio sintético do armazenamento separado</h1><p>Usa IDs aleatórios e dados inventados. Não acessa o banco antigo, a configuração do app ou o Supabase. Mantém os bancos sintéticos para inspeção.</p><button id="run">Executar ensaio</button><pre id="result"></pre><script src="../lib/scoped-local-runtime.js"></script><script>
+const output=document.getElementById('result');document.getElementById('run').onclick=async()=>{
+const button=document.getElementById('run');button.disabled=true;output.textContent='Executando…';
+try{
+const api=SCScopedLocalRuntime,A=crypto.randomUUID(),B=crypto.randomUUID();let current={project:api.PROJECT,actor:A,generation:1};const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
+for(const k of api.KEYS)values.set(k,k.includes('Meta')||k.includes('History')?'{}':'[]');values.set(api.KEYS[0],'[{"id":"Synthetic:legacy","syncStatus":"pending"}]');
+const runtime=api.create({storage,context:()=>current}),backend=api.indexedDBBackend(indexedDB);
+const source=[{id:1,cliente:'Synthetic A',photos:[{data:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}],syncStatus:'pending',cloudId:null}];
+const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
+const copied=await runtime.copyAndEnable({confirmedOwner:current,sourceRecords:source,readLegacy:async()=>structuredClone(source),backend});
+assert(copied.verifiedVistorias===1,'Cópia não conferiu');assert(JSON.stringify(await backend.list(copied.database))===JSON.stringify(source),'Foto/fila não preservada');
+// Verify the operational DB accepts IDs generated like the actual app's dbAdd.
+await new Promise((resolve,reject)=>{const req=indexedDB.open(copied.database,2);req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('vistorias','readwrite');const add=tx.objectStore('vistorias').add({cliente:'Synthetic new',syncStatus:'pending'});add.onsuccess=()=>{try{assert(add.result===2,'ID incremental incorreto')}catch(e){tx.abort();reject(e)}};tx.oncomplete=()=>{db.close();resolve()};tx.onabort=()=>{db.close();reject(tx.error||Error('Abort'))};};});
+const snap=runtime.capture();current={...current,actor:B,generation:2};let blocked=false;try{snap.check()}catch{blocked=true}assert(blocked,'Operação antiga não bloqueada');assert(runtime.get(api.KEYS[0])===null,'Agenda A exposta em B');
+const dbB=runtime.capture().database;assert((await backend.list(dbB)).length===0,'Vistorias A expostas em B');runtime.set(api.KEYS[0],'[{"id":"Synthetic B"}]');
+current={...current,actor:A,generation:3};assert(runtime.get(api.KEYS[0]).includes('Synthetic:legacy'),'Agenda A não recuperada');assert((await backend.list(runtime.capture().database)).length===2,'Vistorias A não recuperadas');
+let conflict=false;try{await backend.copyMissing(copied.database,[{id:99},{id:1,cliente:'Conflict'}],()=>{})}catch{conflict=true}assert(conflict,'Conflito não bloqueado');assert((await backend.list(copied.database)).length===2,'Cópia parcial indevida');
+assert(values.get(api.KEYS[0]).includes('Synthetic:legacy'),'Legado alterado');
+output.textContent='PASSOU: IndexedDB real, foto, fila pendente, ID incremental, A/B/A, agenda por conta, operação atrasada e conflito sem cópia parcial.\nNamespaces sintéticos: '+copied.database+'\n'+dbB;
+}catch(e){output.textContent='FALHOU: '+e.message;}finally{button.disabled=false;}
+};
+</script></html>

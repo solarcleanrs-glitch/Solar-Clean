@@ -1,0 +1,7 @@
+node_modules/
+supabase/.temp/
+*.dump
+estrutura-*.sql
+solar-clean-historico-google-*.json
+solar-clean-clientes-antigos-*.json
+solar-clean-conferencia-clientes-*.html

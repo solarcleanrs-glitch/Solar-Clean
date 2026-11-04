@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const html=fs.readFileSync('index.html','utf8');
+const matcher=html.slice(html.indexOf('function agendaMatchesOrigin('),html.indexOf('function collectAgendaContext('));
+const monthly=html.slice(html.indexOf('function buildAgendaMonthly('),html.indexOf('function renderAgendaMonthly('));
+const preview=html.slice(html.indexOf('function buildAgendaPartnerPreview('),html.indexOf('let agendaPartnerPreviewCurrent='));
+const {build,csv}=new Function(matcher+monthly+preview+'return {build:buildAgendaPartnerPreview,csv:agendaPartnerPreviewCsv}')();
+const partner='22222222-2222-4222-8222-222222222222';
+const row={id:'1',cliente:'=PRIVATE()',note:'secret note',extraExpense:20,unit:'SC',date:'2026-10-31',status:'Concluído',syncStatus:'synced',scopeId:'scope',serviceContext:{unit:'SC',partnerId:partner},baseRevision:1,serviceValue:350,valorCobrado:350,valorRecebido:100};
+const run=rows=>build(rows,'2026-10','SC',partner);
+const before=JSON.stringify(row),r=run([row]);assert.equal(r.balance,25000);assert.equal(r.charged,35000);assert.equal(r.issues.length,0);assert.equal(JSON.stringify(row),before);
+assert.equal(r.items[0].extraExpense,undefined);const output=csv(r,'YES');assert.ok(output.includes(' =PRIVATE()'));assert.ok(!output.includes('secret note'));assert.ok(!output.includes('20,00'));
+for(const change of [{valorCobrado:0},{valorRecebido:400},{scopeId:null},{baseRevision:0},{serviceContext:{unit:'RS',partnerId:partner}},{importedGoogle:true},{source:'historico_google_agenda'}])assert.ok(run([{...row,...change}]).issues.length);
+assert.throws(()=>csv(run([{...row,valorCobrado:0}]),'YES'),/pendências/);
+assert.equal(run([{...row,syncStatus:'pending'}]).issues.length,1);
+assert.equal(run([{...row,unit:'RS'},{...row,date:'2026-11-01'},{...row,archivedAt:'yes'},{...row,status:'Cancelado'}]).items.length,0);
+assert.throws(()=>build([row],'2026-10','SC','particular'),/parceiro/);
+assert.throws(()=>run([row,row]),/duplicado/);
+console.log('PASS: partner preview isolation, explicit charge, costs excluded, partial receipts, blockers and CSV privacy');

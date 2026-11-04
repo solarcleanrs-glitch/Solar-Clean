@@ -1,0 +1,30 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aplicativo completo — ensaio isolado de rascunhos</title>
+<style>body{font:15px system-ui;margin:18px;background:#edf3f8;color:#173247}header{padding:14px;background:white;border:2px solid #d99930;border-radius:12px;margin-bottom:12px}h1{font-size:21px}button{padding:10px;margin:4px;font:inherit}iframe{width:100%;height:900px;border:1px solid #aebdcc;border-radius:10px;background:white}#result{white-space:pre-wrap;font-weight:600}</style>
+<header><h1>Aplicativo completo — teste sintético isolado</h1><p>Carrega o formulário e as funções reais do aplicativo. Configuração, contas e rascunhos ficam em memória. O IndexedDB aceita somente dois nomes exclusivos desta simulação. Chamadas de rede do aplicativo são bloqueadas.</p>
+<button id="media">Adicionar foto e assinatura sintéticas</button><button id="accountB">Simular login na conta B</button><button id="accountA">Simular login na conta A</button><button id="audit">Conferir dados do teste</button><p id="result" role="status">Preparando aplicativo isolado…</p></header>
+<button id="rejectedLogin">Simular login recusado</button>
+<iframe id="app" title="Aplicativo Solar Clean com dados sintéticos" sandbox="allow-scripts allow-same-origin"></iframe>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),actors={A:crypto.randomUUID(),B:crypto.randomUUID()};
+const fixtureId=crypto.randomUUID(),gif='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+async function audit(){
+ const w=$('app').contentWindow,rows=await w.dbAll(),snap=w.captureAppFormDraft(),drafts=w.getAppDraftController().list();
+ const token=w.localStorage.getItem('solarCleanAccessToken'),actor=JSON.parse(atob(token.split('.')[1])).sub,account=actor===actors.A?'A':'B';
+ $('result').textContent=`Conta sintética: ${account}\nVistorias locais: ${rows.length} · fotos salvas: ${rows.reduce((n,r)=>n+(r.photos||[]).length,0)} · assinaturas salvas: ${rows.filter(r=>r.clientSignature).length}\nRascunhos desta conta: ${drafts.length}\nFormulário: ${snap.fields.find(f=>f.identity.includes(':cliente:'))?.value||'vazio'} · fotos: ${snap.state.photos.length} · assinatura: ${snap.state.signature?'sim':'não'}`;
+}
+function action(fn){return async()=>{try{await fn();}catch(error){$('result').textContent='FALHOU: '+error.message;}};}
+async function login(which){
+ const w=$('app').contentWindow;w.document.getElementById('techEmail').value=which.toLowerCase()+'@example.invalid';w.document.getElementById('techPassword').value='synthetic-only';w.document.getElementById('techName').value='Conta sintética '+which;
+ await w.cloudAuthLogin();await audit();
+}
+$('accountA').onclick=action(()=>login('A'));$('accountB').onclick=action(()=>login('B'));$('audit').onclick=action(audit);
+$('rejectedLogin').onclick=action(async()=>{try{await login('INVALID');throw Error('O login fictício deveria ser recusado.');}catch(error){if(error.message!=='Login inválido ou usuário não cadastrado.')throw error;$('result').textContent='Login recusado como esperado. O formulário permanece aberto.';}});
+$('media').onclick=action(()=>{const w=$('app').contentWindow;w.__pendingPhotos=[{name:'synthetic.gif',type:'image/gif',category:'Antes',data:gif}];w.renderPhotoPreview();w.__signatureAt=new Date().toISOString();w.loadSignaturePad(gif);$('result').textContent='Foto e assinatura sintéticas adicionadas ao formulário real.';});
+window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===$('app').contentWindow&&event.data?.fixtureId===fixtureId&&['solar-clean-synthetic-alert','solar-clean-synthetic-error'].includes(event.data.type))$('result').textContent=event.data.message;});
+(async()=>{
+ if(location.hostname!=='solar-clean-testes-crm.pages.dev')throw Error('Ensaio permitido apenas no site de testes.');
+ window.SCFullAppSyntheticSeed={actors,fixtureId};
+ $('app').src='/tests/full-app-draft-sandbox.html';$('result').textContent='Aplicativo sintético preparado. Use Nova vistoria na área abaixo.';
+})().catch(error=>$('result').textContent='FALHOU: '+error.message);
+</script></html>

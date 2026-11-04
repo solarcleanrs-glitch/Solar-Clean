@@ -1,0 +1,43 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {prepareReview,phones,phone,classify}=require('../lib/google-history-review.cjs');
+const event=(id,extra={})=>({id,summary:'Cliente — YES',location:'Canoas - RS',status:'confirmed',description:'Telefone: (51) 99999-1234',start:'2025-01-01',...extra});
+const source=events=>({format:'solar-clean-google-calendar-history-v1',sourceCalendar:'test@example.invalid',paginationComplete:true,events});
+assert.deepEqual(phones('R$ 350,00 em 4x. 31/10/2026. CEP 92110-310. 12345678901'),[]);
+assert.deepEqual(phones('<b>WhatsApp:</b> +55 (51) 99999-1234<br>Tel: (48) 3333-1234'),['+554833331234','+5551999991234']);
+assert.deepEqual(phones('https://wa.me/5551999991234'),['+5551999991234']);
+assert.deepEqual(phones('Contato antigo 51 9592-8483; atual 51 99999-1234'),['+5551999991234']);
+assert.equal(phone('00123456789'),null);
+assert.equal(phone('(51) 89999-1234'),null);
+assert.equal(classify('YES e Elysia','RS / SC').originSuggestion,null);
+const a=event('a'),b=event('b');const original=JSON.stringify(a);
+const r=prepareReview(source([a,b,a]));assert.equal(r.summary.candidates,1);assert.equal(r.summary.duplicateEvents,1);assert.equal(r.candidates[0].events.length,2);assert.equal(JSON.stringify(a),original);
+assert.equal(prepareReview(source([b,a])).candidates[0].reviewId,r.candidates[0].reviewId);
+assert.throws(()=>prepareReview(source([a,event('a',{summary:'Outro'})])),/conteúdos diferentes/);
+assert.throws(()=>prepareReview({...source([a]),paginationComplete:false}),/incompleta/);
+assert.throws(()=>prepareReview(source([{}])),/identidade/);
+const conflict=prepareReview(source([a,event('b',{summary:'Outro'})]));assert.equal(conflict.summary.candidates,2);assert.equal(conflict.summary.phoneConflicts,2);
+const missing=prepareReview(source([event('a',{description:''}),event('b',{description:''})]));assert.equal(missing.summary.candidates,2);
+const cancelled=prepareReview(source([a,event('b',{status:'cancelled'})]));assert.equal(cancelled.summary.excludedCancelled,1);assert.equal(cancelled.summary.eventsForReview,1);
+const multi=prepareReview(source([event('a',{description:'(51) 99999-1234 e (48) 99999-1234'})]));assert.equal(multi.summary.multiplePhones,1);assert.equal(multi.candidates[0].reviewRequired,true);
+console.log('PASS: histórico preservado, telefones conservadores, IDs estáveis e conflitos sem fusão automática');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),vm=require('node:vm');
+const {spawnSync}=require('node:child_process');
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sc-review-'));
+try{
+  const input=path.join(temp,'input.json'),output=path.join(temp,'output.html');
+  fs.writeFileSync(input,JSON.stringify(source([event('x',{summary:'</script><img src=x onerror=alert(1)>',description:'Telefone: (51) 99999-1234'})])));
+  const command=path.join(__dirname,'../scripts/gerar-conferencia-historico.cjs');
+  assert.equal(spawnSync(process.execPath,[command,input,output]).status,0);
+  const html=fs.readFileSync(output,'utf8');assert.ok(!html.includes('</script><img'));assert.ok(html.includes("connect-src 'none'"));
+  assert.notEqual(spawnSync(process.execPath,[command,input,output]).status,0,'Saída anterior não pode ser substituída');
+  const data=html.match(/<script type="application\/json" id="data">([\s\S]*?)<\/script>/)[1];
+  const js=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  class Element{constructor(){this.children=[];this.style={};this.value='';this.textContent='';}append(e){this.children.push(e);}replaceChildren(){this.children=[];}addEventListener(type,fn){this[type]=fn;}}
+  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
+  get('data').textContent=data;get('filter').value='all';
+  vm.runInNewContext(js,{document:{getElementById:get,createElement:()=>new Element()}},{timeout:1000});
+  assert.equal(get('rows').children.length,1);assert.ok(get('rows').children[0].children[0].textContent.startsWith('</script>'));
+  get('search').value='inexistente';get('search').input();assert.equal(get('rows').children.length,0);
+  console.log('PASS: conferência HTML sem rede, busca funcional, conteúdo escapado e saída protegida');
+}finally{fs.rmSync(temp,{recursive:true,force:true});}

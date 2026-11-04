@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),api=require('../lib/field-agenda-api.js');
+const owner='11111111-1111-4111-8111-111111111111',photo={category:'Antes',type:'image/jpeg',storagePath:owner+'/before/a.jpg'};
+const base={url:'https://zzphucuiqhzrilrddxnf.supabase.co',headers:{Authorization:'Bearer synthetic'},check:()=>{},input:{start:'2026-10-01',end:'2026-10-31',unit:null}};
+(async()=>{
+ let calls=0;
+ const rows=await api.reports({...base,fetch:async()=>({ok:true,json:async()=>++calls===1?[{client_uuid:owner,cliente:'Synthetic',created_at:'2026-10-28T12:00:00Z',unidade:'RS',obs:'secret'}]:[]})});
+ assert.equal(rows.length,1);assert.equal(Object.hasOwn(rows[0],'obs'),false);
+ const ctx={...base,fetch:async()=>({ok:true,json:async()=>({client_uuid:owner,cliente:'Synthetic',obs:'secret',valor_cobrado:123,media_manifest:[photo,{...photo,category:'Arquivo interno'},{...photo,storagePath:'another/photo.jpg'}]})})};
+ const report=await api.report(ctx,owner);assert.equal(report.media_manifest.length,1);assert.equal(Object.hasOwn(report,'obs'),false);assert.equal(Object.hasOwn(report,'valor_cobrado'),false);
+ await assert.rejects(api.report({...ctx,fetch:async()=>({ok:true,json:async()=>null})},owner),/indisponível/);
+ await assert.rejects(api.report({...ctx,fetch:async()=>({ok:true,json:async()=>({client_uuid:'wrong'})})},owner),/divergente/);
+ let endpoint;
+ const blob={type:'image/jpeg',size:123};
+ assert.equal(await api.photo({...base,fetch:async url=>{endpoint=url;return {ok:true,blob:async()=>blob};}},owner,photo),blob);
+ assert.match(endpoint,/\/storage\/v1\/object\/vistoria-media\//);assert.equal(endpoint.includes('Bearer'),false);
+ await assert.rejects(api.photo({...base,fetch:()=>{throw Error('network must not run');}},owner,{...photo,category:'Arquivo interno'}),/fora/);
+ await assert.rejects(api.photo({...base,fetch:async()=>({ok:true,blob:async()=>({type:'text/html',size:1})})},owner,photo),/Formato/);
+ let active=true;
+ await assert.rejects(api.photo({...base,check:()=>{if(!active)throw Error('account changed');},fetch:async()=>({ok:true,blob:async()=>{active=false;return blob;}})},owner,photo),/account changed/);
+ console.log('PASS: report list/detail projection, denied/foreign/internal media, authenticated photo without signed URL, MIME validation and stale photo rejection');
+})().catch(e=>{console.error(e);process.exit(1)});
