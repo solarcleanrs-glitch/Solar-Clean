@@ -1,4 +1,5 @@
 node_modules/
+supabase/.temp/
 *.dump
 estrutura-*.sql
 solar-clean-historico-google-*.json

@@ -1,6 +1,6 @@
 # Sequência de liberação — preparação, sem autorização de produção
 
-Atualizado em 03/11/2026. Este documento não aplica migrações nem libera contas.
+Atualizado em 04/11/2026. Este documento não aplica migrações nem libera contas.
 
 ## Bloqueios de liberação
 
@@ -24,4 +24,20 @@ Manter artefato anterior e restauração ensaiada. Não remover colunas/tabelas,
 
 ## Estado conhecido
 
-O histórico de contatos importados foi implementado e ensaiado com ROLLBACK. O login real do gestor, a consulta dos cinco clientes, a abertura do formulário/histórico e a limpeza na troca de pesquisa foram conferidos no navegador. A gravação e repetição pela interface e os demais perfis reais ainda estão pendentes. As consultas de campo ainda são uma área de testes separada: não substituem integralmente os fluxos antigos. A tentativa de contato fica em memória; após recarregar a página, conferir o histórico antes de criar outro registro em caso de resposta incerta.
+### Atualização de 04/11/2026 — testes
+
+Os PRs #3, #4 e #5 foram integrados na branch de homologação, mantendo a main
+sem alterações. Incluem retorno contextual do relatório, entrada da agenda por
+acesso, reenvio separado de agendamentos, resumo das filas e confirmação do
+arquivamento após perda de resposta. O avanço controlado de status por acesso
+foi acrescentado ao banco de testes e tem interface candidata; ver
+`entrega-status-campo-20261104.md`. Os cadastros de acesso continuam contendo
+somente o gestor; nenhum técnico ou parceiro real foi ativado.
+
+Essas melhorias não completam a escrita de vistoria/fotos por técnico nem
+substituem a validação autenticada dos perfis. A liberação oficial continua
+pendente das etapas e da aprovação descritas acima.
+
+### Registro anterior de 03/11/2026
+
+O histórico de contatos importados foi implementado e ensaiado com ROLLBACK. O login real do gestor, a consulta dos cinco clientes, a abertura do formulário/histórico e a limpeza na troca de pesquisa foram conferidos no navegador. A gravação e repetição pela interface e os demais perfis reais estavam pendentes. A tentativa de contato fica em memória; após recarregar a página, conferir o histórico antes de criar outro registro em caso de resposta incerta.
