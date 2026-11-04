@@ -9,14 +9,23 @@ class Element{
  setAttribute(name,value){this[name]=value;}
 }
 const home=new Element(),owner='11111111-1111-4111-8111-111111111111';
+let project='staging',screen='',legacyCalls=0;
+for(const id of ['agendaBtn','homeFromFieldAgenda','legacyAgendaFromField']){const node=new Element();node.id=id;}
+nodes.get('agendaBtn').onclick=()=>{legacyCalls++;};
 const row={client_uuid:owner,cliente:'Synthetic',created_at:'2026-10-29T02:59:59Z',unidade:'RS'};
 const window={addEventListener:(name,fn)=>events[name]=fn,fetch:()=>{},SCFieldAgenda:{
  reports:async()=>deferred?await deferred.promise:[row],
  report:async()=>({client_uuid:owner,cliente:'Synthetic',placas:0,obs:'PRIVATE',valor_cobrado:'PRIVATE',media_manifest:[{category:'Antes'}]}),
  photo:async()=>({}),read:async()=>[],clients:async()=>[]}};
-vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{window,location:{hostname:'solar-clean-testes-crm.pages.dev'},document:{querySelector:()=>home,getElementById:id=>nodes.get(id),createElement:()=>new Element(),createDocumentFragment:()=>new Element()},navigator:{onLine:true},currentTech:()=>({cloud:true}),captureVistoriaOperationGuard:()=>{const before=actor;return()=>{if(actor!==before)throw Error('account changed');};},ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:'staging'}),crmHistoryCloudHeaders:()=>({}),URL:{createObjectURL:()=> 'blob:synthetic',revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> '22222222-2222-4222-8222-222222222222'},Date,Set,Error,String,Object});
+vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{window,show:id=>{screen=id;},location:{hostname:'solar-clean-testes-crm.pages.dev'},document:{querySelector:()=>home,getElementById:id=>nodes.get(id),createElement:()=>new Element(),createDocumentFragment:()=>new Element()},navigator:{onLine:true},currentTech:()=>({cloud:true}),captureVistoriaOperationGuard:()=>{const before=actor;return()=>{if(actor!==before)throw Error('account changed');};},ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:project}),crmHistoryCloudHeaders:()=>({}),URL:{createObjectURL:()=> 'blob:synthetic',revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> '22222222-2222-4222-8222-222222222222'},Date,Set,Error,String,Object});
 const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
+ project='https://zzphucuiqhzrilrddxnf.supabase.co';el('agendaBtn').onclick();assert.equal(screen,'fieldAgendaScreen');assert.equal(legacyCalls,0);
+ el('fieldAgendaUnit').value='RS';await el('fieldAgendaLoad').onclick();el('homeFromFieldAgenda').onclick();assert.equal(screen,'home');
+ el('agendaBtn').onclick();assert.equal(el('fieldAgendaUnit').value,'RS');assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.read=async()=>{throw Error('denied');};await el('fieldAgendaLoad').onclick();assert.equal(legacyCalls,0);assert.equal(el('fieldAgendaRows').children.length,0);
+ el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,1);
+ project='official';el('agendaBtn').onclick();assert.equal(legacyCalls,2);project='staging';
  await el('fieldReportsLoad').onclick();assert.equal(el('fieldReportsRows').children.length,1);
  assert.match(el('fieldReportsRows').children[0].textContent,/28\/10\/2026/,'Brazil date, not UTC');
  el('fieldReportsRows').children[0].onclick();await flush();await flush();

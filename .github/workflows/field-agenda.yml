@@ -1,5 +1,6 @@
 name: Validar consulta de campo por unidade
 on:
+  pull_request:
   push:
     branches: [feature/crm-whatsapp-recorrencia-20261028]
   workflow_dispatch:
@@ -23,6 +24,7 @@ jobs:
           node tests/field-agenda-api.test.cjs
           node tests/field-report-api.test.cjs
           node tests/field-report-ui.test.cjs
+          node tests/report-navigation.test.cjs
           node tests/field-clients-api.test.cjs
           node tests/imported-contact-api.test.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/imported-contact-db.integration.cjs

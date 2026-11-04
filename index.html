@@ -775,6 +775,12 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
     </div>
   </div>
 </section>
+<section id="fieldAgendaScreen" class="hidden">
+  <h2>Agenda e relatórios por acesso — testes</h2>
+  <p class="muted">Consulta autorizada por unidade e parceiro. Requer conexão.</p>
+  <button id="homeFromFieldAgenda" type="button">Voltar ao início</button>
+  <button id="legacyAgendaFromField" type="button">Abrir gestão da agenda — fluxo anterior</button>
+</section>
 </main>
 
 <script src="lib/scoped-local-runtime.js"></script>
@@ -785,7 +791,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
+const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','fieldAgendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
 let step=1, deferredPrompt=null, currentReportRecord=null, editingRecord=null;
 let formSessionGuard=null,currentReportSessionGuard=null;
 
@@ -943,7 +949,26 @@ async function dbAll(){
 async function dbDelete(id){await runVistoriaStore('readwrite',store=>store.delete(id));}
 
 /* ---------- UI helpers ---------- */
-function show(id){if(appDraftQuarantined)return;screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}
+let navigationScreen='home',reportReturnContext=null;
+function show(id){
+  if(appDraftQuarantined)return;
+  if(id==='reportScreen'&&navigationScreen!=='reportScreen'){
+    // A saved form must not be reopened as a second new inspection.
+    reportReturnContext={screen:navigationScreen==='formScreen'?'historyScreen':navigationScreen,
+      scroll:navigationScreen==='formScreen'?0:(window.scrollY||0),check:captureVistoriaOperationGuard()};
+  }
+  navigationScreen=id;
+  screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));
+  if(id==='formScreen')void renderServiceContextControls();
+  if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled());
+}
+function returnFromReport(){
+  const context=reportReturnContext;reportReturnContext=null;
+  try{
+    if(!context)throw Error('Abra um relatório nesta sessão.');
+    context.check();show(context.screen);window.scrollTo?.(0,context.scroll);
+  }catch(e){show('home');}
+}
 function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
 function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
 function stepView(){
@@ -999,6 +1024,7 @@ function endCloudSession(){
 }
 function setTech(t){
   authSessionGeneration++;
+  reportReturnContext=null;
   clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
   window.SCScopedMigrationUI?.clear();
@@ -3800,7 +3826,7 @@ $('#useRemoteVistoria').onclick=()=>resolveVistoriaConflict('remote');
 $('#previewLocalConflict').onclick=()=>previewVistoriaConflict('local');
 $('#previewRemoteConflict').onclick=()=>previewVistoriaConflict('remote');
 if($('#historyDiagnostics'))$('#historyDiagnostics').classList.toggle('hidden',location.hostname!=='solar-clean-testes-crm.pages.dev');
-$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
+$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=returnFromReport;
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
 document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
 $('#showGeneration').onchange=updateGenerationVisibility; $('#antes').oninput=calc; $('#depois').oninput=calc; Object.keys(photoCategories).forEach(id=>$('#'+id).onchange=()=>addPhotosFromInput(id));
