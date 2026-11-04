@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),api=require('../lib/field-agenda-api.js');
+const client='11111111-1111-4111-8111-111111111111',id='22222222-2222-4222-8222-222222222222';
+const data={cliente:'Synthetic',telefone:'',cidade:'City',endereco:'Street',status_comercial:'Em conferência'};
+const ctx={url:'https://zzphucuiqhzrilrddxnf.supabase.co',headers:{},check:()=>{}};
+(async()=>{
+const intent=api.editIntent(client,1,data,id);assert.ok(Object.isFrozen(intent));assert.ok(Object.isFrozen(intent.p_dados));
+for(const bad of [{...data,origem:'parceiro'},{...data,cliente:null},{...data,cliente:''},{...data,telefone:'123'},{...data,status_comercial:'unknown'}])assert.throws(()=>api.editIntent(client,1,bad,id));
+for(const rev of [null,0,-1,1.5,'1',2147483647])assert.throws(()=>api.editIntent(client,rev,data,id));
+let calls=0,bodies=[];
+const retry={...ctx,fetch:async(url,options)=>{bodies.push(options.body);if(++calls===1)throw Error('network lost');return {ok:true,json:async()=>({id,cliente_id:client,revision:2,repetido:true})};}};
+await assert.rejects(api.saveClientEdit(retry,intent),/network lost/);assert.equal((await api.saveClientEdit(retry,intent)).repetido,true);assert.equal(bodies[0],bodies[1]);
+await assert.rejects(api.saveClientEdit({...ctx,fetch:async()=>({ok:true,json:async()=>({id,cliente_id:id,revision:2,repetido:false})})},intent),/Confirmação/);
+const snapshot=await api.clientEdit({...ctx,fetch:async()=>({ok:true,json:async()=>({id:client,revision:1,...data,cadastro_inicial:{private:true}})})},client);
+assert.equal(Object.hasOwn(snapshot,'cadastro_inicial'),false);
+let pages=0;
+const rows=await api.clientEdits({...ctx,fetch:async()=>({ok:true,json:async()=>++pages===1?[{id,created_at:'2026-11-03T12:00:00Z',antes:{id:client,revision:1,...data},depois:{id:client,revision:2,...data},criado_por:'private'}]:[]})},client);
+assert.equal(rows.length,1);assert.equal(Object.hasOwn(rows[0],'criado_por'),false);
+let active=true;await assert.rejects(api.saveClientEdit({...ctx,check:()=>{if(!active)throw Error('account changed');},fetch:async()=>{active=false;return {ok:true,json:async()=>({id,cliente_id:client,revision:2,repetido:false})};}},intent),/account changed/);
+await assert.rejects(api.clientEdit({...ctx,fetch:async()=>({ok:false,status:403})},client),/403/);
+console.log('PASS: edit validation, frozen exact retry, confirmation identity, safe projection, pagination and session change');
+})().catch(e=>{console.error(e);process.exit(1)});

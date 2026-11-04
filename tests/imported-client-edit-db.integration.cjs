@@ -16,7 +16,8 @@ await db.query('insert into auth.users values($1)',[id(n)]);
 await db.query('insert into crm_usuarios values($1)',[id(n)]);
 await db.query('insert into sc_acessos values($1,$2,true)',[id(n),papel]);}
 await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261031_clientes_historico_STAGING_NOT_APPLIED.sql'),'utf8'));
-await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/proposals/imported-client-edit.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261103013039_imported_client_contact_history_staging.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261104014308_imported_client_edit_staging.sql'),'utf8'));
 const asUser=async n=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[n?id(n):'']);await db.exec('set role authenticated');};
 const original={cliente:'Synthetic',telefone:'',cidade:'City',endereco:'Street',unidade:'RS',origem:'particular',parceiro_id:null},event={id:'event',status:'confirmed'};
 await asUser(1);
@@ -28,12 +29,25 @@ const edit=(operation=200,revision=1,data=dados)=>db.query('select sc_editar_cli
 assert.equal((await read()).rows[0].r.revision,1);
 assert.equal((await edit()).rows[0].r.repetido,false);
 assert.equal((await edit()).rows[0].r.repetido,true);
+await assert.rejects(db.query('select sc_registrar_contato_cliente($1,$2,$3,$4,null)',[id(300),id(100),'Cliente respondeu','Synthetic']),/Não contatar/);
+const hist=(await db.query('select * from sc_historico_edicoes_cliente($1)',[id(100)])).rows;
+assert.equal(hist.length,1);assert.equal(Object.hasOwn(hist[0],'criado_por'),false);
+
 await assert.rejects(edit(201),/Cadastro alterado/);
 await assert.rejects(edit(200,1,{...dados,cliente:'Different'}),/outros dados/);
 for(const data of [{...dados,unidade:'SC'},{...dados,status_comercial:'unknown'},{...dados,telefone:'bad'},{...dados,cliente:null},{...dados,cliente:''}]){
 await assert.rejects(edit(202,2,data),/inválidos/);}
 assert.equal((await importClient()).rows[0].r.repetido,true,'original import retry survives later correction');
 assert.equal((await read()).rows[0].r.cliente,'Corrected','retry cannot reset corrected name');
+await db.exec('begin');
+await edit(210,2,{...dados,status_comercial:'Ativo'});
+await db.query('select sc_registrar_contato_cliente($1,$2,$3,$4,null)',[id(310),id(100),'Cliente respondeu','Synthetic']);
+await edit(211,3,dados);
+assert.equal((await edit()).rows[0].r.revision,2,'retry confirms its own earlier revision, not current state');
+assert.equal((await read()).rows[0].r.revision,4);
+assert.equal((await db.query('select sc_registrar_contato_cliente($1,$2,$3,$4,null) r',[id(310),id(100),'Cliente respondeu','Synthetic'])).rows[0].r.repetido,true,'repeat of previously recorded contact remains confirmable after opt-out');
+await assert.rejects(db.query('select sc_registrar_contato_cliente($1,$2,$3,$4,null)',[id(311),id(100),'Cliente respondeu','Synthetic']),/Não contatar/);
+await db.exec('rollback');
 for(const n of [2,3,4,99,null]){await asUser(n);await assert.rejects(read(),/restrita/);await assert.rejects(edit(203,2),/restrita/);}
 await asUser(5);await assert.rejects(edit(),/outros dados/);
 await db.exec('reset role');await db.query('update sc_acessos set ativo=false where user_id=$1',[id(1)]);await asUser(1);await assert.rejects(edit(204,2),/restrita/);

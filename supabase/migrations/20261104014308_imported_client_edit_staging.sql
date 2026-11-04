@@ -1,5 +1,4 @@
--- Proposal tested in isolated PostgreSQL. Not a migration; not applied remotely.
--- Generate a migration with the Supabase CLI before deployment.
+-- STAGING ONLY. Manager edits with immutable origins and exact-attempt retry.
 alter table public.sc_clientes add column status_comercial text not null default 'Em conferência'
  check(status_comercial in ('Em conferência','Ativo','Recorrência pendente','Recuperação','Inativo','Não contatar'));
 create table sc_private.cliente_edicoes(
@@ -77,3 +76,49 @@ returns jsonb language sql security invoker set search_path='' as $$
 $$;
 revoke all on function public.sc_editar_cliente(uuid,uuid,integer,jsonb) from public,anon,authenticated;
 grant execute on function public.sc_editar_cliente(uuid,uuid,integer,jsonb) to authenticated;
+
+create function sc_private.historico_edicoes_cliente(p_cliente uuid)
+returns table(id uuid,created_at timestamptz,antes jsonb,depois jsonb)
+language plpgsql stable security definer set search_path='' as $$
+begin
+ perform sc_private.cliente_edicao(p_cliente);
+ return query select e.id,e.created_at,e.antes,e.depois from sc_private.cliente_edicoes e
+ where e.cliente_id=p_cliente order by e.created_at desc,e.id;
+end $$;
+revoke all on function sc_private.historico_edicoes_cliente(uuid) from public,anon,authenticated;
+grant execute on function sc_private.historico_edicoes_cliente(uuid) to authenticated;
+create function public.sc_historico_edicoes_cliente(p_cliente uuid)
+returns table(id uuid,created_at timestamptz,antes jsonb,depois jsonb)
+language sql stable security invoker set search_path='' as $$
+ select * from sc_private.historico_edicoes_cliente(p_cliente);
+$$;
+revoke all on function public.sc_historico_edicoes_cliente(uuid) from public,anon,authenticated;
+grant execute on function public.sc_historico_edicoes_cliente(uuid) to authenticated;
+create or replace function sc_private.registrar_contato_cliente(p_id uuid,p_cliente uuid,p_resultado text,p_observacao text,p_retorno date default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor uuid:=auth.uid();previous sc_private.cliente_contatos%rowtype;
+begin
+ if not coalesce(public.sc_pode_registrar_contato_cliente(),false) then
+  raise exception 'Registro de contato restrito ao gestor ativo' using errcode='42501';end if;
+ if p_id is null or p_cliente is null or p_resultado is null or p_resultado not in
+  ('Tentativa sem resposta','Cliente respondeu','Orçamento solicitado','Agendamento combinado','Retornar mais tarde','Não deseja contato')
+  or p_observacao is null or length(p_observacao)>2000 then
+  raise exception 'Dados do contato inválidos' using errcode='22023';end if;
+ if not exists(select 1 from public.sc_clientes c where c.id=p_cliente) then
+  raise exception 'Cliente importado não encontrado' using errcode='22023';end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_id::text,8));
+ select * into previous from sc_private.cliente_contatos where id=p_id;
+ if found then
+  if previous.cliente_id<>p_cliente or previous.criado_por<>actor or previous.resultado<>p_resultado
+   or previous.observacao<>p_observacao or previous.retorno is distinct from p_retorno then
+   raise exception 'Identificador de contato já utilizado com outros dados' using errcode='22023';end if;
+  return jsonb_build_object('id',previous.id,'repetido',true);
+ end if;
+ -- Same row lock as editing: a concurrent opt-out cannot be ignored.
+ perform 1 from public.sc_clientes where id=p_cliente for share;
+ if exists(select 1 from public.sc_clientes where id=p_cliente and status_comercial='Não contatar') then
+  raise exception 'Cliente marcado como Não contatar. Revise o cadastro antes de novo contato.' using errcode='42501';end if;
+ insert into sc_private.cliente_contatos(id,cliente_id,criado_por,resultado,observacao,retorno)
+ values(p_id,p_cliente,actor,p_resultado,p_observacao,p_retorno);
+ return jsonb_build_object('id',p_id,'repetido',false);
+end $$;

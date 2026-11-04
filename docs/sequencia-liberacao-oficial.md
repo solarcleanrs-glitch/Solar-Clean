@@ -6,7 +6,7 @@ Atualizado em 03/11/2026. Este documento não aplica migrações nem libera cont
 
 - Validar no navegador uma sessão real de gestor: consultar cliente importado, abrir histórico e registrar/repetir um contato de teste previamente identificado. Não usar cliente real para gerar contato comercial fictício persistente.
 - Validar técnico RS, técnico SC e parceiro: leitura autorizada e recusa de outra unidade/parceiro, pagamentos, notas internas, arquivo interno e escrita proibida. Não ativar usuários reais automaticamente para executar esses testes.
-- Concluir edição cadastral/status comercial com revisão de concorrência. O cadastro inicial e os eventos Google originais devem continuar imutáveis, e a repetição da importação deve continuar idempotente após qualquer edição.
+- Validar edição cadastral/status comercial com sessão real. Migração, formulário, histórico e ensaios de concorrência/repetição estão implementados no ambiente de testes. A reimportação preserva correções; ainda falta validação autenticada de ponta a ponta e dos perfis reais.
 - Adaptar a implantação ao schema legado: preservar IDs textuais da agenda, IDs existentes das vistorias, campos nulos, fotos e vínculos. Não copiar todas as migrações de testes diretamente para o oficial.
 
 ## Ordem de preparação

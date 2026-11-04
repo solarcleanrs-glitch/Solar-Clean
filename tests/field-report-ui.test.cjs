@@ -40,5 +40,18 @@ const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve))
  const saved=[];window.SCFieldAgenda.recordContact=async(ctx,intent)=>{saved.push(intent);if(saved.length===1)throw Error('network lost');return {id:intent.p_id,repetido:true};};
  await el('fieldContactSave').onclick();assert.equal(el('fieldContactNote').disabled,true);el('fieldContactNote').value='Changed after uncertain response';
  await el('fieldContactSave').onclick();assert.deepEqual(saved[0],saved[1]);assert.equal(saved[1].p_observacao,'Original note');assert.equal(el('fieldContactSave').disabled,true);
+
+ window.SCFieldAgenda.clientStatuses=realAPI.clientStatuses;window.SCFieldAgenda.editIntent=realAPI.editIntent;
+ const editData={cliente:'Synthetic imported',telefone:'',cidade:'City',endereco:'Street',status_comercial:'Em conferência'};
+ window.SCFieldAgenda.clientEdit=async()=>({id:owner,revision:1,...editData});window.SCFieldAgenda.clientEdits=async()=>[];
+ await el('fieldClientsLoad').onclick();
+ const editButton=el('fieldClientsRows').children[0].children.find(x=>x.textContent==='Editar cadastro e status — gestor');
+ assert.ok(editButton);editButton.onclick();await flush();await flush();assert.ok(el('fieldClientEditSave'));
+ el('fieldEdit_cliente').value='Corrected';const edits=[];
+ window.SCFieldAgenda.saveClientEdit=async(ctx,intent)=>{edits.push(intent);if(edits.length===1)throw Error('lost response');return {id:intent.p_id,repetido:true};};
+ await el('fieldClientEditSave').onclick();assert.equal(el('fieldEdit_cliente').disabled,true);el('fieldEdit_cliente').value='Different';
+ await el('fieldClientEditSave').onclick();assert.deepEqual(edits[0],edits[1]);assert.equal(edits[1].p_dados.cliente,'Corrected');assert.equal(el('fieldClientEditSave').disabled,true);
+ window.SCFieldAgenda.canContact=async()=>false;await el('fieldClientsLoad').onclick();
+ assert.equal(el('fieldClientsRows').children[0].children.some(x=>x.textContent==='Editar cadastro e status — gestor'),false);
  console.log('PASS: actual UI renders zero safely, hides unapproved fields, uses Brazil date, revokes photo URLs on account switch and rejects late filter results');
 })().catch(e=>{console.error(e);process.exit(1)});
