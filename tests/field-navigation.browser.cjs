@@ -35,6 +35,20 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
     assert.equal(await page.locator('#'+(origin==='formScreen'?'historyScreen':origin)).isVisible(),true);
     assert.equal(await page.locator('#historySearch').inputValue(),'Cliente sintético');
    }
+   const before=await page.evaluate(async()=>{
+    await dbAdd({cliente:'Pendência sintética',cloudId:crypto.randomUUID(),createdAt:new Date().toISOString(),syncStatus:'pending'});
+    saveAgendaLocal([{id:crypto.randomUUID(),cliente:'Agenda sintética',unit:'SC',syncStatus:'pending'}]);
+    await updateDashboard();show('settingsScreen');
+    return JSON.stringify({visits:await dbAll(),agenda:agendaLocal()});
+   });
+   assert.equal(await page.locator('#syncAgendaOnly').isVisible(),true);
+   await page.locator('#syncAgendaOnly').click();
+   await page.waitForFunction(()=>document.querySelector('#cloudStatus').textContent.includes('internet'));
+   const after=await page.evaluate(async()=>JSON.stringify({visits:await dbAll(),agenda:agendaLocal()}));
+   assert.equal(after,before,'offline retry must preserve both queues');
+   assert.equal(await page.locator('#countPending').textContent(),'2');
+   assert.match(await page.locator('#pendingBreakdown').textContent(),/1 vistoria.*1 agendamento/);
+   await page.evaluate(()=>setTech(null));assert.equal(await page.locator('#pendingBreakdown').textContent(),'');
    assert.deepEqual(errors,[],'app must initialize without JavaScript errors');
    await page.close();
   }
