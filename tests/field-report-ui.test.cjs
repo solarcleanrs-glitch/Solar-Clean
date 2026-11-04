@@ -1,5 +1,9 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+for(const hostname of ['solar-clean-testes-crm.pages.dev','candidate.solar-clean-testes-crm.pages.dev','solar-clean-testes-crm.pages.dev.evil.invalid','solar-clean.pages.dev']){
+ let mounted=0;vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{location:{hostname},document:{querySelector:()=>{mounted++;return null;}}});
+ assert.equal(mounted,hostname==='solar-clean-testes-crm.pages.dev'||hostname==='candidate.solar-clean-testes-crm.pages.dev'?1:0);
+}
 const nodes=new Map(),events={},revoked=[];let actor='A',deferred=null;
 class Element{
  constructor(){this.children=[];this.style={};this.value='';this.disabled=false;this.textContent='';}
@@ -24,7 +28,11 @@ const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve))
  el('fieldAgendaUnit').value='RS';await el('fieldAgendaLoad').onclick();el('homeFromFieldAgenda').onclick();assert.equal(screen,'home');
  el('agendaBtn').onclick();assert.equal(el('fieldAgendaUnit').value,'RS');assert.equal(legacyCalls,0);
  window.SCFieldAgenda.read=async()=>{throw Error('denied');};await el('fieldAgendaLoad').onclick();assert.equal(legacyCalls,0);assert.equal(el('fieldAgendaRows').children.length,0);
- el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,1);
+ window.SCFieldAgenda.canContact=async()=>false;await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.canContact=async()=>{throw Error('permission unavailable');};await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,0);
+ let releasePermission;window.SCFieldAgenda.canContact=()=>new Promise(resolve=>releasePermission=resolve);
+ const stalePermission=el('legacyAgendaFromField').onclick();await flush();actor='B';window.SCFieldAgendaUI.clear();releasePermission(true);await stalePermission;assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.canContact=async()=>true;await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,1);
  project='official';el('agendaBtn').onclick();assert.equal(legacyCalls,2);project='staging';
  await el('fieldReportsLoad').onclick();assert.equal(el('fieldReportsRows').children.length,1);
  assert.match(el('fieldReportsRows').children[0].textContent,/28\/10\/2026/,'Brazil date, not UTC');

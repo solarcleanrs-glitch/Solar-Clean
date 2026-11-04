@@ -7,6 +7,18 @@ on:
 permissions:
   contents: read
 jobs:
+  field-navigation-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+      - run: npm ci --prefix tests/browser --ignore-scripts --no-audit --no-fund
+      - run: node tests/browser/node_modules/playwright/cli.js install --with-deps chromium
+      - run: NODE_PATH=./tests/browser/node_modules node tests/field-navigation.browser.cjs
   field-agenda:
     runs-on: ubuntu-latest
     steps:
