@@ -2,6 +2,7 @@ function bootstrap(seed){
  const PROJECT='https://zzphucuiqhzrilrddxnf.supabase.co',MODE='solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf',PREFIX='solarCleanScopedOperational:v1:zzphucuiqhzrilrddxnf:';
  const jwt=actor=>'synthetic.'+btoa(JSON.stringify({sub:actor,exp:Math.floor(Date.now()/1000)+86400}))+'.not-a-real-token';
  const values=new Map([[MODE,'1'],['solarCleanAccessToken',jwt(seed.actors.A)],['solarCleanRefreshToken','synthetic-refresh-A'],['solarCleanTech',JSON.stringify({name:'Conta sintética A',email:'a@example.invalid',cloud:true,signature:''})],['solarCleanCompany',JSON.stringify({empresa:'TESTE SINTÉTICO — NÃO É PRODUÇÃO',supabaseUrl:PROJECT,supabaseKey:'synthetic-public-key-not-valid'})]]);
+ if(seed.noActivation)values.delete(MODE);
  const memory={get length(){return values.size;},key:i=>[...values.keys()][i]??null,getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(String(k),String(v)),removeItem:k=>values.delete(k),clear:()=>values.clear()};
  Object.defineProperty(window,'localStorage',{value:memory,configurable:false});
  Object.defineProperty(navigator,'onLine',{value:false,configurable:false});

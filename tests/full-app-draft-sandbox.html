@@ -5,6 +5,7 @@
  const PROJECT='https://zzphucuiqhzrilrddxnf.supabase.co',MODE='solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf',PREFIX='solarCleanScopedOperational:v1:zzphucuiqhzrilrddxnf:';
  const jwt=actor=>'synthetic.'+btoa(JSON.stringify({sub:actor,exp:Math.floor(Date.now()/1000)+86400}))+'.not-a-real-token';
  const values=new Map([[MODE,'1'],['solarCleanAccessToken',jwt(seed.actors.A)],['solarCleanRefreshToken','synthetic-refresh-A'],['solarCleanTech',JSON.stringify({name:'Conta sintética A',email:'a@example.invalid',cloud:true,signature:''})],['solarCleanCompany',JSON.stringify({empresa:'TESTE SINTÉTICO — NÃO É PRODUÇÃO',supabaseUrl:PROJECT,supabaseKey:'synthetic-public-key-not-valid'})]]);
+ if(seed.noActivation)values.delete(MODE);
  const memory={get length(){return values.size;},key:i=>[...values.keys()][i]??null,getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(String(k),String(v)),removeItem:k=>values.delete(k),clear:()=>values.clear()};
  Object.defineProperty(window,'localStorage',{value:memory,configurable:false});
  Object.defineProperty(navigator,'onLine',{value:false,configurable:false});
@@ -117,7 +118,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261102-agenda-campo-33" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão de testes: consulta de campo por acesso — 02/11 · revisão 33</small></div>
+<div id="homologNotice" data-app-release="20261104-account-isolation-44" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: dados por conta — 04/11 · revisão 44</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -136,6 +137,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="installBtn">Instalar aplicativo</button>
     </div>
     <div id="accountDraftPanel" class="section hidden"><label>Rascunhos desta conta<select id="accountDraftSelect"></select></label><button id="refreshAccountDrafts" type="button">Consultar rascunhos</button><button id="recoverAccountDraft" type="button">Recuperar rascunho</button><p id="accountDraftStatus" class="muted" role="status"></p></div>
+    <p id="accountStorageNotice" class="small hidden" role="status">Neste teste, dados e pendências são separados por conta. Dados antigos deste aparelho permanecem preservados, sem cópia automática. Entre na conta da nuvem para trabalhar.</p>
     <p class="muted section" id="loggedUser">Modo local — técnico não identificado</p>
   </div>
   <div class="card section">
@@ -826,26 +828,30 @@ let formSessionGuard=null,currentReportSessionGuard=null;
 /* ---------- IndexedDB ---------- */
 const DB_NAME='solarCleanDB', DB_VERSION=2, STORE='vistorias';
 let scopedRuntimeInstance=null;
+function operationalStorageProject(){
+ const testSite=location.hostname==='solar-clean-testes-crm.pages.dev'||location.hostname.endsWith('.solar-clean-testes-crm.pages.dev');
+ return testSite?'https://zzphucuiqhzrilrddxnf.supabase.co':cloudConfig().url;
+}
 function scopedLocalRuntime(){
- if(!window.SCScopedLocalRuntime){if(cloudConfig().url==='https://zzphucuiqhzrilrddxnf.supabase.co'&&localStorage.getItem('solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf')==='1')throw Error('Armazenamento separado indisponível. Reabra com conexão; os dados foram preservados.');return null;}
- if(!scopedRuntimeInstance)scopedRuntimeInstance=window.SCScopedLocalRuntime.create({storage:localStorage,context:()=>{
+ if(!window.SCScopedLocalRuntime){if(operationalStorageProject()==='https://zzphucuiqhzrilrddxnf.supabase.co')throw Error('Armazenamento separado indisponível. Reabra com conexão; os dados foram preservados.');return null;}
+ if(!scopedRuntimeInstance)scopedRuntimeInstance=window.SCScopedLocalRuntime.create({storage:localStorage,requireScoped:true,context:()=>{
   let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
-  return {project:cloudConfig().url,actor,generation:authSessionGeneration};
+  return {project:operationalStorageProject(),actor,generation:authSessionGeneration};
  }});
  return scopedRuntimeInstance;
 }
 function scopedLocalGet(key){const runtime=scopedLocalRuntime();return runtime?runtime.get(key):localStorage.getItem(key);}
 function scopedLocalSet(key,value){const runtime=scopedLocalRuntime();if(runtime)runtime.set(key,value);else localStorage.setItem(key,value);}
 
-/* Draft integration is dormant until account-scoped storage is activated.
-   This release does not create or change that activation marker. */
+/* Test-project storage is mandatory per account. Legacy bytes remain untouched.
+   Other projects retain the existing routing; no owner is inferred for legacy data. */
 let appDraftController=null,appDraftSuspended=false,appDraftCloudId=null,appDraftRecovered=false;
 let appDraftQuarantined=false;
-function appDraftEnabled(){return location.hostname==='solar-clean-testes-crm.pages.dev'&&Boolean(scopedLocalRuntime()?.enabled());}
+function appDraftEnabled(){const runtime=scopedLocalRuntime();return (location.hostname==='solar-clean-testes-crm.pages.dev'||location.hostname.endsWith('.solar-clean-testes-crm.pages.dev'))&&Boolean(runtime?.isolated?.()??runtime?.enabled());}
 function appDraftContext(){
   let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
   // Refreshing a token for the same owner does not transfer draft ownership.
-  return {project:cloudConfig().url,actor,generation:0};
+  return {project:typeof operationalStorageProject==='function'?operationalStorageProject():cloudConfig().url,actor,generation:0};
 }
 function captureAppFormDraft(){
   if(generateAndSaveRunning||[...document.querySelectorAll('#formScreen input[type=file]')].some(n=>n.disabled))throw Error('Aguarde o salvamento ou a leitura das fotos antes de trocar de conta.');
@@ -872,6 +878,7 @@ function clearAppDraftView(){
     currentReportRecord=null;currentReportSessionGuard=()=>{throw Error('Abra um relatório nesta conta.');};
     ['rCliente','rTelefone','rCidade','rEndereco','rTecnico','rObs','rDate','rSujidades','rInvStatus','rInv','rDps','rPlacas','rPotPlaca','rPotTotal','rMarcaPlaca','rTelhado','rSujeira','rEstrutura','rInvInternet','rAntes','rDepois','rDif','rPct','rLimpeza','rRetorno'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
     ['rPhotos','historyList','adminList','agendaList'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
+    if(typeof clearOperationalAccountView==='function')clearOperationalAccountView();
     ['countV','countC','countPending'].forEach(id=>{if($('#'+id))$('#'+id).textContent='—';});
     ['rTechSignature','rClientSignature'].forEach(id=>{const n=$('#'+id);if(n){n.removeAttribute('src');n.classList.add('hidden');}});
     window.__techSignatureData='';clearTechSignaturePad(false);
@@ -920,7 +927,9 @@ function prepareAppDraftAccountChange(){
 }
 function refreshAppDraftList(){
   const panel=$('#accountDraftPanel');if(!panel)return;
-  panel.classList.toggle('hidden',!appDraftEnabled());if(!appDraftEnabled())return;
+  const active=appDraftEnabled(),signedIn=Boolean(appDraftContext().actor);
+  if($('#accountStorageNotice'))$('#accountStorageNotice').classList.toggle('hidden',!active);
+  panel.classList.toggle('hidden',!active||!signedIn);if(!active||!signedIn)return;
   const select=$('#accountDraftSelect');select.textContent='';
   try{
     const rows=getAppDraftController().list();
@@ -1061,6 +1070,7 @@ function setTech(t){
   clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
   window.SCScopedMigrationUI?.clear();
+  window.SCLegacyLocalReviewUI?.clear();
   window.SCSettlementUI?.clear();
   window.SCFieldAgendaUI?.clear();
   window.AgendaLedgerStatus?.clear();
@@ -1071,6 +1081,14 @@ function setTech(t){
 function updateLoggedUser(){
   const t=currentTech();
   $('#loggedUser').textContent=t?`Técnico identificado: ${t.name||t.email||'Usuário'}`:'Modo local — técnico não identificado';
+  if(typeof appDraftEnabled==='function'&&appDraftEnabled()){
+    const ready=Boolean(appDraftContext().actor);
+    for(const id of ['newBtn','historyBtn','crmBtn','adminBtn','exportBackup']){
+      const node=$('#'+id);if(!node)continue;
+      if(!ready){node.disabled=true;node.dataset.storageBlocked='1';}
+      else if(node.dataset.storageBlocked==='1'){node.disabled=false;delete node.dataset.storageBlocked;}
+    }
+  }
 }
 
 
@@ -1392,7 +1410,7 @@ function renderReportPhotos(photos){
 /* ---------- Supabase REST sync ---------- */
 function cloudConfig(){
   const configuredUrl=($('#supabaseUrl').value||'').trim().replace(/\/+$/,'');
-  const stagingSite=location.hostname==='solar-clean-testes-crm.pages.dev';
+  const stagingSite=location.hostname==='solar-clean-testes-crm.pages.dev'||location.hostname.endsWith('.solar-clean-testes-crm.pages.dev');
   const stagingUrl='https://zzphucuiqhzrilrddxnf.supabase.co';
   // Bloqueia conexões acidentais do site de homologação com qualquer projeto de produção.
   // Retorna URL vazia em vez de disparar exceção, para permitir corrigir a configuração.
@@ -2057,6 +2075,9 @@ async function deleteCloudRecord(record){
 
 /* ---------- Dashboard / histórico ---------- */
 async function updateDashboard(){
+  if(typeof appDraftEnabled==='function'&&appDraftEnabled()&&!appDraftContext().actor){
+    ['countV','countC','countPending'].forEach(id=>$('#'+id).textContent='—');$('#pendingBreakdown').textContent='';return;
+  }
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
   const all=await dbAll();operationGuard();
@@ -3206,6 +3227,22 @@ function clearScopedCrmView(){
   if($('#crmImportedStatus'))$('#crmImportedStatus').textContent='';
   if($('#crmEditor'))$('#crmEditor').classList.add('hidden');
 }
+function clearOperationalAccountView(){
+  // A scoped database is insufficient if an old editor remains in memory.
+  agendaCache=[];agendaOriginGeneration++;agendaPartnerNames=new Map();
+  window.__agendaClientMap={};window.__agendaFiltered=[];
+  window.__agendaEditingId='';window.__agendaEditingGoogleEventId='';window.__agendaFinanceEventId='';
+  vistoriaReviewGeneration++;currentVistoriaReview=null;
+  for(const id of ['agendaFinanceEditor','crmEditor','conflictReviewResult'])$('#'+id)?.classList.add('hidden');
+  document.querySelectorAll('#agendaScreen input,#agendaScreen textarea,#crmEditor input,#crmEditor textarea,#adminScreen input,#historySearch').forEach(node=>{node.value='';});
+  document.querySelectorAll('#agendaScreen select,#crmEditor select').forEach(node=>{node.selectedIndex=0;});
+  for(const id of ['agendaClient','agendaOrigin','agendaOriginFilter','adminTechFilter'])$('#'+id)?.replaceChildren();
+  for(const id of ['agendaStatusMsg','agendaFinanceStatus','adminTotal','adminTechs','adminPending','historyStatus','conflictReviewStatus'])if($('#'+id))$('#'+id).textContent='';
+  clearScopedCrmView();clearAgendaPartnerPreview();
+  window.SCClientHistoryUI?.clear();window.SCScopedMigrationUI?.clear();
+  window.SCLegacyLocalReviewUI?.clear();
+  window.SCFieldAgendaUI?.clear();window.AgendaLedgerStatus?.clear();
+}
 function importedCrmContext(){
   if(location.hostname!=='solar-clean-testes-crm.pages.dev'||cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co'||!currentTech()?.cloud)return null;
   try{const token=localStorage.getItem('solarCleanAccessToken')||'';const actor=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub;
@@ -3704,7 +3741,7 @@ function captureStagingBackupLocal(){
     for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))clientImportIntents.push({key,raw:localStorage.getItem(key)});}
     clientImportIntents.sort((a,b)=>a.key.localeCompare(b.key));
   }
-  return {version:1,project,actor,legacyDataScope:(typeof scopedLocalRuntime==='function'&&scopedLocalRuntime()?.enabled())?'account-scoped':'device-unscoped',raw,
+  return {version:1,project,actor,legacyDataScope:(typeof scopedLocalRuntime==='function'&&(scopedLocalRuntime()?.isolated?.()??scopedLocalRuntime()?.enabled()))?'account-scoped':'device-unscoped',raw,
     clientImportIntents,
     financialIntent:journalKey?{key:journalKey,raw:localStorage.getItem(journalKey)}:null,
     limitations:['Sem cópia do banco ou dos arquivos remotos.','Dados locais legados pertencem ao aparelho e podem conter histórico de outras contas.','Sem importação automática; não reenviar intenções com novos IDs.']};
@@ -4288,7 +4325,7 @@ async function syncAgendaOnly(){
 $('#syncAgendaOnly').onclick=syncAgendaOnly;
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
 window.addEventListener('online',()=>{autoSync('conexão restaurada')});
-window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanRefreshToken','solarCleanTech','solarCleanCompany','solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf'].includes(event.key)||event.key===null){clearScopedCrmView();handleAppDraftExternalChange();}});
+window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanRefreshToken','solarCleanTech','solarCleanCompany','solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf'].includes(event.key)||event.key===null){clearScopedCrmView();handleAppDraftExternalChange();updateLoggedUser();}});
 window.addEventListener('beforeunload',event=>{if(appDraftQuarantined){event.preventDefault();event.returnValue='';}});
 window.addEventListener('focus',()=>{autoSync('retorno ao app')});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync('app visível')});
@@ -4305,7 +4342,8 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/agenda-ledger-status.js"></script>
 <script src="lib/backup-recovery.js"></script>
 <script src="lib/scoped-vistoria-store.js"></script>
-<script src="lib/scoped-vistoria-migration-ui.js"></script>
+<script src="lib/legacy-local-review.js"></script>
+<script src="lib/legacy-local-review-ui.js"></script>
 <script src="lib/google-history-review.js"></script>
 <script src="lib/client-history-import-plan.js"></script>
 <script src="lib/client-history-import-api.js"></script>
