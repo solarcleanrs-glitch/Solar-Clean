@@ -1,4 +1,4 @@
-const CACHE_NAME = "solar-clean-staging-20261104-account-isolation44";
+const CACHE_NAME = "solar-clean-staging-20261104-operational-access45";
 
 const FILES_TO_CACHE = [
   "./",
@@ -19,6 +19,8 @@ const FILES_TO_CACHE = [
   "./lib/scoped-vistoria-migration-ui.js",
   "./lib/legacy-local-review.js",
   "./lib/legacy-local-review-ui.js",
+  "./lib/operational-access.js",
+  "./lib/operational-access-ui.js",
   "./lib/google-history-review.js",
   "./lib/client-history-import-plan.js",
   "./lib/client-history-import-api.js",

@@ -12,6 +12,13 @@
  const nativeDB=window.indexedDB,allowed=new Set(Object.values(seed.actors).map(id=>PREFIX+id));
  Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowed.has(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
  window.fetch=async(url,options={})=>{
+  if(String(url)===PROJECT+'/rest/v1/rpc/sc_acesso_operacional'){
+   const actor=JSON.parse(atob((values.get('solarCleanAccessToken')||'').split('.')[1]||'e30=')).sub;
+   const which=actor===seed.actors.A?'A':actor===seed.actors.B?'B':null;
+   if(!which)return new Response('Synthetic denied',{status:403});
+   const role=seed.roles?.[which]||'gestor',manager=['gestor','gestor_unidade'].includes(role),units=role==='gestor'?['RS','SC']:['RS'];
+   return new Response(JSON.stringify({version:1,actor,role,units,revision:(role==='gestor'?'1':'2').repeat(32),capabilities:{agenda_read:true,agenda_manage:manager,reports_read:true,visits_write:manager,crm:manager,finance:manager,admin:manager,clients_read:role!=='tecnico',access_admin:role==='gestor'}}),{status:200,headers:{'Content-Type':'application/json'}});
+  }
   if(String(url)===PROJECT+'/auth/v1/token?grant_type=password'){
    const body=JSON.parse(options.body||'{}'),which=body.email==='a@example.invalid'?'A':body.email==='b@example.invalid'?'B':null;
    if(!which)return new Response('Conta fictícia inválida',{status:401});
@@ -118,7 +125,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261104-account-isolation-44" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: dados por conta — 04/11 · revisão 44</small></div>
+<div id="homologNotice" data-app-release="20261104-operational-access-45" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: acessos por perfil — 04/11 · revisão 45</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -989,6 +996,7 @@ async function dbDelete(id){await runVistoriaStore('readwrite',store=>store.dele
 let navigationScreen='home',reportReturnContext=null;
 function show(id){
   if(appDraftQuarantined)return;
+  if(window.SCOperationalAccessUI&&!window.SCOperationalAccessUI.canOpen(id))return;
   if(id==='reportScreen'&&navigationScreen!=='reportScreen'){
     // A saved form must not be reopened as a second new inspection.
     reportReturnContext={screen:navigationScreen==='formScreen'?'historyScreen':navigationScreen,
@@ -1077,6 +1085,7 @@ function setTech(t){
   if(t)localStorage.setItem('solarCleanTech',JSON.stringify(t));else localStorage.removeItem('solarCleanTech');
   updateLoggedUser();
   if(typeof refreshAppDraftList==='function')refreshAppDraftList();
+  window.SCOperationalAccessUI?.sessionChanged();
 }
 function updateLoggedUser(){
   const t=currentTech();
@@ -1673,6 +1682,8 @@ async function pushRecord(local){
   const upload=(async()=>{
   await ensureVistoriaSession();operationGuard();
   const c=cloudConfig();
+  const writeAccess=typeof window!=='undefined'&&window.SCOperationalAccessUI?await window.SCOperationalAccessUI.require('visits_write',local.serviceContext?.unit||null):null;
+  operationGuard();
   // Validar antes de qualquer envio de foto ou consulta da vistoria.
   if(local.scopeId!=null){cloudScopePayload(local);await ensureRecordScope(local);operationGuard();}
   // No modo antigo, UUID indica registro remoto; no modo revisionado,
@@ -1683,6 +1694,11 @@ async function pushRecord(local){
   local.updatedAt=new Date().toISOString();
   operationGuard();await dbPut(local);operationGuard();
 }
+  if(writeAccess?.role==='gestor_unidade'){
+    if(!local.scopeId)throw Error('Classifique a unidade antes de enviar a vistoria.');
+    const reservation=await fetch(c.url+'/rest/v1/rpc/sc_reservar_midia_gerencia',{method:'POST',headers:cloudHeaders(),body:JSON.stringify({p_vistoria:local.cloudId,p_escopo:local.scopeId})});
+    operationGuard();if(!reservation.ok||await reservation.json()!==true)throw Error('Reserva de vistoria/fotos não confirmada. Dados locais preservados.');operationGuard();
+  }
   // Não sobrescrever silenciosamente uma edição mais recente de outro aparelho.
   // Este controle é preventivo; uma atualização simultânea após o GET ainda
   // exige controle transacional por versão no servidor (backlog).
@@ -2075,6 +2091,9 @@ async function deleteCloudRecord(record){
 
 /* ---------- Dashboard / histórico ---------- */
 async function updateDashboard(){
+  if(typeof window!=='undefined'&&window.SCOperationalAccessUI&&window.SCOperationalAccessUI.current()?.role!=='gestor'){
+    ['countV','countC','countPending'].forEach(id=>$('#'+id).textContent='—');$('#pendingBreakdown').textContent='';return;
+  }
   if(typeof appDraftEnabled==='function'&&appDraftEnabled()&&!appDraftContext().actor){
     ['countV','countC','countPending'].forEach(id=>$('#'+id).textContent='—');$('#pendingBreakdown').textContent='';return;
   }
@@ -2311,12 +2330,14 @@ function normText(s){
   return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 }
 function isRegisTech(){
+  if(serviceContextEnabled())return window.SCOperationalAccessUI?.allowsUnit('SC')===true;
   const t=currentTech();
   const n=normText(t?.name);
   const e=normText(t?.email);
   return n==='regis' || n.startsWith('regis ') || e.includes('regis');
 }
 function canSeeAgendaFinance(){
+  if(serviceContextEnabled())return window.SCOperationalAccessUI?.allows('finance')===true;
   const t=currentTech();
   const n=normText(t?.name);
   const e=normText(t?.email);
@@ -2325,6 +2346,7 @@ function canSeeAgendaFinance(){
   return isRegis||isFabiano;
 }
 function canSeeAgendaUnit(unit){
+  if(serviceContextEnabled())return window.SCOperationalAccessUI?.allowsUnit(unit)===true;
   return unit!=='SC' || isRegisTech();
 }
   const GOOGLE_CLIENT_ID = '330586487271-ea92nnm24b8fk57tfod2289a6c1mm3i3.apps.googleusercontent.com';
@@ -4352,6 +4374,8 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/field-agenda-api.js"></script>
 <script src="lib/field-agenda-ui.js"></script>
 <script src="lib/imported-clients-crm.js"></script>
+<script src="lib/operational-access.js"></script>
+<script src="lib/operational-access-ui.js"></script>
 </body>
 </html>
 

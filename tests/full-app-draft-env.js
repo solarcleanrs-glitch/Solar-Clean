@@ -9,6 +9,13 @@ function bootstrap(seed){
  const nativeDB=window.indexedDB,allowed=new Set(Object.values(seed.actors).map(id=>PREFIX+id));
  Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowed.has(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
  window.fetch=async(url,options={})=>{
+  if(String(url)===PROJECT+'/rest/v1/rpc/sc_acesso_operacional'){
+   const actor=JSON.parse(atob((values.get('solarCleanAccessToken')||'').split('.')[1]||'e30=')).sub;
+   const which=actor===seed.actors.A?'A':actor===seed.actors.B?'B':null;
+   if(!which)return new Response('Synthetic denied',{status:403});
+   const role=seed.roles?.[which]||'gestor',manager=['gestor','gestor_unidade'].includes(role),units=role==='gestor'?['RS','SC']:['RS'];
+   return new Response(JSON.stringify({version:1,actor,role,units,revision:(role==='gestor'?'1':'2').repeat(32),capabilities:{agenda_read:true,agenda_manage:manager,reports_read:true,visits_write:manager,crm:manager,finance:manager,admin:manager,clients_read:role!=='tecnico',access_admin:role==='gestor'}}),{status:200,headers:{'Content-Type':'application/json'}});
+  }
   if(String(url)===PROJECT+'/auth/v1/token?grant_type=password'){
    const body=JSON.parse(options.body||'{}'),which=body.email==='a@example.invalid'?'A':body.email==='b@example.invalid'?'B':null;
    if(!which)return new Response('Conta fictícia inválida',{status:401});

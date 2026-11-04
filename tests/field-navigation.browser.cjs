@@ -18,7 +18,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
    });
    await page.goto(`https://${host}/tests/full-app-draft-sandbox.html`);
    await page.locator('#agendaBtn').click();
-   assert.equal(await page.locator('#fieldAgendaScreen').isVisible(),true);
+   await page.locator('#fieldAgendaScreen').waitFor({state:'visible'});assert.equal(await page.locator('#fieldAgendaScreen').isVisible(),true);
    await page.locator('#fieldAgendaUnit').selectOption('SC');
    await page.locator('#fieldAgendaLoad').click();
    await page.waitForFunction(()=>document.querySelector('#fieldAgendaStatus').textContent.includes('conecte'));
@@ -27,6 +27,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
    await page.locator('#homeFromFieldAgenda').click();await page.locator('#agendaBtn').click();
    assert.equal(await page.locator('#fieldAgendaUnit').inputValue(),'SC');
    for(const origin of ['historyScreen','adminScreen','agendaScreen','formScreen']){
+    await page.evaluate(()=>SCOperationalAccessUI.refresh());
     await page.evaluate(origin=>{
      show(origin);document.querySelector('#historySearch').value='Cliente sintético';
      renderReport({cliente:'Cliente sintético',createdAt:new Date().toISOString(),photos:[]});

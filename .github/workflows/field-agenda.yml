@@ -21,6 +21,7 @@ jobs:
       - run: NODE_PATH=./tests/browser/node_modules node tests/field-navigation.browser.cjs
       - run: NODE_PATH=./tests/browser/node_modules node tests/field-status.browser.cjs
       - run: NODE_PATH=./tests/browser/node_modules node tests/account-isolation.browser.cjs
+      - run: NODE_PATH=./tests/browser/node_modules node tests/operational-access.browser.cjs
   field-agenda:
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +42,8 @@ jobs:
           node tests/field-status-api.test.cjs
           node tests/field-status-ui.test.cjs
           node tests/legacy-local-review.test.cjs
+          node tests/operational-access.test.cjs
+          node tests/manager-media-reservation.test.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/unit-manager-db.integration.cjs
           SC_TEST_TEXT_AGENDA_IDS=1 NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
