@@ -15,6 +15,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.waitForFunction(()=>SCOperationalAccessUI.current()?.role==='tecnico');
   for(const id of ['newBtn','historyBtn','crmBtn','adminBtn','legacyAgendaFromField','fieldClientsLoad'])assert.equal(await page.locator('#'+id).isDisabled(),true,id);
   assert.equal(await page.locator('#agendaBtn').isDisabled(),false);assert.equal(await page.locator('#fieldReportsLoad').isDisabled(),false);
+  assert.equal(await page.locator('#fieldClientsSection').isVisible(),false);
   assert.equal(await page.evaluate(()=>canSeeAgendaFinance()),false);
   await page.evaluate(()=>{show('crmScreen');});assert.equal(await page.locator('#crmScreen').isVisible(),false);
   await page.evaluate(async()=>{const request=window.fetch;window.fetch=(url,options)=>String(url).endsWith('/sc_acesso_operacional')?Promise.resolve(new Response('Synthetic revoked',{status:403})):request(url,options);await SCOperationalAccessUI.refresh();});
