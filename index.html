@@ -2493,23 +2493,55 @@ async function writeStagingAgenda(event,payload){
   }
   operationGuard();return fetch(`${base}?select=*`,{method:'POST',headers,body:JSON.stringify(payload)});
 }
+function agendaArchiveConfirmed(rows,event){
+  if(!Array.isArray(rows)||rows.length!==1)return false;
+  const row=rows[0],revision=Number(row.revision);
+  return row.id===event.id&&typeof row.arquivado_em==='string'&&Number.isFinite(Date.parse(row.arquivado_em))&&
+    Number.isSafeInteger(revision)&&(event.archivedAt?revision>=event.baseRevision:revision>event.baseRevision);
+}
 async function archiveStagingAgenda(event){
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
+  if(cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')throw new Error('Arquivamento disponível somente no projeto de testes.');
+  if(!event?.id)throw new Error('Agendamento inválido.');
   if(!cloudReady()||!navigator.onLine)throw new Error('Conecte-se à nuvem para arquivar o agendamento.');
   if(event.syncStatus==='pending'||!Number.isSafeInteger(event.baseRevision)||event.baseRevision<1)
     throw new Error('Sincronize e confira o agendamento antes de arquivar.');
   await ensureVistoriaSession();operationGuard();
+  const before=agendaLocal().find(row=>row.id===event.id);
+  if(before&&(before.syncStatus==='pending'||before.baseRevision!==event.baseRevision&&!before.archivedAt))
+    throw new Error('Há uma versão local mais recente. Confira o agendamento antes de arquivar.');
   const c=cloudConfig();
-  const response=await fetch(`${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
-    method:'PATCH',headers:cloudHeaders({'Prefer':'return=representation'}),body:JSON.stringify({arquivado_em:new Date().toISOString()})
-  });
-  operationGuard();if(!response.ok)throw new Error('Não foi possível arquivar o agendamento.');
-  const rows=await response.json();operationGuard();
-  if(!Array.isArray(rows)||rows.length!==1||rows[0].id!==event.id||!rows[0].arquivado_em||Number(rows[0].revision)<=event.baseRevision)
-    throw new Error('Arquivamento não confirmado ou conflito de edição. Cópia local preservada.');
+  const base=`${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(event.id)}`;
+  let response,rows;
+  if(!before?.archivedAt&&!event.archivedAt){
+    try{
+      response=await fetch(`${base}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=id,revision,arquivado_em,updated_at`,{
+        method:'PATCH',headers:cloudHeaders({'Prefer':'return=representation'}),body:JSON.stringify({arquivado_em:new Date().toISOString()})
+      });
+    }catch(error){operationGuard();}
+  }
+  operationGuard();
+  if(response){
+    if(!response.ok)throw new Error('Não foi possível arquivar o agendamento ('+response.status+'). Cópia local preservada.');
+    try{rows=await response.json();}catch(error){operationGuard();}
+    operationGuard();
+  }
+  if(!agendaArchiveConfirmed(rows,event)){
+    // A gravação pode ter terminado antes de a resposta se perder. Conferir o
+    // estado atual com leitura; nunca repetir a escrita ou adotar nova revisão.
+    let check;
+    try{check=await fetch(`${base}&select=id,revision,arquivado_em,updated_at&limit=1`,{headers:cloudHeaders({'Prefer':''})});}
+    catch(error){operationGuard();throw new Error('Arquivamento sem confirmação. Cópia local preservada; tente novamente com conexão.');}
+    operationGuard();if(!check.ok)throw new Error('Não foi possível confirmar o arquivamento. Cópia local preservada.');
+    try{rows=await check.json();}catch(error){throw new Error('Resposta de confirmação inválida. Cópia local preservada.');}
+    operationGuard();
+    if(!agendaArchiveConfirmed(rows,event))throw new Error('Arquivamento não confirmado ou conflito de edição. Cópia local preservada; atualize a agenda antes de tentar novamente.');
+  }
   const local=agendaLocal(),index=local.findIndex(row=>row.id===event.id);
   if(index>=0){
+    if(local[index].syncStatus!=='pending'&&local[index].baseRevision===Number(rows[0].revision)&&
+       Date.parse(local[index].archivedAt)===Date.parse(rows[0].arquivado_em))return true;
     if(local[index].syncStatus==='pending'||local[index].baseRevision!==event.baseRevision)
       throw new Error('O agendamento foi arquivado na nuvem, mas há uma edição local para revisar.');
     local[index]={...local[index],archivedAt:rows[0].arquivado_em,baseRevision:Number(rows[0].revision),updatedAt:rows[0].updated_at||local[index].updatedAt};
