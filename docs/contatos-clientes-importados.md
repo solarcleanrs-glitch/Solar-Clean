@@ -53,6 +53,14 @@ confirmou somente uma linha e negou outra conta. Tudo foi desfeito por ROLLBACK;
 a tabela ficou vazia. Clientes e origens Google permaneceram iguais. Não houve
 contato comercial real criado, mensagem enviada ou alteração em produção.
 
-Falta validar o formulário com sessão real do gestor no navegador e os demais
-perfis reais antes da liberação geral. Este módulo não inclui edição cadastral,
-status comercial por perfil nem a implantação oficial.
+No navegador do ambiente de testes, a sessão real do gestor confirmou a consulta
+dos cinco clientes autorizados, a disponibilidade da ação restrita ao gestor,
+a abertura do histórico vazio e os campos de resultado, observação e retorno.
+Alterar a pesquisa removeu o formulário anterior; a nova consulta retornou
+somente o cliente correspondente. Esta conferência não gravou contatos fictícios.
+
+A gravação pela interface com uma sessão real e os demais perfis reais ainda
+precisam ser validados antes da liberação geral. O ensaio SQL com ROLLBACK e
+os testes automáticos de repetição não substituem essa validação de ponta a ponta.
+Este módulo não inclui edição cadastral, status comercial por perfil nem a
+implantação oficial.
