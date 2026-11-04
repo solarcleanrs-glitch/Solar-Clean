@@ -49,6 +49,21 @@ administração, agenda e formulário salvo. Não substitui teste num aparelho r
 
 ## Pendências da primeira entrega operacional
 
+### Conferência do banco de testes em 04/11/2026
+
+Consultas em transação somente leitura com ROLLBACK, exclusivamente no projeto
+`zzphucuiqhzrilrddxnf`, confirmaram a função de permissão existente, sem EXECUTE
+para `anon` e com EXECUTE para `authenticated`. Sua definição exige UUID
+autenticado, gestor ativo em `sc_acessos` e vínculo em `crm_usuarios`.
+RLS está ativo em `agenda_eventos` e `vistorias`; as políticas consultadas da
+agenda exigem gestor e as vistorias têm políticas restritivas de gestor.
+Isso não é uma auditoria de todos os caminhos do aplicativo.
+
+O cadastro de acesso contém somente um gestor ativo. Não há perfis de técnico
+RS, técnico SC ou parceiro cadastrados nessa tabela para concluir os ensaios
+HTTP reais. Não foram criadas contas, alteradas permissões ou lidos dados de
+clientes para essa conferência.
+
 Continuam necessários os testes autenticados dos perfis gestor, técnico RS,
 técnico SC e parceiro, a adoção das operações de escrita autorizadas e o
 fechamento coordenado dos caminhos antigos. Seguir
