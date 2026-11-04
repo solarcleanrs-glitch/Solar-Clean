@@ -13,9 +13,9 @@ class Element{
  setAttribute(name,value){this[name]=value;}
 }
 const home=new Element(),owner='11111111-1111-4111-8111-111111111111';
-let project='staging',screen='',legacyCalls=0;
+let project='staging',screen='',legacyCalls=0,legacyFailure=false;
 for(const id of ['agendaBtn','homeFromFieldAgenda','legacyAgendaFromField']){const node=new Element();node.id=id;}
-nodes.get('agendaBtn').onclick=()=>{legacyCalls++;};
+nodes.get('agendaBtn').onclick=()=>{legacyCalls++;if(legacyFailure)throw Error('legacy loading failed');};
 const row={client_uuid:owner,cliente:'Synthetic',created_at:'2026-10-29T02:59:59Z',unidade:'RS'};
 const window={addEventListener:(name,fn)=>events[name]=fn,fetch:()=>{},SCFieldAgenda:{
  reports:async()=>deferred?await deferred.promise:[row],
@@ -33,7 +33,8 @@ const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve))
  let releasePermission;window.SCFieldAgenda.canContact=()=>new Promise(resolve=>releasePermission=resolve);
  const stalePermission=el('legacyAgendaFromField').onclick();await flush();actor='B';window.SCFieldAgendaUI.clear();releasePermission(true);await stalePermission;assert.equal(legacyCalls,0);
  window.SCFieldAgenda.canContact=async()=>true;await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,1);
- project='official';el('agendaBtn').onclick();assert.equal(legacyCalls,2);project='staging';
+ legacyFailure=true;await el('legacyAgendaFromField').onclick();assert.match(el('fieldAgendaStatus').textContent,/legacy loading failed/);legacyFailure=false;
+ project='official';el('agendaBtn').onclick();assert.equal(legacyCalls,3);project='staging';
  await el('fieldReportsLoad').onclick();assert.equal(el('fieldReportsRows').children.length,1);
  assert.match(el('fieldReportsRows').children[0].textContent,/28\/10\/2026/,'Brazil date, not UTC');
  el('fieldReportsRows').children[0].onclick();await flush();await flush();
