@@ -3206,11 +3206,11 @@ function clearOperationalAccountView(){
   window.__agendaClientMap={};window.__agendaFiltered=[];
   window.__agendaEditingId='';window.__agendaEditingGoogleEventId='';window.__agendaFinanceEventId='';
   vistoriaReviewGeneration++;currentVistoriaReview=null;
-  for(const id of ['agendaFinanceEditor','crmEditor','conflictReviewResult'])$('#'+id)?.classList.add('hidden');
+  for(const id of ['agendaFinanceEditor','crmEditor','conflictReviewDetails'])$('#'+id)?.classList.add('hidden');
   document.querySelectorAll('#agendaScreen input,#agendaScreen textarea,#crmEditor input,#crmEditor textarea,#adminScreen input,#historySearch').forEach(node=>{node.value='';});
   document.querySelectorAll('#agendaScreen select,#crmEditor select').forEach(node=>{node.selectedIndex=0;});
-  for(const id of ['agendaClient','agendaOrigin','agendaOriginFilter','adminTechFilter'])$('#'+id)?.replaceChildren();
-  for(const id of ['agendaStatusMsg','agendaFinanceStatus','adminTotal','adminTechs','adminPending','historyStatus','conflictReviewStatus'])if($('#'+id))$('#'+id).textContent='';
+  for(const id of ['agendaClient','agendaOrigin','agendaOriginFilter','adminTechFilter','conflictRecordSelect','conflictReviewRows'])$('#'+id)?.replaceChildren();
+  for(const id of ['agendaStatusMsg','agendaFinanceStatus','adminTotal','adminTechs','adminPending','historyStatus','conflictReviewStatus','pendingBreakdown'])if($('#'+id))$('#'+id).textContent='';
   clearScopedCrmView();clearAgendaPartnerPreview();
   window.SCClientHistoryUI?.clear();window.SCScopedMigrationUI?.clear();
   window.SCLegacyLocalReviewUI?.clear();
