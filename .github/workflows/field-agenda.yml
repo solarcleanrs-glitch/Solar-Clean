@@ -29,3 +29,4 @@ jobs:
           NODE_PATH=./tests/postgres/node_modules node tests/scoped-clients-db.integration.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/legacy-report-media-guard-db.integration.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/scoped-report-db.integration.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/imported-client-edit-db.integration.cjs
