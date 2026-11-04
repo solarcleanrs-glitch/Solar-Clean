@@ -6,6 +6,16 @@ const ctx={url:'https://zzphucuiqhzrilrddxnf.supabase.co',headers:{},check:()=>{
  const intent=api.contactIntent({client,outcome:'Cliente respondeu',note:'Synthetic',followup:'2026-11-10'},id);assert.equal(Object.isFrozen(intent),true);
  assert.throws(()=>api.contactIntent({client,outcome:'Unknown',note:''},id));
  assert.throws(()=>api.contactIntent({client,outcome:'Cliente respondeu',note:'',followup:'2026-02-30'},id));
+ for(const followup of [false,0,NaN,{},[],true,42,'2026-02-30']){
+  assert.throws(()=>api.contactIntent({client,outcome:'Cliente respondeu',note:'',followup},id));
+  await assert.rejects(api.recordContact({...ctx,fetch:async()=>{throw Error('Unexpected network');}}, {p_id:id,p_cliente:client,p_resultado:'Cliente respondeu',p_observacao:'',p_retorno:followup}),/Informe datas válidas/);
+ }
+ for(const followup of [undefined,null,'']){
+  assert.equal(api.contactIntent({client,outcome:'Cliente respondeu',note:'',followup},id).p_retorno,null);
+ }
+ for(const retorno of [undefined,false,0,'',{},[],'2026-02-30']){
+  await assert.rejects(api.contacts({...ctx,fetch:async()=>({ok:true,json:async()=>[{id,created_at:'2026-11-02T12:00:00Z',resultado:'Cliente respondeu',observacao:'',retorno}]})},client),/Informe datas válidas/);
+ }
  assert.equal(await api.canContact({...ctx,fetch:async()=>({ok:true,json:async()=>false})}),false);
  const bodies=[];let attempt=0;
  const retryCtx={...ctx,fetch:async(url,options)=>{bodies.push(options.body);if(++attempt===1)throw Error('connection lost');return {ok:true,json:async()=>({id,repetido:true})};}};

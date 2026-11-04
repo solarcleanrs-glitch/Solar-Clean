@@ -24,4 +24,4 @@ Manter artefato anterior e restauração ensaiada. Não remover colunas/tabelas,
 
 ## Estado conhecido
 
-O histórico de contatos importados foi implementado e ensaiado com ROLLBACK. O login real do navegador ficou pendente. As consultas de campo ainda são uma área de testes separada: não substituem integralmente os fluxos antigos. A tentativa de contato fica em memória; após recarregar a página, conferir o histórico antes de criar outro registro em caso de resposta incerta.
+O histórico de contatos importados foi implementado e ensaiado com ROLLBACK. O login real do gestor, a consulta dos cinco clientes, a abertura do formulário/histórico e a limpeza na troca de pesquisa foram conferidos no navegador. A gravação e repetição pela interface e os demais perfis reais ainda estão pendentes. As consultas de campo ainda são uma área de testes separada: não substituem integralmente os fluxos antigos. A tentativa de contato fica em memória; após recarregar a página, conferir o histórico antes de criar outro registro em caso de resposta incerta.
