@@ -1,11 +1,24 @@
 name: Validar consulta de campo por unidade
 on:
+  pull_request:
   push:
     branches: [feature/crm-whatsapp-recorrencia-20261028]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  field-navigation-browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+      - run: npm ci --prefix tests/browser --ignore-scripts --no-audit --no-fund
+      - run: node tests/browser/node_modules/playwright/cli.js install --with-deps chromium
+      - run: NODE_PATH=./tests/browser/node_modules node tests/field-navigation.browser.cjs
   field-agenda:
     runs-on: ubuntu-latest
     steps:
@@ -23,6 +36,11 @@ jobs:
           node tests/field-agenda-api.test.cjs
           node tests/field-report-api.test.cjs
           node tests/field-report-ui.test.cjs
+          node tests/report-navigation.test.cjs
+          node tests/agenda-sync.test.cjs
+          node tests/agenda-archive-retry.test.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/agenda-archive-db.integration.cjs
+          node tests/sync-agenda-only.test.cjs
           node tests/field-clients-api.test.cjs
           node tests/imported-contact-api.test.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/imported-contact-db.integration.cjs

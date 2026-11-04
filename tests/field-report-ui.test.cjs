@@ -1,5 +1,9 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+for(const hostname of ['solar-clean-testes-crm.pages.dev','candidate.solar-clean-testes-crm.pages.dev','solar-clean-testes-crm.pages.dev.evil.invalid','solar-clean.pages.dev']){
+ let mounted=0;vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{location:{hostname},document:{querySelector:()=>{mounted++;return null;}}});
+ assert.equal(mounted,hostname==='solar-clean-testes-crm.pages.dev'||hostname==='candidate.solar-clean-testes-crm.pages.dev'?1:0);
+}
 const nodes=new Map(),events={},revoked=[];let actor='A',deferred=null;
 class Element{
  constructor(){this.children=[];this.style={};this.value='';this.disabled=false;this.textContent='';}
@@ -9,14 +13,28 @@ class Element{
  setAttribute(name,value){this[name]=value;}
 }
 const home=new Element(),owner='11111111-1111-4111-8111-111111111111';
+let project='staging',screen='',legacyCalls=0,legacyFailure=false;
+for(const id of ['agendaBtn','homeFromFieldAgenda','legacyAgendaFromField']){const node=new Element();node.id=id;}
+nodes.get('agendaBtn').onclick=()=>{legacyCalls++;if(legacyFailure)throw Error('legacy loading failed');};
 const row={client_uuid:owner,cliente:'Synthetic',created_at:'2026-10-29T02:59:59Z',unidade:'RS'};
 const window={addEventListener:(name,fn)=>events[name]=fn,fetch:()=>{},SCFieldAgenda:{
  reports:async()=>deferred?await deferred.promise:[row],
  report:async()=>({client_uuid:owner,cliente:'Synthetic',placas:0,obs:'PRIVATE',valor_cobrado:'PRIVATE',media_manifest:[{category:'Antes'}]}),
  photo:async()=>({}),read:async()=>[],clients:async()=>[]}};
-vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{window,location:{hostname:'solar-clean-testes-crm.pages.dev'},document:{querySelector:()=>home,getElementById:id=>nodes.get(id),createElement:()=>new Element(),createDocumentFragment:()=>new Element()},navigator:{onLine:true},currentTech:()=>({cloud:true}),captureVistoriaOperationGuard:()=>{const before=actor;return()=>{if(actor!==before)throw Error('account changed');};},ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:'staging'}),crmHistoryCloudHeaders:()=>({}),URL:{createObjectURL:()=> 'blob:synthetic',revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> '22222222-2222-4222-8222-222222222222'},Date,Set,Error,String,Object});
+vm.runInNewContext(fs.readFileSync('lib/field-agenda-ui.js','utf8'),{window,show:id=>{screen=id;},location:{hostname:'solar-clean-testes-crm.pages.dev'},document:{querySelector:()=>home,getElementById:id=>nodes.get(id),createElement:()=>new Element(),createDocumentFragment:()=>new Element()},navigator:{onLine:true},currentTech:()=>({cloud:true}),captureVistoriaOperationGuard:()=>{const before=actor;return()=>{if(actor!==before)throw Error('account changed');};},ensureVistoriaSession:async()=>{},cloudConfig:()=>({url:project}),crmHistoryCloudHeaders:()=>({}),URL:{createObjectURL:()=> 'blob:synthetic',revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> '22222222-2222-4222-8222-222222222222'},Date,Set,Error,String,Object});
 const el=id=>nodes.get(id),flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
+ project='https://zzphucuiqhzrilrddxnf.supabase.co';el('agendaBtn').onclick();assert.equal(screen,'fieldAgendaScreen');assert.equal(legacyCalls,0);
+ el('fieldAgendaUnit').value='RS';await el('fieldAgendaLoad').onclick();el('homeFromFieldAgenda').onclick();assert.equal(screen,'home');
+ el('agendaBtn').onclick();assert.equal(el('fieldAgendaUnit').value,'RS');assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.read=async()=>{throw Error('denied');};await el('fieldAgendaLoad').onclick();assert.equal(legacyCalls,0);assert.equal(el('fieldAgendaRows').children.length,0);
+ window.SCFieldAgenda.canContact=async()=>false;await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.canContact=async()=>{throw Error('permission unavailable');};await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,0);
+ let releasePermission;window.SCFieldAgenda.canContact=()=>new Promise(resolve=>releasePermission=resolve);
+ const stalePermission=el('legacyAgendaFromField').onclick();await flush();actor='B';window.SCFieldAgendaUI.clear();releasePermission(true);await stalePermission;assert.equal(legacyCalls,0);
+ window.SCFieldAgenda.canContact=async()=>true;await el('legacyAgendaFromField').onclick();assert.equal(legacyCalls,1);
+ legacyFailure=true;await el('legacyAgendaFromField').onclick();assert.match(el('fieldAgendaStatus').textContent,/legacy loading failed/);legacyFailure=false;
+ project='official';el('agendaBtn').onclick();assert.equal(legacyCalls,3);project='staging';
  await el('fieldReportsLoad').onclick();assert.equal(el('fieldReportsRows').children.length,1);
  assert.match(el('fieldReportsRows').children[0].textContent,/28\/10\/2026/,'Brazil date, not UTC');
  el('fieldReportsRows').children[0].onclick();await flush();await flush();

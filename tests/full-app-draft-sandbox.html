@@ -145,6 +145,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <div class="metric"><span class="muted">Clientes</span><b id="countC">0</b></div>
       <div class="metric"><span class="muted">Pendentes de nuvem</span><b id="countPending">0</b></div>
     </div>
+    <p id="pendingBreakdown" class="small hidden" role="status"></p>
   </div>
 </section>
 
@@ -707,6 +708,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <div class="grid grid2 section">
         <button id="testCloud">Testar conexão</button>
         <button id="syncNow">Sincronizar agora</button>
+        <button id="syncAgendaOnly" class="hidden" type="button">Sincronizar somente agenda</button>
       </div>
       <p id="cloudStatus" class="muted"></p>
       <div id="conflictReviewPanel" class="section hidden" style="border-top:1px solid var(--line);padding-top:16px">
@@ -801,6 +803,12 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
     </div>
   </div>
 </section>
+<section id="fieldAgendaScreen" class="hidden">
+  <h2>Agenda e relatórios por acesso — testes</h2>
+  <p class="muted">Consulta autorizada por unidade e parceiro. Requer conexão.</p>
+  <button id="homeFromFieldAgenda" type="button">Voltar ao início</button>
+  <button id="legacyAgendaFromField" type="button">Abrir gestão da agenda — fluxo anterior</button>
+</section>
 </main>
 
 <script src="lib/scoped-local-runtime.js"></script>
@@ -811,7 +819,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <script src="lib/settlement-browser.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
+const screens=['home','formScreen','historyScreen','crmScreen','agendaScreen','fieldAgendaScreen','settingsScreen','reportScreen','loginScreen','adminScreen'];
 let step=1, deferredPrompt=null, currentReportRecord=null, editingRecord=null;
 let formSessionGuard=null,currentReportSessionGuard=null;
 
@@ -969,7 +977,29 @@ async function dbAll(){
 async function dbDelete(id){await runVistoriaStore('readwrite',store=>store.delete(id));}
 
 /* ---------- UI helpers ---------- */
-function show(id){if(appDraftQuarantined)return;screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(id==='formScreen')void renderServiceContextControls();if(id==='settingsScreen')$('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled())}
+let navigationScreen='home',reportReturnContext=null;
+function show(id){
+  if(appDraftQuarantined)return;
+  if(id==='reportScreen'&&navigationScreen!=='reportScreen'){
+    // A saved form must not be reopened as a second new inspection.
+    reportReturnContext={screen:navigationScreen==='formScreen'?'historyScreen':navigationScreen,
+      scroll:navigationScreen==='formScreen'?0:(window.scrollY||0),check:captureVistoriaOperationGuard()};
+  }
+  navigationScreen=id;
+  screens.forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));
+  if(id==='formScreen')void renderServiceContextControls();
+  if(id==='settingsScreen'){
+    $('#conflictReviewPanel').classList.toggle('hidden',!serviceContextEnabled());
+    $('#syncAgendaOnly').classList.toggle('hidden',!serviceContextEnabled());
+  }
+}
+function returnFromReport(){
+  const context=reportReturnContext;reportReturnContext=null;
+  try{
+    if(!context)throw Error('Abra um relatório nesta sessão.');
+    context.check();show(context.screen);window.scrollTo?.(0,context.scroll);
+  }catch(e){show('home');}
+}
 function radio(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||'Não informado'}
 function checks(n){return [...document.querySelectorAll(`input[name="${n}"]:checked`)].map(x=>x.value)}
 function stepView(){
@@ -1025,6 +1055,9 @@ function endCloudSession(){
 }
 function setTech(t){
   authSessionGeneration++;
+  reportReturnContext=null;
+  $('#pendingBreakdown').textContent='';
+  $('#countPending').textContent='—';
   clearScopedCrmView();
   window.SCClientHistoryUI?.clear();
   window.SCScopedMigrationUI?.clear();
@@ -2029,7 +2062,13 @@ async function updateDashboard(){
   const all=await dbAll();operationGuard();
   $('#countV').textContent=all.length;
   $('#countC').textContent=new Set(all.map(x=>(x.cliente||'').trim().toLowerCase()).filter(Boolean)).size;
-  $('#countPending').textContent=all.filter(x=>x.syncStatus!=='synced').length;
+  const visits=all.filter(x=>x.syncStatus!=='synced'||!x.cloudId).length;
+  const staging=serviceContextEnabled();
+  const appointments=staging?agendaLocal().filter(event=>event.syncStatus==='pending').length:0;
+  $('#countPending').textContent=visits+appointments;
+  $('#pendingBreakdown').classList.toggle('hidden',!staging);
+  $('#pendingBreakdown').textContent=staging?`${visits} vistoria(s) e ${appointments} agendamento(s) pendentes neste aparelho.`:'';
+  if(staging)updateSyncBadge(visits+appointments>0?`${visits+appointments} pendente(s)`:'Sem envios pendentes',visits+appointments===0);
   if(!cloudReady()) updateSyncBadge('Somente local');
 }
 async function renderHistory(){
@@ -2480,23 +2519,55 @@ async function writeStagingAgenda(event,payload){
   }
   operationGuard();return fetch(`${base}?select=*`,{method:'POST',headers,body:JSON.stringify(payload)});
 }
+function agendaArchiveConfirmed(rows,event){
+  if(!Array.isArray(rows)||rows.length!==1)return false;
+  const row=rows[0],revision=Number(row.revision);
+  return row.id===event.id&&typeof row.arquivado_em==='string'&&Number.isFinite(Date.parse(row.arquivado_em))&&
+    Number.isSafeInteger(revision)&&(event.archivedAt?revision>=event.baseRevision:revision>event.baseRevision);
+}
 async function archiveStagingAgenda(event){
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
+  if(cloudConfig().url!=='https://zzphucuiqhzrilrddxnf.supabase.co')throw new Error('Arquivamento disponível somente no projeto de testes.');
+  if(!event?.id)throw new Error('Agendamento inválido.');
   if(!cloudReady()||!navigator.onLine)throw new Error('Conecte-se à nuvem para arquivar o agendamento.');
   if(event.syncStatus==='pending'||!Number.isSafeInteger(event.baseRevision)||event.baseRevision<1)
     throw new Error('Sincronize e confira o agendamento antes de arquivar.');
   await ensureVistoriaSession();operationGuard();
+  const before=agendaLocal().find(row=>row.id===event.id);
+  if(before&&(before.syncStatus==='pending'||before.baseRevision!==event.baseRevision&&!before.archivedAt))
+    throw new Error('Há uma versão local mais recente. Confira o agendamento antes de arquivar.');
   const c=cloudConfig();
-  const response=await fetch(`${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(event.id)}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=*`,{
-    method:'PATCH',headers:cloudHeaders({'Prefer':'return=representation'}),body:JSON.stringify({arquivado_em:new Date().toISOString()})
-  });
-  operationGuard();if(!response.ok)throw new Error('Não foi possível arquivar o agendamento.');
-  const rows=await response.json();operationGuard();
-  if(!Array.isArray(rows)||rows.length!==1||rows[0].id!==event.id||!rows[0].arquivado_em||Number(rows[0].revision)<=event.baseRevision)
-    throw new Error('Arquivamento não confirmado ou conflito de edição. Cópia local preservada.');
+  const base=`${c.url}/rest/v1/agenda_eventos?id=eq.${encodeURIComponent(event.id)}`;
+  let response,rows;
+  if(!before?.archivedAt&&!event.archivedAt){
+    try{
+      response=await fetch(`${base}&revision=eq.${event.baseRevision}&arquivado_em=is.null&select=id,revision,arquivado_em,updated_at`,{
+        method:'PATCH',headers:cloudHeaders({'Prefer':'return=representation'}),body:JSON.stringify({arquivado_em:new Date().toISOString()})
+      });
+    }catch(error){operationGuard();}
+  }
+  operationGuard();
+  if(response){
+    if(!response.ok)throw new Error('Não foi possível arquivar o agendamento ('+response.status+'). Cópia local preservada.');
+    try{rows=await response.json();}catch(error){operationGuard();}
+    operationGuard();
+  }
+  if(!agendaArchiveConfirmed(rows,event)){
+    // A gravação pode ter terminado antes de a resposta se perder. Conferir o
+    // estado atual com leitura; nunca repetir a escrita ou adotar nova revisão.
+    let check;
+    try{check=await fetch(`${base}&select=id,revision,arquivado_em,updated_at&limit=1`,{headers:cloudHeaders({'Prefer':''})});}
+    catch(error){operationGuard();throw new Error('Arquivamento sem confirmação. Cópia local preservada; tente novamente com conexão.');}
+    operationGuard();if(!check.ok)throw new Error('Não foi possível confirmar o arquivamento. Cópia local preservada.');
+    try{rows=await check.json();}catch(error){throw new Error('Resposta de confirmação inválida. Cópia local preservada.');}
+    operationGuard();
+    if(!agendaArchiveConfirmed(rows,event))throw new Error('Arquivamento não confirmado ou conflito de edição. Cópia local preservada; atualize a agenda antes de tentar novamente.');
+  }
   const local=agendaLocal(),index=local.findIndex(row=>row.id===event.id);
   if(index>=0){
+    if(local[index].syncStatus!=='pending'&&local[index].baseRevision===Number(rows[0].revision)&&
+       Date.parse(local[index].archivedAt)===Date.parse(rows[0].arquivado_em))return true;
     if(local[index].syncStatus==='pending'||local[index].baseRevision!==event.baseRevision)
       throw new Error('O agendamento foi arquivado na nuvem, mas há uma edição local para revisar.');
     local[index]={...local[index],archivedAt:rows[0].arquivado_em,baseRevision:Number(rows[0].revision),updatedAt:rows[0].updated_at||local[index].updatedAt};
@@ -2693,7 +2764,13 @@ valor_recebido:Number(ev.valorRecebido||0),
   }
   return ev;
 }
-async function syncPendingAgenda(){
+let pendingAgendaSync=null;
+function syncPendingAgenda(){
+  if(pendingAgendaSync)return pendingAgendaSync;
+  pendingAgendaSync=runPendingAgendaSync().finally(()=>{pendingAgendaSync=null;});
+  return pendingAgendaSync;
+}
+async function runPendingAgendaSync(){
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
   const pending=agendaLocal().filter(event=>event.syncStatus==='pending');
@@ -2701,10 +2778,19 @@ async function syncPendingAgenda(){
   const failures=[];
   let synced=0;
   for(const event of pending){
-    try{operationGuard();await saveAgendaEvent({...event});operationGuard();synced++;}
+    try{
+      operationGuard();
+      const current=agendaLocal().find(row=>row.id===event.id);
+      if(!current||current.syncStatus!=='pending')continue;
+      const confirmed=await saveAgendaEvent({...current});operationGuard();
+      if(confirmed.syncStatus!=='synced')throw Error('Conexão interrompida; agendamento preservado neste aparelho.');
+      synced++;
+    }
     catch(error){operationGuard();failures.push(error.message||'Falha de sincronização');}
   }
-  if(failures.length)throw new Error(`${failures.length} agendamento(s) continuam pendentes: ${failures[0]}`);
+  operationGuard();
+  const remaining=agendaLocal().filter(event=>event.syncStatus==='pending').length;
+  if(failures.length||remaining)throw new Error(`${remaining} agendamento(s) continuam pendentes: ${failures[0]||'Há novas alterações locais; sincronize novamente.'}`);
   return {synced,pending:0};
 }
   async function deleteAgendaEvent(ev){
@@ -3826,7 +3912,7 @@ $('#useRemoteVistoria').onclick=()=>resolveVistoriaConflict('remote');
 $('#previewLocalConflict').onclick=()=>previewVistoriaConflict('local');
 $('#previewRemoteConflict').onclick=()=>previewVistoriaConflict('remote');
 if($('#historyDiagnostics'))$('#historyDiagnostics').classList.toggle('hidden',location.hostname!=='solar-clean-testes-crm.pages.dev');
-$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=()=>show('home'); $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=()=>show('home');
+$('#homeFromHistory').onclick=()=>show('home'); $('#homeFromCrm').onclick=()=>show('home'); $('#homeFromAgenda').onclick=async()=>{await updateDashboard();show('home')}; $('#homeFromSettings').onclick=()=>show('home'); $('#homeFromLogin').onclick=()=>show('home'); $('#homeFromAdmin').onclick=()=>show('home'); $('#backReport').onclick=returnFromReport;
 $('#nextStep').onclick=()=>{if(step<6){step++;stepView()}}; $('#backStep').onclick=()=>{if(step>1){step--;stepView()}};
 document.querySelectorAll('input[name=dps]').forEach(x=>x.onchange=()=>$('#dpsExtra').classList.toggle('hidden',radio('dps')!=='Utilizadas'));
 $('#showGeneration').onchange=updateGenerationVisibility; $('#antes').oninput=calc; $('#depois').oninput=calc; Object.keys(photoCategories).forEach(id=>$('#'+id).onchange=()=>addPhotosFromInput(id));
@@ -4184,6 +4270,22 @@ $('#syncNow').onclick=async()=>{
     btn.textContent=oldText;
   }
 };
+async function syncAgendaOnly(){
+  const operationGuard=captureVistoriaOperationGuard(),button=$('#syncAgendaOnly');
+  button.disabled=true;
+  try{
+    if(!serviceContextEnabled())throw Error('Reenvio separado disponível somente no projeto de testes.');
+    if(!navigator.onLine||!cloudReady())throw Error('Conecte-se à internet para reenviar os agendamentos.');
+    await ensureVistoriaSession();operationGuard();
+    const result=await syncPendingAgenda();operationGuard();
+    await updateDashboard();operationGuard();
+    $('#cloudStatus').textContent=`Agenda: ${result.synced} agendamento(s) confirmado(s). Vistorias pendentes continuam preservadas para revisão.`;
+  }catch(error){
+    try{operationGuard();$('#cloudStatus').textContent=error.message||String(error);await updateDashboard();operationGuard();}
+    catch(contextError){console.warn('Não foi possível atualizar o resumo desta sessão.');}
+  }finally{button.disabled=false;}
+}
+$('#syncAgendaOnly').onclick=syncAgendaOnly;
 $('#historySearch').oninput=renderHistory; $('#crmSearch').oninput=renderCrm; $('#crmFilter').onchange=renderCrm; $('#crmCommercialFilter').onchange=renderCrm; $('#clearSearch').onclick=()=>{$('#historySearch').value='';renderHistory()}; $('#exportBackup').onclick=exportBackup; $('#adminSearch').oninput=renderAdmin; $('#adminCity').oninput=renderAdmin; $('#adminTechFilter').onchange=renderAdmin;
 window.addEventListener('online',()=>{autoSync('conexão restaurada')});
 window.addEventListener('storage',event=>{if(['solarCleanAccessToken','solarCleanRefreshToken','solarCleanTech','solarCleanCompany','solarCleanScopedOperationalEnabled:v1:zzphucuiqhzrilrddxnf'].includes(event.key)||event.key===null){clearScopedCrmView();handleAppDraftExternalChange();}});

@@ -5,12 +5,13 @@ const source=html.slice(html.indexOf('function agendaExistingFinance('),html.ind
 const writes=html.slice(html.indexOf('function agendaPayloadMatches('),html.indexOf('function agendaLocal('));
 const schema=fs.readFileSync('supabase/migrations/20261030_agenda_eventos_STAGING_NOT_APPLIED.sql','utf8');
 const copy=value=>JSON.parse(JSON.stringify(value));
-function harness({initial=[],online=true,responses=[]}={}){
+function harness({initial=[],online=true,responses=[],guard=()=>{}}={}){
   let stored=copy(initial);
   const calls=[];
   const deps={
     agendaLocal:()=>copy(stored),saveAgendaLocal:rows=>{stored=copy(rows);},
     cloudReady:()=>true,navigator:{onLine:online},ensureVistoriaSession:async()=>{},
+    captureVistoriaOperationGuard:()=>guard,
     cloudConfig:()=>({url:'https://zzphucuiqhzrilrddxnf.supabase.co'}),
     cloudHeaders:extra=>extra||{},cloudScopePayload:()=>({}),ensureRecordScope:async()=>{},
     crypto:{randomUUID:()=> '11111111-1111-4111-8111-111111111111'},
@@ -27,7 +28,7 @@ function harness({initial=[],online=true,responses=[]}={}){
   const helpers=new Function(...Object.keys(deps),writes+'\nreturn {writeStagingAgenda,archiveStagingAgenda,readStagingAgendaPages};')(...Object.values(deps));
   Object.assign(deps,helpers);
   const api=new Function(...Object.keys(deps),'let agendaCache=[];\n'+source+'\nreturn {agendaExistingFinance,pullAgenda,saveAgendaEvent,archiveStagingAgenda,readStagingAgendaPages,syncPendingAgenda};')(...Object.values(deps));
-  return {api,calls,rows:()=>copy(stored)};
+  return {api,calls,rows:()=>copy(stored),setOnline:value=>{deps.navigator.onLine=value;}};
 }
 const event={id:'11111111-1111-4111-8111-111111111111',clientKey:'tel:synthetic',cliente:'Cliente fictício',unit:'RS',date:'2026-10-30',time:'10:00',mapsUrl:'https://maps.example.invalid/fictional'};
 async function run(){
@@ -136,6 +137,38 @@ async function run(){
   const queueFailure=harness({initial:[{...event,syncStatus:'pending'}],responses:[[],[]]});
   await assert.rejects(()=>queueFailure.api.syncPendingAgenda(),/continuam pendentes/);
   assert.equal(queueFailure.rows()[0].syncStatus,'pending');
+  let release;
+  const concurrent=harness({initial:[{...event,syncStatus:'pending'}],responses:[[],()=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>[{id:event.id,revision:1}]});})]});
+  const first=concurrent.api.syncPendingAgenda(),second=concurrent.api.syncPendingAgenda();
+  assert.strictEqual(first,second,'manual and automatic triggers must share one agenda queue');
+  await new Promise(resolve=>setImmediate(resolve));release();await first;
+  assert.equal(concurrent.calls.length,2,'concurrent triggers must not send the same event twice');
+  const nextEvent={...event,id:'22222222-2222-4222-8222-222222222222',syncStatus:'pending',note:'Old note'};
+  const latest=harness({initial:[{...event,syncStatus:'pending'},nextEvent],responses:[[],({stored})=>{
+    stored[1].note='New local note';return {ok:true,json:async()=>[{id:event.id,revision:1}]};
+  },[],({calls})=>{
+    assert.equal(JSON.parse(calls.at(-1).body).observacao,'New local note','queued work must reread the latest local edit before sending');
+    return {ok:true,json:async()=>[{id:nextEvent.id,revision:1}]};
+  }]});
+  assert.deepEqual(await latest.api.syncPendingAgenda(),{synced:2,pending:0});
+  let disconnected;
+  disconnected=harness({initial:[{...event,syncStatus:'pending'},nextEvent],responses:[[],()=>{
+    disconnected.setOnline(false);return {ok:true,json:async()=>[{id:event.id,revision:1}]};
+  }]});
+  await assert.rejects(()=>disconnected.api.syncPendingAgenda(),/1 agendamento\(s\).*Conexão interrompida/);
+  assert.equal(disconnected.calls.length,2);assert.equal(disconnected.rows()[1].syncStatus,'pending');
+  const added=harness({initial:[{...event,syncStatus:'pending'}],responses:[[],({stored})=>{
+    stored.push(nextEvent);return {ok:true,json:async()=>[{id:event.id,revision:1}]};
+  }]});
+  await assert.rejects(()=>added.api.syncPendingAgenda(),/1 agendamento\(s\).*novas alterações/);
+  assert.equal(added.rows()[0].syncStatus,'synced');assert.equal(added.rows()[1].syncStatus,'pending');
+  let changed=false;
+  const switched=harness({guard:()=>{if(changed)throw Error('Conta mudou');},initial:[{...event,syncStatus:'pending'},nextEvent],responses:[[],()=>{
+    changed=true;return {ok:true,json:async()=>[{id:event.id,revision:1}]};
+  }]});
+  await assert.rejects(()=>switched.api.syncPendingAgenda(),/Conta mudou/);
+  assert.equal(switched.calls.length,2,'account change must stop the rest of the queue');
+  assert.equal(switched.rows()[0].syncStatus,'pending');
   console.log('PASS: agenda offline/confirmation, edit finance, pending preservation and wire-schema compatibility (mocked API)');
 }
 run().catch(error=>{console.error(error);process.exitCode=1;});
