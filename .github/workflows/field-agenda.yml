@@ -40,6 +40,7 @@ jobs:
           node tests/field-status-api.test.cjs
           node tests/field-status-ui.test.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/unit-manager-db.integration.cjs
           SC_TEST_TEXT_AGENDA_IDS=1 NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
           node tests/report-navigation.test.cjs
           node tests/agenda-sync.test.cjs
