@@ -32,7 +32,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    agendaCache=[{cliente:'PRIVATE A'}];window.__agendaFiltered=[{cliente:'PRIVATE A'}];
    document.querySelector('#conflictReviewRows').innerHTML='<tr><td>PRIVATE A</td></tr>';document.querySelector('#conflictReviewDetails').classList.remove('hidden');
   });
-  const login=async email=>page.evaluate(async email=>{document.querySelector('#techEmail').value=email;document.querySelector('#techPassword').value='synthetic';await cloudAuthLogin();await updateDashboard();},email);
+  const login=async email=>{await page.evaluate(async email=>{document.querySelector('#techEmail').value=email;document.querySelector('#techPassword').value='synthetic';await cloudAuthLogin();},email);await page.waitForFunction(()=>SCOperationalAccessUI.storageReady());await page.evaluate(()=>updateDashboard());};
   await login('b@example.invalid');
   const B=await page.evaluate(async()=>({visits:await dbAll(),agenda:agendaLocal(),crm:scopedLocalGet('solarCleanCrmMeta'),photos:window.__pendingPhotos.length,form:document.querySelector('#cliente').value,finance:document.querySelector('#agendaValorCobrado').value,editor:window.__agendaFinanceEventId,cache:agendaCache.length,drafts:getAppDraftController().list().length}));
   assert.deepEqual(B,{visits:[],agenda:[],crm:null,photos:0,form:'',finance:'',editor:'',cache:0,drafts:0});

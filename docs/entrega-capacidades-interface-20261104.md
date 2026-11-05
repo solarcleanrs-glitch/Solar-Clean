@@ -1,5 +1,7 @@
 # Candidata 45 — capacidades do servidor na interface
 
+Atualização: a [candidata 46](entrega-cache-por-permissao-20261104.md) acrescenta cache/filas por revisão confirmada e remove o bloqueio provisório dos caminhos brutos para gestor por unidade. As limitações abaixo descrevem a revisão 45; consulte a sucessora para o estado atual, ainda não aplicado.
+
 A migração `20261104231318_operational_access_capabilities_staging.sql` é **candidata, não aplicada**. Depende da candidata de gestor por unidade. Não ativa pessoas, não altera a homologação principal nem o oficial.
 
 ## Implementado

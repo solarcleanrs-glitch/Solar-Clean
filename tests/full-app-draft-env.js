@@ -7,7 +7,8 @@ function bootstrap(seed){
  Object.defineProperty(window,'localStorage',{value:memory,configurable:false});
  Object.defineProperty(navigator,'onLine',{value:false,configurable:false});
  const nativeDB=window.indexedDB,allowed=new Set(Object.values(seed.actors).map(id=>PREFIX+id));
- Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowed.has(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
+ const allowedName=name=>allowed.has(name)||[...allowed].some(base=>name.startsWith(base+':access:')&&/^[a-f0-9]{32}$/.test(name.slice((base+':access:').length)));
+ Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowedName(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},async databases(){return (await nativeDB.databases()).filter(d=>allowedName(d.name));},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
  window.fetch=async(url,options={})=>{
   if(String(url)===PROJECT+'/rest/v1/rpc/sc_acesso_operacional'){
    const actor=JSON.parse(atob((values.get('solarCleanAccessToken')||'').split('.')[1]||'e30=')).sub;

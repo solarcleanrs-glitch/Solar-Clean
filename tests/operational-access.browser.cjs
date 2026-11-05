@@ -6,7 +6,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.addInitScript(seed=>{window.SCFullAppSyntheticSeed=seed;},{actors:{A:randomUUID(),B:randomUUID()},fixtureId:randomUUID(),noActivation:true,roles:{A:'gestor_unidade',B:'tecnico'}});
   await page.route('**/*',route=>{const url=new URL(route.request().url());if(url.hostname!==host)return route.abort();const file=path.resolve(decodeURIComponent(url.pathname).replace(/^\//,'')||'index.html');if(!file.startsWith(process.cwd()+path.sep)||!fs.existsSync(file))return route.abort();return route.fulfill({body:fs.readFileSync(file),contentType:path.extname(file)==='.js'?'application/javascript':path.extname(file)==='.html'?'text/html':'text/plain'});});
   await page.goto(`https://${host}/tests/full-app-draft-sandbox.html`);await page.waitForFunction(()=>SCOperationalAccessUI.current()?.role==='gestor_unidade');
-  assert.equal(await page.locator('#newBtn').isDisabled(),false);assert.equal(await page.locator('#historyBtn').isDisabled(),true,'unversioned raw caches stay global-only');
+  assert.equal(await page.locator('#newBtn').isDisabled(),false);assert.equal(await page.locator('#historyBtn').isDisabled(),false,'scoped managers use the permission-specific cache');
   await page.evaluate(()=>{setTech({name:'Regis synthetic',email:'regis@example.invalid',cloud:true});});await page.waitForFunction(()=>SCOperationalAccessUI.current()?.role==='gestor_unidade');
   const limited=await page.evaluate(()=>({sc:isRegisTech(),finance:canSeeAgendaFinance(),rs:canSeeAgendaUnit('RS'),scUnit:canSeeAgendaUnit('SC')}));
   assert.deepEqual(limited,{sc:false,finance:true,rs:true,scUnit:false});

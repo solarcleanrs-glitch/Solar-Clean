@@ -91,7 +91,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261104-operational-access-45" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: acessos por perfil — 04/11 · revisão 45</small></div>
+<div id="homologNotice" data-app-release="20261104-permission-scope-46" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: dados por permissão — 04/11 · revisão 46</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -110,7 +110,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       <button id="installBtn">Instalar aplicativo</button>
     </div>
     <div id="accountDraftPanel" class="section hidden"><label>Rascunhos desta conta<select id="accountDraftSelect"></select></label><button id="refreshAccountDrafts" type="button">Consultar rascunhos</button><button id="recoverAccountDraft" type="button">Recuperar rascunho</button><p id="accountDraftStatus" class="muted" role="status"></p></div>
-    <p id="accountStorageNotice" class="small hidden" role="status">Neste teste, dados e pendências são separados por conta. Dados antigos deste aparelho permanecem preservados, sem cópia automática. Entre na conta da nuvem para trabalhar.</p>
+    <p id="accountStorageNotice" class="small hidden" role="status">Neste teste, dados e pendências são separados por conta e permissão. Dados de permissões anteriores permanecem preservados para conferência do gestor, sem cópia automática. Entre na conta da nuvem para trabalhar.</p>
     <p class="muted section" id="loggedUser">Modo local — técnico não identificado</p>
   </div>
   <div class="card section">
@@ -130,7 +130,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
 <section id="agendaScreen" class="hidden">
   <div class="card">
     <h2>Agenda Operacional</h2>
-    <p class="muted">Agendamentos vinculados aos clientes. A agenda SC fica visível somente para o perfil Regis.</p>
+    <p class="muted">Agendamentos vinculados aos clientes. As unidades e os valores disponíveis seguem as permissões da conta.</p>
 <div class="section">
   <button id="googleConnectBtn" type="button">Conectar Google Agenda</button>
   <button id="googleTestBtn" type="button">Enviar teste Google</button>
@@ -807,9 +807,9 @@ function operationalStorageProject(){
 }
 function scopedLocalRuntime(){
  if(!window.SCScopedLocalRuntime){if(operationalStorageProject()==='https://zzphucuiqhzrilrddxnf.supabase.co')throw Error('Armazenamento separado indisponível. Reabra com conexão; os dados foram preservados.');return null;}
- if(!scopedRuntimeInstance)scopedRuntimeInstance=window.SCScopedLocalRuntime.create({storage:localStorage,requireScoped:true,context:()=>{
+ if(!scopedRuntimeInstance)scopedRuntimeInstance=window.SCScopedLocalRuntime.create({storage:localStorage,requireScoped:true,requireAccessScope:true,context:()=>{
   let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
-  return {project:operationalStorageProject(),actor,generation:authSessionGeneration};
+  return {project:operationalStorageProject(),actor,generation:authSessionGeneration,accessRevision:window.SCOperationalAccessUI?.storageRevision?.()||null,accessReady:window.SCOperationalAccessUI?.storageReady?.()===true};
  }});
  return scopedRuntimeInstance;
 }
@@ -824,7 +824,9 @@ function appDraftEnabled(){const runtime=scopedLocalRuntime();return (location.h
 function appDraftContext(){
   let actor='';try{actor=JSON.parse(atob((localStorage.getItem('solarCleanAccessToken')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub||'';}catch(e){}
   // Refreshing a token for the same owner does not transfer draft ownership.
-  return {project:typeof operationalStorageProject==='function'?operationalStorageProject():cloudConfig().url,actor,generation:0};
+  const project=typeof operationalStorageProject==='function'?operationalStorageProject():cloudConfig().url;
+  const scoped=typeof operationalStorageProject==='function'&&project==='https://zzphucuiqhzrilrddxnf.supabase.co';
+  return {project,actor,generation:0,...(scoped?{requireAccessScope:true,accessRevision:window.SCOperationalAccessUI?.storageRevision?.()||null}:{})};
 }
 function captureAppFormDraft(){
   if(generateAndSaveRunning||[...document.querySelectorAll('#formScreen input[type=file]')].some(n=>n.disabled))throw Error('Aguarde o salvamento ou a leitura das fotos antes de trocar de conta.');
@@ -901,8 +903,9 @@ function prepareAppDraftAccountChange(){
 function refreshAppDraftList(){
   const panel=$('#accountDraftPanel');if(!panel)return;
   const active=appDraftEnabled(),signedIn=Boolean(appDraftContext().actor);
+  const permissionReady=!appDraftContext().requireAccessScope||window.SCOperationalAccessUI?.storageReady?.()===true;
   if($('#accountStorageNotice'))$('#accountStorageNotice').classList.toggle('hidden',!active);
-  panel.classList.toggle('hidden',!active||!signedIn);if(!active||!signedIn)return;
+  panel.classList.toggle('hidden',!active||!signedIn||!permissionReady);if(!active||!signedIn||!permissionReady)return;
   const select=$('#accountDraftSelect');select.textContent='';
   try{
     const rows=getAppDraftController().list();
@@ -1045,6 +1048,7 @@ function setTech(t){
   window.SCClientHistoryUI?.clear();
   window.SCScopedMigrationUI?.clear();
   window.SCLegacyLocalReviewUI?.clear();
+  window.SCBackupRecoveryUI?.clear();
   window.SCSettlementUI?.clear();
   window.SCFieldAgendaUI?.clear();
   window.AgendaLedgerStatus?.clear();
@@ -2057,7 +2061,7 @@ async function deleteCloudRecord(record){
 
 /* ---------- Dashboard / histórico ---------- */
 async function updateDashboard(){
-  if(typeof window!=='undefined'&&window.SCOperationalAccessUI&&window.SCOperationalAccessUI.current()?.role!=='gestor'){
+  if(typeof window!=='undefined'&&typeof scopedLocalRuntime==='function'&&scopedLocalRuntime()?.accessScoped?.()&&!window.SCOperationalAccessUI?.storageReady?.()){
     ['countV','countC','countPending'].forEach(id=>$('#'+id).textContent='—');$('#pendingBreakdown').textContent='';return;
   }
   if(typeof appDraftEnabled==='function'&&appDraftEnabled()&&!appDraftContext().actor){
@@ -2318,12 +2322,17 @@ function canSeeAgendaUnit(unit){
   const GOOGLE_CLIENT_ID = '330586487271-ea92nnm24b8fk57tfod2289a6c1mm3i3.apps.googleusercontent.com';
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
   let googleAccessToken = '';
+  let googleSessionGeneration=0;
+function clearGoogleSession(){googleAccessToken='';googleSessionGeneration++;if($('#googleConnectStatus'))$('#googleConnectStatus').textContent='Não conectado';}
 
 function connectGoogleCalendar(){
+  if(serviceContextEnabled()&&window.SCOperationalAccessUI?.current()?.role!=='gestor')throw Error('Integração Google direta exige gestor global enquanto não houver vínculo por unidade.');
+  const generation=googleSessionGeneration,operationGuard=captureVistoriaOperationGuard();
   const client = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
     scope: GOOGLE_CALENDAR_SCOPE,
     callback: (response) => {
+      try{operationGuard();if(generation!==googleSessionGeneration)return;}catch{return;}
       if(response.error){
         alert('Erro ao conectar Google Agenda: ' + response.error);
         return;
@@ -2356,6 +2365,8 @@ alert('Google Agenda conectado com sucesso.');
 
 if(testBtn){
   testBtn.addEventListener('click', async () => {
+    const operationGuard=captureVistoriaOperationGuard();
+    if(serviceContextEnabled()&&window.SCOperationalAccessUI?.current()?.role!=='gestor')return;
     if(!googleAccessToken){
       alert('Conecte o Google Agenda primeiro.');
       return;
@@ -2387,6 +2398,7 @@ if(testBtn){
       body: JSON.stringify(evento)
     }
   );
+  operationGuard();
 
   if(!res.ok){
     const erro = await res.text();
@@ -3218,6 +3230,7 @@ function clearScopedCrmView(){
 function clearOperationalAccountView(){
   // A scoped database is insufficient if an old editor remains in memory.
   agendaCache=[];agendaOriginGeneration++;agendaPartnerNames=new Map();
+  clearGoogleSession();
   window.__agendaClientMap={};window.__agendaFiltered=[];
   window.__agendaEditingId='';window.__agendaEditingGoogleEventId='';window.__agendaFinanceEventId='';
   vistoriaReviewGeneration++;currentVistoriaReview=null;
@@ -3229,6 +3242,7 @@ function clearOperationalAccountView(){
   clearScopedCrmView();clearAgendaPartnerPreview();
   window.SCClientHistoryUI?.clear();window.SCScopedMigrationUI?.clear();
   window.SCLegacyLocalReviewUI?.clear();
+  window.SCBackupRecoveryUI?.clear();
   window.SCFieldAgendaUI?.clear();window.AgendaLedgerStatus?.clear();
 }
 function importedCrmContext(){
@@ -3723,13 +3737,15 @@ function captureStagingBackupLocal(){
   const raw={};
   for(const key of keys)raw[key]=typeof scopedLocalGet==='function'?scopedLocalGet(key):localStorage.getItem(key);
   // Mantém o texto original mesmo se um registro estiver ilegível, para recuperação.
-  const journalKey=actor?'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor:null;
+  const accessRevision=typeof scopedLocalRuntime==='function'&&scopedLocalRuntime()?.accessScoped?.()?scopedLocalRuntime().capture().accessRevision:undefined;
+  const scopeSuffix=accessRevision?':access:'+accessRevision:'';
+  const journalKey=actor?'solarCleanSettlementIntent:v1:zzphucuiqhzrilrddxnf:'+actor+scopeSuffix:null;
   const clientImportIntents=[];
-  if(actor){const prefix='solarCleanClientImport:v1:zzphucuiqhzrilrddxnf:'+actor+':';
+  if(actor){const prefix='solarCleanClientImport:v1:zzphucuiqhzrilrddxnf:'+actor+scopeSuffix+':';
     for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))clientImportIntents.push({key,raw:localStorage.getItem(key)});}
     clientImportIntents.sort((a,b)=>a.key.localeCompare(b.key));
   }
-  return {version:1,project,actor,legacyDataScope:(typeof scopedLocalRuntime==='function'&&(scopedLocalRuntime()?.isolated?.()??scopedLocalRuntime()?.enabled()))?'account-scoped':'device-unscoped',raw,
+  return {version:1,project,actor,...(accessRevision?{accessRevision}:{}),legacyDataScope:accessRevision?'permission-scoped':(typeof scopedLocalRuntime==='function'&&(scopedLocalRuntime()?.isolated?.()??scopedLocalRuntime()?.enabled()))?'account-scoped':'device-unscoped',raw,
     clientImportIntents,
     financialIntent:journalKey?{key:journalKey,raw:localStorage.getItem(journalKey)}:null,
     limitations:['Sem cópia do banco ou dos arquivos remotos.','Dados locais legados pertencem ao aparelho e podem conter histórico de outras contas.','Sem importação automática; não reenviar intenções com novos IDs.']};
@@ -4009,6 +4025,7 @@ $('#agendaToday').onclick = () => {
 
 $('#agendaNextDay').onclick = () => changeAgendaDay(1);
 $('#agendaSave').onclick=async()=>{
+  const operationGuard=captureVistoriaOperationGuard();
   let key=$('#agendaClient').value;
   let r=null;
 
@@ -4025,8 +4042,10 @@ $('#agendaSave').onclick=async()=>{
     };
     try{
       await saveStandaloneClient(r);
+      operationGuard();
       key=standaloneClientKey(r);
     }catch(e){
+      try{operationGuard();}catch{return;}
       $('#agendaStatusMsg').textContent='Cliente salvo neste aparelho, mas pendente de nuvem: '+e.message;
       key=standaloneClientKey(r);
     }
@@ -4057,6 +4076,7 @@ googleEventId: window.__agendaEditingGoogleEventId || '',
   try{
     
     await saveAgendaEvent(ev);
+    operationGuard();
     if(googleAccessToken&&ev.syncStatus==='synced'){
   try{
     const inicio = new Date(`${ev.date}T${String(ev.time || '08:00').slice(0,5)}:00`);
@@ -4111,6 +4131,7 @@ const googleRes = await fetch(
   
 
 const googleData = await googleRes.json();
+operationGuard();
 
 if(googleData.id){
   ev.googleEventId = googleData.id;
@@ -4145,6 +4166,7 @@ if(serviceContextEnabled()){
   if(!linked)throw new Error('Agendamento local não encontrado para vincular ao Google.');
   linked.googleEventId=googleData.id;
   await saveAgendaEvent(linked);
+  operationGuard();
   Object.assign(ev,linked);
 }else if(!patchRes.ok){
   const patchErro = await patchRes.text();
@@ -4156,6 +4178,7 @@ if(serviceContextEnabled()){
 }
 
 }catch(googleErr){
+    operationGuard();
     alert('Agendamento salvo no app, mas não foi enviado ao Google: ' + googleErr.message);
   }
 }
@@ -4169,6 +4192,7 @@ window.__agendaEditingGoogleEventId = '';
     await renderAgenda();
     await renderCrm();
   }catch(e){
+    try{operationGuard();}catch{return;}
     $('#agendaStatusMsg').textContent='Agendamento salvo neste aparelho, mas pendente de nuvem: '+e.message;
     await renderAgenda();
   }

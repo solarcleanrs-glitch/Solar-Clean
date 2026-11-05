@@ -3,7 +3,7 @@
 begin;
 create function sc_private.acesso_operacional() returns jsonb
 language plpgsql stable security definer set search_path='' as $$
-declare actor uuid:=auth.uid();role_name text;partner uuid;units text[];manager boolean;operational boolean;
+declare actor uuid:=auth.uid();role_name text;partner uuid;units text[];manager boolean;operational boolean;permissions jsonb;
 begin
  if actor is null then raise exception 'Autenticação necessária' using errcode='42501';end if;
  select a.papel,a.parceiro_id into role_name,partner from public.sc_acessos a
@@ -16,11 +16,12 @@ begin
   from public.sc_acesso_unidades where user_id=actor;end if;
  manager:=role_name in ('gestor','gestor_unidade') and cardinality(units)>0;
  operational:=role_name in ('gestor','gestor_unidade','tecnico','parceiro') and cardinality(units)>0;
- return jsonb_build_object('version',1,'actor',actor,'role',role_name,'units',to_jsonb(units),
-  'revision',md5(role_name||':'||array_to_string(units,',')||':'||coalesce(partner::text,'')),
-  'capabilities',jsonb_build_object('agenda_read',operational,'agenda_manage',manager,
+ permissions:=jsonb_build_object('agenda_read',operational,'agenda_manage',manager,
    'reports_read',operational,'visits_write',manager,'crm',manager,'finance',manager,
-   'admin',manager,'clients_read',operational and role_name<>'tecnico','access_admin',role_name='gestor'));
+   'admin',manager,'clients_read',operational and role_name<>'tecnico','access_admin',role_name='gestor');
+ return jsonb_build_object('version',1,'actor',actor,'role',role_name,'units',to_jsonb(units),
+  'revision',md5(role_name||':'||array_to_string(units,',')||':'||coalesce(partner::text,'')||':'||permissions::text),
+  'capabilities',permissions);
 end $$;
 revoke all on function sc_private.acesso_operacional() from public,anon,authenticated;
 grant execute on function sc_private.acesso_operacional() to authenticated;
