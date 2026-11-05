@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict'),{prepare}=require('../lib/legacy-local-review.js');
+(async()=>{
+ const source={project:'https://zzphucuiqhzrilrddxnf.supabase.co',actor:'11111111-1111-4111-8111-111111111111',generation:1};
+ let who={...source},allowed=true,reads=0;
+ const records=[{id:1,cliente:'Synthetic unclassified',syncStatus:'pending',photos:[{data:'data:image/png;base64,cGhvdG8='}]}];
+ const map=new Map([['solarCleanAgenda','[{"id":"legacy"}]'],['solarCleanAccessToken','NEVER EXPORT'],['solarCleanCrmMeta','broken raw preserved']]);
+ const storage={getItem:key=>map.get(key)??null};
+ const args={context:()=>who,authorize:async()=>allowed,readRecords:async()=>{reads++;return structuredClone(records);},storage};
+ allowed=false;await assert.rejects(prepare(args),/gestor global/);assert.equal(reads,0,'deny before reading local legacy');
+ allowed='true';await assert.rejects(prepare(args),/gestor global/);assert.equal(reads,0);
+ allowed=true;const p=await prepare(args),data=JSON.parse(p.text);assert.equal(p.count,1);assert.equal(p.pending,1);assert.equal(data.ownership,'unclassified-device-data');assert.deepEqual(data.vistorias,records);assert.equal(data.raw.solarCleanCrmMeta,'broken raw preserved');assert.equal(p.text.includes('NEVER EXPORT'),false);await p.verify();
+ allowed=false;await assert.rejects(p.verify(),/revogada/);allowed=true;
+ who={...who,generation:2};assert.throws(()=>p.check(),/sessão mudou/);who={...source};
+ const changed=await prepare(args);map.set('solarCleanAgenda','changed');await assert.rejects(changed.verify(),/alterados/);
+ await assert.rejects(prepare({...args,authorize:async()=>{who={...who,actor:'22222222-2222-4222-8222-222222222222'};return true;}}),/sessão mudou/);
+ who={...source};await assert.rejects(prepare({...args,readRecords:async()=>[{id:1,file:new Blob(['binary'])}]}),/binária|integralmente/);
+ const before=reads;who={...source,project:'https://official.invalid'};await assert.rejects(prepare(args),/projeto de testes/);assert.equal(reads,before);
+ console.log('PASS: global-only legacy review before reads; exact raw/photo backup, no tokens, no ownership inference, revoked/session/source/binary denial; no writes');
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -13,7 +13,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     if(!file.startsWith(process.cwd()+path.sep)||!fs.existsSync(file))return route.abort();
     let body=fs.readFileSync(file);const ext=path.extname(file);
     if(url.pathname==='/tests/full-app-draft-sandbox.html'){
-     const text=body.toString(),before="Object.defineProperty(navigator,'onLine',{value:false,configurable:false});";
+     const text=body.toString(),before="Object.defineProperty(navigator,'onLine',{get:()=>seed.online===true,configurable:false});";
      assert.ok(text.includes(before));body=text.replace(before,"Object.defineProperty(navigator,'onLine',{value:true,configurable:false});");
     }
     await route.fulfill({body,contentType:{'.js':'application/javascript','.html':'text/html','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'text/plain'});
@@ -23,8 +23,10 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     const id='synthetic/field-event',next={'Agendado':'Em deslocamento','Em deslocamento':'Em atendimento','Em atendimento':'Concluído'},state={id,revision:1,status:'Agendado'},ledger=new Map(),calls=[];
     let loseResponse=true;window.__fieldStatusTest={state,ledger,calls,allowed:true};
     const current=()=>({...state,proximo_status:next[state.status]||null}),json=data=>new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
+    const syntheticFetch=window.fetch;
     window.fetch=async(url,options={})=>{
      const endpoint=new URL(url),name=endpoint.pathname.split('/').at(-1),body=JSON.parse(options.body||'{}');
+     if(name==='sc_acesso_operacional')return syntheticFetch(url,options);
      calls.push({name,body});
      if(name==='sc_agenda_campo')return json(endpoint.searchParams.get('offset')==='0'?[{id,cliente:'Atendimento sintético',data:body.p_inicio,hora:'10:00',unidade:'RS',status:state.status}]:[]);
      if(name==='sc_pode_avancar_status_campo')return json(window.__fieldStatusTest.allowed);

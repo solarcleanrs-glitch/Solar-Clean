@@ -20,6 +20,10 @@ jobs:
       - run: node tests/browser/node_modules/playwright/cli.js install --with-deps chromium
       - run: NODE_PATH=./tests/browser/node_modules node tests/field-navigation.browser.cjs
       - run: NODE_PATH=./tests/browser/node_modules node tests/field-status.browser.cjs
+      - run: NODE_PATH=./tests/browser/node_modules node tests/account-isolation.browser.cjs
+      - run: NODE_PATH=./tests/browser/node_modules node tests/operational-access.browser.cjs
+      - run: NODE_PATH=./tests/browser/node_modules node tests/permission-scope.browser.cjs
+      - run: NODE_PATH=./tests/browser/node_modules node tests/field-inspection.browser.cjs
   field-agenda:
     runs-on: ubuntu-latest
     steps:
@@ -39,7 +43,15 @@ jobs:
           node tests/field-report-ui.test.cjs
           node tests/field-status-api.test.cjs
           node tests/field-status-ui.test.cjs
+          node tests/legacy-local-review.test.cjs
+          node tests/operational-access.test.cjs
+          node tests/manager-media-reservation.test.cjs
+          node tests/permission-scope.test.cjs
+          node tests/field-inspection-api.test.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/field-inspection-db.integration.cjs
+          SC_TEST_TEXT_AGENDA_IDS=1 NODE_PATH=./tests/postgres/node_modules node tests/field-inspection-db.integration.cjs
           NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
+          NODE_PATH=./tests/postgres/node_modules node tests/unit-manager-db.integration.cjs
           SC_TEST_TEXT_AGENDA_IDS=1 NODE_PATH=./tests/postgres/node_modules node tests/field-status-db.integration.cjs
           node tests/report-navigation.test.cjs
           node tests/agenda-sync.test.cjs
