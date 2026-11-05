@@ -8,7 +8,7 @@
  if(seed.noActivation)values.delete(MODE);
  const memory={get length(){return values.size;},key:i=>[...values.keys()][i]??null,getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(String(k),String(v)),removeItem:k=>values.delete(k),clear:()=>values.clear()};
  Object.defineProperty(window,'localStorage',{value:memory,configurable:false});
- Object.defineProperty(navigator,'onLine',{value:false,configurable:false});
+ Object.defineProperty(navigator,'onLine',{get:()=>seed.online===true,configurable:false});
  const nativeDB=window.indexedDB,allowed=new Set(Object.values(seed.actors).map(id=>PREFIX+id));
  const allowedName=name=>allowed.has(name)||[...allowed].some(base=>name.startsWith(base+':access:')&&/^[a-f0-9]{32}$/.test(name.slice((base+':access:').length)));
  Object.defineProperty(window,'indexedDB',{value:{open(name,version){if(!allowedName(name))throw Error('Base fora do ensaio bloqueada: '+name);return nativeDB.open(name,version);},async databases(){return (await nativeDB.databases()).filter(d=>allowedName(d.name));},deleteDatabase(){throw Error('Exclusão bloqueada no ensaio.');}},configurable:false});
@@ -18,7 +18,7 @@
    const which=actor===seed.actors.A?'A':actor===seed.actors.B?'B':null;
    if(!which)return new Response('Synthetic denied',{status:403});
    const role=seed.roles?.[which]||'gestor',manager=['gestor','gestor_unidade'].includes(role),units=role==='gestor'?['RS','SC']:['RS'];
-   return new Response(JSON.stringify({version:1,actor,role,units,revision:(role==='gestor'?'1':'2').repeat(32),capabilities:{agenda_read:true,agenda_manage:manager,reports_read:true,visits_write:manager,crm:manager,finance:manager,admin:manager,clients_read:role!=='tecnico',access_admin:role==='gestor'}}),{status:200,headers:{'Content-Type':'application/json'}});
+   return new Response(JSON.stringify({version:1,actor,role,units,revision:(role==='gestor'?'1':role==='tecnico'&&seed.fieldWrite?'3':'2').repeat(32),capabilities:{agenda_read:true,agenda_manage:manager,reports_read:true,visits_write:manager||(role==='tecnico'&&seed.fieldWrite===true),crm:manager,finance:manager,admin:manager,clients_read:role!=='tecnico',access_admin:role==='gestor'}}),{status:200,headers:{'Content-Type':'application/json'}});
   }
   if(String(url)===PROJECT+'/auth/v1/token?grant_type=password'){
    const body=JSON.parse(options.body||'{}'),which=body.email==='a@example.invalid'?'A':body.email==='b@example.invalid'?'B':null;
@@ -126,7 +126,7 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
   <div style="flex:1"><h1>Solar Clean</h1><p>Vistorias e relatórios fotovoltaicos</p></div>
   <div id="syncBadge" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff">Somente local</div>
 </header>
-<div id="homologNotice" data-app-release="20261104-permission-scope-46" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: dados por permissão — 04/11 · revisão 46</small></div>
+<div id="homologNotice" data-app-release="20261104-field-inspection-47" class="hidden" role="status" style="margin:0 auto;max-width:900px;padding:10px 16px;background:#fff7df;border-bottom:1px solid #e9c85a;font-size:13px;font-weight:650;text-align:center">AMBIENTE DE TESTES — Solar Clean testes crm. Não é o aplicativo de produção.<br><small>Versão candidata: vistoria técnica — 04/11 · revisão 47</small></div>
 
 <main>
 <section id="draftQuarantinePanel" class="card hidden" role="alert"><h2>Rascunho preservado nesta aba</h2><p id="draftQuarantineStatus"></p><p>Mantenha esta página aberta. Confira a conta na outra aba e tente preservar novamente.</p><button id="retryDraftPreservation" type="button">Tentar preservar novamente</button></section>
@@ -866,7 +866,7 @@ function appDraftContext(){
 function captureAppFormDraft(){
   if(generateAndSaveRunning||[...document.querySelectorAll('#formScreen input[type=file]')].some(n=>n.disabled))throw Error('Aguarde o salvamento ou a leitura das fotos antes de trocar de conta.');
   return window.SCFormDraftAdapter.capture($('#formScreen'),{
-    step,photos:window.__pendingPhotos||[],signature:window.__signatureData||'',signatureAt:window.__signatureAt||'',
+    step,photos:window.__pendingPhotos||[],signature:window.__signatureData||'',signatureAt:window.__signatureAt||'',fieldMode:window.__fieldInspectionMode===true,
     editingRecord,savedId:savedCurrentFormRecordId,agendaSourceId:window.__agendaSourceId??null,
     serviceContext:serviceContextDraft,scopeId:serviceContextScopeId,draftCloudId:appDraftCloudId
   });
@@ -874,6 +874,7 @@ function captureAppFormDraft(){
 function restoreAppFormDraft(payload){
   const state=window.SCFormDraftAdapter.restore($('#formScreen'),payload);
   editingRecord=state.editingRecord;savedCurrentFormRecordId=state.savedId;
+  window.__fieldInspectionMode=state.fieldMode===true;
   window.__agendaSourceId=state.agendaSourceId;window.__pendingPhotos=state.photos;
   window.__signatureData=state.signature;window.__signatureAt=state.signatureAt;
   serviceContextGeneration++;serviceContextDraft=state.serviceContext;serviceContextScopeId=state.scopeId;
@@ -884,6 +885,7 @@ function restoreAppFormDraft(payload){
 function clearAppDraftView(){
   appDraftSuspended=true;
   try{
+    window.SCFieldInspectionUI?.clear();
     editingRecord=null;resetForm();window.__pendingPhotos=[];renderPhotoPreview();
     currentReportRecord=null;currentReportSessionGuard=()=>{throw Error('Abra um relatório nesta conta.');};
     ['rCliente','rTelefone','rCidade','rEndereco','rTecnico','rObs','rDate','rSujidades','rInvStatus','rInv','rDps','rPlacas','rPotPlaca','rPotTotal','rMarcaPlaca','rTelhado','rSujeira','rEstrutura','rInvInternet','rAntes','rDepois','rDif','rPct','rLimpeza','rRetorno'].forEach(id=>{if($('#'+id))$('#'+id).textContent='';});
@@ -1003,7 +1005,7 @@ function show(id){
   if(window.SCOperationalAccessUI&&!window.SCOperationalAccessUI.canOpen(id))return;
   if(id==='reportScreen'&&navigationScreen!=='reportScreen'){
     // A saved form must not be reopened as a second new inspection.
-    reportReturnContext={screen:navigationScreen==='formScreen'?'historyScreen':navigationScreen,
+    reportReturnContext={screen:navigationScreen==='formScreen'?(window.__fieldInspectionMode?'fieldAgendaScreen':'historyScreen'):navigationScreen,
       scroll:navigationScreen==='formScreen'?0:(window.scrollY||0),check:captureVistoriaOperationGuard()};
   }
   navigationScreen=id;
@@ -1110,7 +1112,7 @@ function collectForm(){
   const showGeneration=generationEnabled();
   const a=showGeneration?Number($('#antes').value||0):0,d=showGeneration?Number($('#depois').value||0):0;
   return {
-    ...collectServiceContext(),
+    ...(window.SCFieldInspectionUI?.technical()&&window.__fieldInspectionMode?{fieldMode:true}:collectServiceContext()),
     createdAt:new Date().toISOString(), dateLabel:new Date().toLocaleDateString('pt-BR'),
     cliente:$('#cliente').value||'Cliente sem nome', telefone:$('#telefone').value||'', cidade:$('#cidade').value||'', endereco:$('#endereco').value||'', mapsUrl:$('#mapsUrl').value||'',pagamentoStatus:$("#pagamentoStatus").value||'Pendente',
 pagamentoForma:$("#pagamentoForma").value||'',
@@ -1126,6 +1128,7 @@ valorRecebido:Number($("#valorRecebido").value||0),
   };
 }
 function resetForm(){
+  window.__fieldInspectionMode=false;
   formSessionGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
   window.__agendaSourceId=null;
   resetServiceContext();
@@ -1679,6 +1682,7 @@ async function confirmExistingVistoriaCreation(local,payload){
 }
 const pendingRecordUploads=new Map();
 async function pushRecord(local){
+  if(local.fieldMode){if(!window.SCFieldInspectionUI)throw Error('Envio técnico indisponível. Preserve a pendência.');return window.SCFieldInspectionUI.push(local);}
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
   // Um mesmo registro não deve ser enviado em paralelo por salvamento e sincronização.
@@ -2021,6 +2025,7 @@ async function ensureVistoriaSession(){
   try{await refreshEntry.promise}finally{if(pendingVistoriaSessionRefresh===refreshEntry)pendingVistoriaSessionRefresh=null}
 }
 async function syncAll(){
+  if(typeof window!=='undefined'&&window.SCFieldInspectionUI?.technical())return window.SCFieldInspectionUI.syncPending();
   const operationGuard=typeof captureVistoriaOperationGuard==='function'?captureVistoriaOperationGuard():()=>{};
 
   if(syncAllRunning||vistoriaReviewBusy) return false;
@@ -2257,6 +2262,7 @@ function collectServiceContext(){
 async function renderServiceContextControls(){
   const panel=$('#serviceContextPanel');
   if(!panel)return;
+  if(typeof window!=='undefined'&&window.SCFieldInspectionUI?.technical()&&window.__fieldInspectionMode){panel.classList.add('hidden');return;}
   panel.classList.toggle('hidden',!serviceContextEnabled());
   if(!serviceContextEnabled())return;
   const generation=++serviceContextGeneration;
@@ -3842,6 +3848,7 @@ async function generateAndSaveUnlocked(){
   try{
   if(typeof assertAppDraftSaveAllowed==='function'){await assertAppDraftSaveAllowed();operationGuard();}
   let r=collectForm();
+  if(r.fieldMode){try{await window.SCFieldInspectionUI.saveForm(r);operationGuard();}catch(error){operationGuard();alert(error.message);}return;}
 
   if(editingRecord){
     r.id=editingRecord.id;
@@ -4401,6 +4408,8 @@ loadCompany(); $('#supabaseUrl').addEventListener('input',updateHomologNotice); 
 <script src="lib/imported-clients-crm.js"></script>
 <script src="lib/operational-access.js"></script>
 <script src="lib/operational-access-ui.js"></script>
+<script src="lib/field-inspection-api.js"></script>
+<script src="lib/field-inspection-ui.js"></script>
 </body>
 </html>
 

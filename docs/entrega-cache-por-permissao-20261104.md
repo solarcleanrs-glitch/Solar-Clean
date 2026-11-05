@@ -39,3 +39,5 @@ Integração Google direta continua global até existir vínculo por unidade. A 
 2. Concluir criação/edição de vistoria e fotos para técnico; definir e validar o fluxo offline por perfil. Esta candidata exige confirmação de acesso para abrir a área de trabalho e suspende o uso ao ficar offline, preservando rascunhos.
 3. Ensaiar sessões reais, duas abas reais, aparelho físico e o esquema hospedado com IDs legados. O evento externo de logout dos testes anteriores é simulado; o isolamento local não substitui RLS nem garante invalidação instantânea de todo dado já baixado após uma reclassificação individual de registro.
 4. Revisar advisors e executar o pacote coordenado de homologação antes de qualquer proposta oficial. Usuários Fabiano/David continuam sem ativação e a unidade RS do técnico permanece hipótese restritiva do ensaio.
+
+Continuação: a candidata 47 acrescenta escrita técnica restrita; veja `docs/entrega-vistoria-tecnica-20261104.md`. Ainda não aplicada no ambiente hospedado.

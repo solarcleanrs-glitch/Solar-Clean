@@ -12,6 +12,8 @@ const profile=(actor=A,role='gestor_unidade')=>({version:1,actor,role,units:['RS
  const first=pending.refresh();ctx={...ctx,actor:B};release({ok:true,json:async()=>profile()});await assert.rejects(first,/sessão mudou/);assert.equal(pending.current(),null);
  ctx={...ctx,actor:A};let done;calls=0;const single=create({context:()=>ctx,fetch:()=>{calls++;return new Promise(r=>{done=r;});}});
  const one=single.refresh(),two=single.refresh();assert.equal(calls,1);done({ok:true,json:async()=>profile()});await Promise.all([one,two]);single.clear();assert.equal(single.current(),null);
+ let complete;const renewing=create({context:()=>ctx,now:()=>clock,fetch:async()=>({ok:true,json:async()=>profile()})});await renewing.refresh();
+ const steady=renewing.current();const keep=create({context:()=>ctx,now:()=>clock,fetch:(()=>{let n=0;return()=>++n===1?Promise.resolve({ok:true,json:async()=>profile()}):new Promise(resolve=>{complete=resolve;});})()});await keep.refresh();const inProgress=keep.refresh();assert.equal(keep.current().revision,steady.revision,'unexpired confirmed grants survive a renewal in progress');complete({ok:false,status:403});await assert.rejects(inProgress,/403/);assert.equal(keep.current(),null,'a denied renewal always removes the prior grant');
  assert.equal(validate(profile(A,'tecnico'),A).capabilities.crm,false);
  const invalid=profile(A,'tecnico');invalid.capabilities.finance=true;assert.throws(()=>validate(invalid,A),/incompatíveis/);
  for(const mutate of [p=>p.actor=B,p=>p.units.push('RS'),p=>p.units=['unknown'],p=>delete p.capabilities.crm,p=>p.capabilities.access_admin=true,p=>p.revision='x']){const p=profile();mutate(p);assert.throws(()=>validate(p,A));}

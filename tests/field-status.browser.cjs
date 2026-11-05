@@ -13,7 +13,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     if(!file.startsWith(process.cwd()+path.sep)||!fs.existsSync(file))return route.abort();
     let body=fs.readFileSync(file);const ext=path.extname(file);
     if(url.pathname==='/tests/full-app-draft-sandbox.html'){
-     const text=body.toString(),before="Object.defineProperty(navigator,'onLine',{value:false,configurable:false});";
+     const text=body.toString(),before="Object.defineProperty(navigator,'onLine',{get:()=>seed.online===true,configurable:false});";
      assert.ok(text.includes(before));body=text.replace(before,"Object.defineProperty(navigator,'onLine',{value:true,configurable:false});");
     }
     await route.fulfill({body,contentType:{'.js':'application/javascript','.html':'text/html','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'text/plain'});

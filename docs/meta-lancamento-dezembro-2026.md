@@ -17,5 +17,5 @@ Diretriz do responsável em 04/11: ausência de aproximadamente duas semanas, pr
 - PR #2 reúne o pacote de homologação, ainda sem merge em main.
 - PR #7 contém a candidata de permissões, com migração não aplicada; os ensaios usam contas fictícias.
 - Candidata 44 inicia isolamento obrigatório, com regressão em navegador. Ainda exige recuperação do legado e capacidades de interface antes da integração principal.
-- Candidatas 45/46 ligam capacidades do servidor à interface e separam cache, rascunhos e diários pela revisão de acesso. A candidata admite gestão RS em sua própria área; permanecem pendentes conciliação do legado, escrita técnica e validação hospedada com contas reais. Nenhuma destas revisões está no oficial.
+- Candidatas 45/46 ligam capacidades do servidor à interface e separam cache, rascunhos e diários pela revisão de acesso. A candidata admite gestão RS em sua própria área; a candidata 47 acrescenta criação/edição técnica, fotos, assinatura, PDF e recuperação de conflitos. Permanecem pendentes conciliação do legado, operação totalmente offline e validação hospedada com contas reais. Nenhuma destas revisões está no oficial.
 - Nenhuma conta pessoal secundária deve ser convertida silenciosamente em funcionário. Não cadastrar identidades por nome nem copiar UUIDs do oficial para o teste.
