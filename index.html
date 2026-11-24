@@ -294,6 +294,15 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       </label>
     </div>
 
+<details class="card section no-print" id="crmExportPanel">
+<h3>Exportar contatos para Google Contatos</h3>
+<p class="muted">Somente contatos com autorização registrada. Datas de cadastro não contam como limpeza.</p>
+<div class="grid grid2"><label><span>Unidade</span><select id="crmExportUnit"><option value="">Todas autorizadas</option><option>RS</option><option>SC</option></select></label>
+<label><span>Última limpeza</span><select id="crmExportMonths"><option value="0">Todas, inclusive sem data confirmada</option><option value="6">Mais de 6 meses</option><option value="12">Mais de 12 meses</option></select></label></div>
+<button id="crmExportPreview" type="button" class="section">Conferir contatos</button>
+<button id="crmExportDownload" type="button" class="primary section" disabled>Baixar CSV</button>
+<p id="crmExportStatus" role="status" class="muted"></p>
+</details>
     <div id="crmEditor" class="crm-editor hidden">
       <h3 id="crmEditorTitle">Cliente</h3>
       <div class="grid grid2">
@@ -2633,5 +2642,54 @@ $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();aw
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 loadCompany(); setTimeout(()=>autoSync('abertura do app'),1000); updateLoggedUser(); stepView(); updateGenerationVisibility(); updateDashboard();
 </script>
+
+<script src="contact-export.js"></script>
+<script>
+(function(){
+const byId=id=>document.getElementById(id);
+const unit=byId('crmExportUnit'),months=byId('crmExportMonths'),preview=byId('crmExportPreview'),download=byId('crmExportDownload'),status=byId('crmExportStatus');
+let busy=false;
+function invalidate(){download.disabled=true;status.textContent='Confira os contatos novamente.';}
+unit.onchange=months.onchange=invalidate;
+async function load(){
+ const c=cloudConfig(),token=localStorage.getItem('solarCleanAccessToken');
+ if(!cloudReady()||!token||!navigator.onLine)throw Error('Entre com seu usuário e conecte-se à internet.');
+ // Preview branch is restricted to the test database until authorization policies are verified.
+ if(c.url!=='https://zzphucuiqhzrilrddxnf.supabase.co')throw Error('Exportação disponível somente no ambiente de testes.');
+ const headers={apikey:c.key,Authorization:'Bearer '+token};
+ const auth=await fetch(c.url+'/auth/v1/user',{headers,cache:'no-store'});
+ if(!auth.ok)throw Error('Sessão inválida. Entre novamente.');
+ const user=await auth.json();
+ const allowed=user.app_metadata?.contact_export_units;
+ if(!Array.isArray(allowed)||!allowed.length||allowed.some(u=>!['RS','SC'].includes(u)))throw Error('Seu perfil não tem permissão de exportação.');
+ const selected=unit.value,period=Number(months.value);
+ if(selected&&!allowed.includes(selected))throw Error('Unidade não autorizada.');
+ const rows=[];
+ for(let offset=0;;offset+=500){
+  const res=await fetch(c.url+'/rest/v1/crm_export_contacts?select=cliente,cidade,telefone,unidade,ultima_limpeza,autorizacao,status_comercial&order=id.asc&offset='+offset+'&limit=500',{headers,cache:'no-store'});
+  if(!res.ok)throw Error('Base de exportação indisponível ('+res.status+'). Nenhum contato exportado.');
+  const page=await res.json();if(!Array.isArray(page))throw Error('Resposta inesperada.');
+  rows.push(...page);if(page.length<500)break;
+ }
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ return SolarContactExport.prepare(rows,{allowedUnits:allowed,unit:selected,months:period,today});
+}
+async function run(save){
+ if(busy)return;busy=true;download.disabled=true;preview.disabled=true;unit.disabled=months.disabled=true;
+ try{
+ const result=await load(),n=result.counts;
+ status.textContent=result.contacts.length+' aptos | '+n.invalid+' inválidos | '+n.duplicate+' duplicidades | '+n.unauthorized+' sem autorização ou bloqueados | '+n.conflict+' conflitos | '+n.excluded+' fora do filtro';
+ if(save&&result.contacts.length){
+  const blob=new Blob([SolarContactExport.csv(result.contacts)],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='solar-clean-contatos-'+(unit.value||'todas')+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ download.disabled=!result.contacts.length;
+ }catch(e){status.textContent=e.message;download.disabled=true;}
+ finally{busy=false;preview.disabled=false;unit.disabled=months.disabled=false;}
+}
+preview.onclick=()=>run(false);download.onclick=()=>run(true);
+})();
+</script>
+
 </body>
 </html>
