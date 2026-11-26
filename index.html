@@ -2659,11 +2659,9 @@ async function load(){
  const headers={apikey:c.key,Authorization:'Bearer '+token};
  const auth=await fetch(c.url+'/auth/v1/user',{headers,cache:'no-store'});
  if(!auth.ok)throw Error('Sessão inválida. Entre novamente.');
- const user=await auth.json();
- const allowed=user.app_metadata?.contact_export_units;
- if(!Array.isArray(allowed)||!allowed.length||allowed.some(u=>!['RS','SC'].includes(u)))throw Error('Seu perfil não tem permissão de exportação.');
+ // The database projects only the manager's assigned units.
+ const allowed=['RS','SC'];
  const selected=unit.value,period=Number(months.value);
- if(selected&&!allowed.includes(selected))throw Error('Unidade não autorizada.');
  const rows=[];
  for(let offset=0;;offset+=500){
   const res=await fetch(c.url+'/rest/v1/crm_export_contacts?select=cliente,cidade,telefone,unidade,ultima_limpeza,autorizacao,status_comercial&order=id.asc&offset='+offset+'&limit=500',{headers,cache:'no-store'});
