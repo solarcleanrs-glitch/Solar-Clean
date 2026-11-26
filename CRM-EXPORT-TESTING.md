@@ -20,3 +20,9 @@ Implementar registro de opt-in por contato e unidade, com data, origem, respons�
 - Somente depois retirar a restrição ao projeto de testes em uma revisão separada.
 
 A consulta ao banco de testes falhou por timeout. Nenhuma migração foi aplicada, e a exportação fica bloqueada até que a relação segura exista.
+
+## Conferência do esquema em 26/11/2026
+
+O SQL Editor do projeto de testes respondeu às consultas de leitura. `sc_clientes` contém ID, telefone, unidade e status comercial, e `sc_cliente_origens_google` registra a origem por cliente. A relação `crm_export_contacts` ainda não existe.
+
+A agenda de testes tem dois registros com status `Concluído`. Nenhum registro da agenda correspondeu pelo identificador Google aos registros de origem. A data da última limpeza deve permanecer nula até ser confirmada por um vínculo de cliente e uma execução comprovada. Não usar o status de conferência dos contatos importados como autorização. Nenhum registro do banco foi alterado nesta conferência.
