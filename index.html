@@ -294,8 +294,18 @@ h2{font-size:20px;margin:0 0 12px}.muted{color:var(--muted)}.section{margin-top:
       </label>
     </div>
 
+<details class="card section no-print" id="crmConsentPanel">
+<summary>Autorização para campanhas</summary>
+<button id="crmConsentLoad" type="button" class="section">Carregar contatos</button>
+<label><span>Buscar por nome, cidade ou telefone</span><input id="crmConsentSearch" type="search" disabled></label>
+<label><span>Contato</span><select id="crmConsentContact" disabled><option value="">Selecione um contato</option></select></label>
+<label><span>Origem do registro</span><input id="crmConsentSource" maxlength="200" placeholder="Ex.: confirmação pelo WhatsApp" disabled></label>
+<button id="crmConsentGrant" type="button" class="primary section" disabled>Registrar autorização</button>
+<button id="crmConsentRevoke" type="button" class="section" disabled>Registrar revogação</button>
+<p id="crmConsentStatus" role="status" class="muted"></p>
+</details>
 <details class="card section no-print" id="crmExportPanel">
-<h3>Exportar contatos para Google Contatos</h3>
+<summary>Exportar contatos para Google Contatos</summary>
 <p class="muted">Somente contatos com autorização registrada. Datas de cadastro não contam como limpeza.</p>
 <div class="grid grid2"><label><span>Unidade</span><select id="crmExportUnit"><option value="">Todas autorizadas</option><option>RS</option><option>SC</option></select></label>
 <label><span>Última limpeza</span><select id="crmExportMonths"><option value="0">Todas, inclusive sem data confirmada</option><option value="6">Mais de 6 meses</option><option value="12">Mais de 12 meses</option></select></label></div>
@@ -2651,7 +2661,7 @@ const unit=byId('crmExportUnit'),months=byId('crmExportMonths'),preview=byId('cr
 let busy=false;
 function invalidate(){download.disabled=true;status.textContent='Confira os contatos novamente.';}
 unit.onchange=months.onchange=invalidate;
-async function load(){
+async function campaignConnection(){
  const c=cloudConfig(),token=localStorage.getItem('solarCleanAccessToken');
  if(!cloudReady()||!token||!navigator.onLine)throw Error('Entre com seu usuário e conecte-se à internet.');
  // Preview branch is restricted to the test database until authorization policies are verified.
@@ -2659,18 +2669,24 @@ async function load(){
  const headers={apikey:c.key,Authorization:'Bearer '+token};
  const auth=await fetch(c.url+'/auth/v1/user',{headers,cache:'no-store'});
  if(!auth.ok)throw Error('Sessão inválida. Entre novamente.');
- // The database projects only the manager's assigned units.
- const allowed=['RS','SC'];
- const selected=unit.value,period=Number(months.value);
+ return {url:c.url,headers};
+}
+async function campaignRows(connection){
+ const {url,headers}=connection;
  const rows=[];
  for(let offset=0;;offset+=500){
-  const res=await fetch(c.url+'/rest/v1/crm_export_contacts?select=cliente,cidade,telefone,unidade,ultima_limpeza,autorizacao,status_comercial&order=id.asc&offset='+offset+'&limit=500',{headers,cache:'no-store'});
+  const res=await fetch(url+'/rest/v1/crm_export_contacts?select=id,cliente,cidade,telefone,unidade,ultima_limpeza,autorizacao,status_comercial&order=id.asc&offset='+offset+'&limit=500',{headers,cache:'no-store'});
   if(!res.ok)throw Error('Base de exportação indisponível ('+res.status+'). Nenhum contato exportado.');
   const page=await res.json();if(!Array.isArray(page))throw Error('Resposta inesperada.');
   rows.push(...page);if(page.length<500)break;
  }
+ return rows;
+}
+async function load(){
+ const rows=await campaignRows(await campaignConnection());
+ const selected=unit.value,period=Number(months.value);
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- return SolarContactExport.prepare(rows,{allowedUnits:allowed,unit:selected,months:period,today});
+ return SolarContactExport.prepare(rows,{allowedUnits:['RS','SC'],unit:selected,months:period,today});
 }
 async function run(save){
  if(busy)return;busy=true;download.disabled=true;preview.disabled=true;unit.disabled=months.disabled=true;
@@ -2686,6 +2702,71 @@ async function run(save){
  finally{busy=false;preview.disabled=false;unit.disabled=months.disabled=false;}
 }
 preview.onclick=()=>run(false);download.onclick=()=>run(true);
+
+const consentLoad=byId('crmConsentLoad'),search=byId('crmConsentSearch');
+const contact=byId('crmConsentContact'),source=byId('crmConsentSource');
+const grant=byId('crmConsentGrant'),revoke=byId('crmConsentRevoke'),message=byId('crmConsentStatus');
+let contacts=[],saving=false;
+function setConsentButtons(){
+ const ready=!saving&&Boolean(contact.value)&&Boolean(source.value.trim());
+ grant.disabled=revoke.disabled=!ready;
+}
+function showContacts(){
+ const selected=contact.value, query=search.value.trim().toLocaleLowerCase('pt-BR');
+ contact.replaceChildren(new Option('Selecione um contato',''));
+ for(const row of contacts){
+  const label=[row.cliente,row.cidade,row.unidade,row.telefone].filter(Boolean).join(' · ');
+  if(label.toLocaleLowerCase('pt-BR').includes(query))contact.add(new Option(label,row.id));
+ }
+ contact.value=selected;
+ setConsentButtons();
+}
+async function withConsentControls(action){
+ if(saving)return;
+ saving=true;
+ consentLoad.disabled=search.disabled=contact.disabled=source.disabled=true;
+ setConsentButtons();
+ try{await action();}
+ catch(error){message.textContent=error.message;}
+ finally{
+  saving=false;
+  consentLoad.disabled=false;
+  search.disabled=contact.disabled=source.disabled=contacts.length===0;
+  setConsentButtons();
+ }
+}
+consentLoad.onclick=()=>withConsentControls(async()=>{
+ contacts=[];
+ source.value='';
+ showContacts();
+ contacts=await campaignRows(await campaignConnection());
+ showContacts();
+ message.textContent=contacts.length?'Selecione o contato e informe a origem da autorização ou revogação.':'Nenhum contato disponível para seu perfil.';
+});
+search.oninput=showContacts;
+contact.onchange=source.oninput=setConsentButtons;
+async function recordConsent(authorized){
+ await withConsentControls(async()=>{
+  const chosen=contacts.find(row=>row.id===contact.value),origin=source.value.trim();
+  if(!chosen||!origin)return;
+  const {url,headers}=await campaignConnection();
+  const response=await fetch(url+'/rest/v1/rpc/sc_confirmar_autorizacao_campanha',{
+   method:'POST',headers:{...headers,'Content-Type':'application/json'},
+   body:JSON.stringify({p_cliente_id:chosen.id,p_autorizado:authorized,p_origem:origin,
+    p_telefone:chosen.telefone,p_unidade:chosen.unidade})
+  });
+  if(!response.ok){
+   const error=await response.json().catch(()=>null);
+   throw Error(error?.message||'Não foi possível registrar a alteração.');
+  }
+  const event=await response.json();
+  source.value='';
+  invalidate();
+  message.textContent=authorized?'Autorização registrada.':event===null?'Este contato ainda não tem autorização registrada.':'Revogação registrada.';
+ });
+}
+grant.onclick=()=>recordConsent(true);
+revoke.onclick=()=>recordConsent(false);
 })();
 </script>
 
